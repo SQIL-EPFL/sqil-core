@@ -1,0 +1,47 @@
+# Bytecode files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Virtual environment
+.venv/
+
+# Poetry specific
+.poetry/
+.poetry-lock/
+
+# Distribution/Build directories
+build/
+dist/
+
+# IDE/editor specific
+.vscode/
+.idea/
+*.swp
+
+# Test and coverage files
+.coverage
+nosetests.xml
+coverage.xml
+*.cover
+*.hypothesis/
+*.pytest_cache/
+
+# Black config and other temporary files
+*.bak
+*.tmp
+*.log
+
+# mkdocs build
+/site/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Pytest cache
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
