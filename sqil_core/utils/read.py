@@ -4,6 +4,7 @@ import h5py
 import numpy as np
 
 from .const import PARAM_METADATA
+import os
 
 
 def extract_h5_data(
@@ -31,17 +32,22 @@ def extract_h5_data(
         >>> data = extract_h5_data(path)
         Extracting only 'amp' and 'phase' from the dataset:
         >>> amp, phase = extract_h5_data(path, ['amp', 'phase'])
+        Extracting only 'phase':
+        >>> phase, = extract_h5_data(path, ['phase'])
     """
-    if (not path.endswith('.ddh5')) | (not path.endswith('.h5')) | (not path.endswith('.hdf5')):
-        path += '/data.ddh5'
+    # If the path is to a folder open /data.ddh5
+    if os.path.isdir(path):
+        path = os.path.join(path, 'data.ddh5')
 
     with h5py.File(path, "r") as h5file:
         data = h5file["data"]
+        data_keys = data.keys()
         # Extract only the requested keys
-        if keys != None and len(keys) > 0:
+        if bool(keys) and (len(keys) > 0):
             res = []
             for key in keys:
-                if key == None or not key:
+                key = str(key)
+                if (not bool(key)) | (key not in data_keys):
                     res.append([])
                     continue
                 res.append(np.array(data[key][:]))
@@ -90,6 +96,28 @@ class ParamInfo:
         self.unit = meta['unit'] if 'unit' in meta else ''
         self.scale = meta['scale'] if 'scale' in meta else 1
 
+    def to_dict(self):
+        """Convert ParamInfo to a dictionary."""
+        return {
+            'id': self.id,
+            'value': self.value,
+            'name': self.name,
+            'symbol': self.symbol,
+            'unit': self.unit,
+            'scale': self.scale
+        }
+
+    def __str__(self):
+        """Return a JSON-formatted string of the object."""
+        return json.dumps(self.to_dict())
+
+    def __eq__(self, other):
+        if isinstance(other, ParamInfo):
+            return (self.id == other.id) & (self.value == other.value)
+        if isinstance(other, (int, float, complex, str)):
+            return self.value == other
+        return False
+
 ParamDict = dict[str, ParamInfo | dict[str, ParamInfo]]
 
 def _enrich_param_dict(param_dict: dict) -> ParamDict:
@@ -118,6 +146,7 @@ def read_param_dict(path: str) -> ParamDict:
     ParamDict
         The param_dict with additional metadata
     """
-    if not path.endswith('.json'):
-        path += '/param_dict.json'
+    # If the path is to a folder open /param_dict.json
+    if os.path.isdir(path):
+        path = os.path.join(path, 'param_dict.json')
     return _enrich_param_dict(read_json(path))
