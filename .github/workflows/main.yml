@@ -31,7 +31,7 @@ jobs:
 
     - name: Install dependencies with Poetry
       run: |
-        poetry install --no-root  # Install dependencies without installing the package itself
+        poetry install
 
     - name: Check code formatting with Black
       run: |
