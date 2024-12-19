@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqil-core"
-version = "0.0.1"
+version = "0.0.2"
 description = "The codebase of the SQIL group in EPFL"
 authors = ["Andrea Duina"]
 readme = "README.md"
