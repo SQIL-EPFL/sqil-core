@@ -33,8 +33,6 @@ jobs:
 
     - name: Publish to PyPI         
       run: |
-        echo The value of MY_TEST is: $MY_TEST
         poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
-        echo "Added token"
         poetry build
         poetry publish --build -vv
