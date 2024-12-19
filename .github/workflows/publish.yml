@@ -33,7 +33,7 @@ jobs:
         POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
         MY_TEST: ${{ secrets.TEST }}
       run: |
-        echo $MY_TEST
+        echo ${{ MY_TEST }}
         poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
         echo "Added token"
         poetry build
