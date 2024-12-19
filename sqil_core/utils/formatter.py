@@ -1,8 +1,9 @@
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 
 import numpy as np
+
+from .const import EXP_UNIT_MAP, PARAM_METADATA
 from .read import read_json
-from .const import PARAM_METADATA, EXP_UNIT_MAP
 
 
 def _cut_to_significant_digits(number, n):
@@ -11,7 +12,9 @@ def _cut_to_significant_digits(number, n):
         return 0  # Zero has no significant digits
     d = Decimal(str(number))
     shift = d.adjusted()  # Get the exponent of the number
-    rounded = d.scaleb(-shift).quantize(Decimal('1e-{0}'.format(n-1)), rounding=ROUND_DOWN)
+    rounded = d.scaleb(-shift).quantize(
+        Decimal("1e-{0}".format(n - 1)), rounding=ROUND_DOWN
+    )
     return float(rounded.scaleb(shift))
 
 
@@ -54,8 +57,12 @@ def format_number(
     # Apply precision to the base
     if precision < 3:
         precision = 3
-    base_precise = _cut_to_significant_digits(base, precision+1) #np.round(base, precision - (int(exponent) % 3))
-    base_precise = np.round(base_precise, precision - len(str(base_precise).split('.')[0]))
+    base_precise = _cut_to_significant_digits(
+        base, precision + 1
+    )  # np.round(base, precision - (int(exponent) % 3))
+    base_precise = np.round(
+        base_precise, precision - len(str(base_precise).split(".")[0])
+    )
     if int(base_precise) == float(base_precise):
         base_precise = int(base_precise)
 
@@ -86,9 +93,7 @@ def get_name_and_unit(param_id: str) -> str:
     return f"{meta['name']} [{EXP_UNIT_MAP[exponent]}{meta['unit']}]"
 
 
-def get_x_id_by_plot_dim(
-    exp_id: str, plot_dim: str, sweep_param: str | None
-) -> str:
+def get_x_id_by_plot_dim(exp_id: str, plot_dim: str, sweep_param: str | None) -> str:
     if exp_id == "CW_onetone":
         if plot_dim == "1":
             return sweep_param or "ro_freq"

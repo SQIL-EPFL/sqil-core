@@ -1,4 +1,3 @@
-
 EXP_UNIT_MAP = {
     -15: "p",
     -12: "f",
@@ -37,4 +36,3 @@ PARAM_METADATA = {
     "vna_bw": {"name": "VNA bandwidth", "symbol": "BW_{VNA}", "unit": "Hz", "scale": 1},
     "vna_avg": {"name": "VNA averages", "symbol": "avg_{VNA}", "unit": "", "scale": 1},
 }
-

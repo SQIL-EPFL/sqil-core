@@ -1,10 +1,10 @@
 import json
+import os
 
 import h5py
 import numpy as np
 
 from .const import PARAM_METADATA
-import os
 
 
 def extract_h5_data(
@@ -37,7 +37,7 @@ def extract_h5_data(
     """
     # If the path is to a folder open /data.ddh5
     if os.path.isdir(path):
-        path = os.path.join(path, 'data.ddh5')
+        path = os.path.join(path, "data.ddh5")
 
     with h5py.File(path, "r") as h5file:
         data = h5file["data"]
@@ -67,11 +67,13 @@ def _h5_to_dict(obj) -> dict:
             data_dict[key] = extract_h5_data(item)
     return data_dict
 
+
 def read_json(path: str) -> dict:
     """Reads a json file and returns the data as a dictionary."""
     with open(path) as f:
         dictionary = json.load(f)
     return dictionary
+
 
 class ParamInfo:
     """Parameter information for items of param_dict
@@ -84,6 +86,7 @@ class ParamInfo:
         unit (str): base unit of measurement (e.g. Hz)
         scale (int): the scale that should be generally applied to raw data (e.g. 1e-9 to take raw Hz to GHz)
     """
+
     def __init__(self, id, value):
         self.id = id
         self.value = value
@@ -91,20 +94,20 @@ class ParamInfo:
             meta = PARAM_METADATA[id]
         else:
             meta = {}
-        self.name = meta['name'] if 'name' in meta else id
-        self.symbol = meta['symbol'] if 'symbol' in meta else id
-        self.unit = meta['unit'] if 'unit' in meta else ''
-        self.scale = meta['scale'] if 'scale' in meta else 1
+        self.name = meta["name"] if "name" in meta else id
+        self.symbol = meta["symbol"] if "symbol" in meta else id
+        self.unit = meta["unit"] if "unit" in meta else ""
+        self.scale = meta["scale"] if "scale" in meta else 1
 
     def to_dict(self):
         """Convert ParamInfo to a dictionary."""
         return {
-            'id': self.id,
-            'value': self.value,
-            'name': self.name,
-            'symbol': self.symbol,
-            'unit': self.unit,
-            'scale': self.scale
+            "id": self.id,
+            "value": self.value,
+            "name": self.name,
+            "symbol": self.symbol,
+            "unit": self.unit,
+            "scale": self.scale,
         }
 
     def __str__(self):
@@ -118,11 +121,12 @@ class ParamInfo:
             return self.value == other
         return False
 
+
 ParamDict = dict[str, ParamInfo | dict[str, ParamInfo]]
 
+
 def _enrich_param_dict(param_dict: dict) -> ParamDict:
-    """Add metadata to param_dict entries.
-    """
+    """Add metadata to param_dict entries."""
     res = {}
     for key, value in param_dict.items():
         if isinstance(value, dict):
@@ -148,5 +152,5 @@ def read_param_dict(path: str) -> ParamDict:
     """
     # If the path is to a folder open /param_dict.json
     if os.path.isdir(path):
-        path = os.path.join(path, 'param_dict.json')
+        path = os.path.join(path, "param_dict.json")
     return _enrich_param_dict(read_json(path))
