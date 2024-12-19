@@ -80,6 +80,13 @@ If you're using a jupyter notebook remember to restart the kernel
 $ poetry run build
 ```
 
+## Publish
+To publish version X.X.X run the following. This will trigger a GitHub action that deploys to release to PyPi (pip) and GitHub.
+```bash
+$ git tag vX.X.X
+$ git push origin vX.X.X
+```
+
 ## Docs
 
 Serve docs
