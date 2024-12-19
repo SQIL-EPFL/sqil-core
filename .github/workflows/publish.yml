@@ -10,6 +10,9 @@ jobs:
   publish:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+        MY_TEST: ${{ secrets.TEST }} 
 
     steps:
     - name: Checkout the code
@@ -28,14 +31,10 @@ jobs:
     - name: Install dependencies
       run: poetry install --no-interaction --no-ansi
 
-    - name: Publish to PyPI
-      env:
-        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-        MY_TEST: ${{ secrets.TEST }}
+    - name: Publish to PyPI         
       run: |
-        echo The value of MY_TEST is: $MY_TEST"
-        poetry config pypi-token.pypi "$POETRY_PYPI_TOKEN_PYPI"
+        echo The value of MY_TEST is: $MY_TEST
+        poetry config pypi-token.pypi $POETRY_PYPI_TOKEN_PYPI
         echo "Added token"
         poetry build
-        echo "Successfully built"
         poetry publish --build -vv
