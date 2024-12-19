@@ -17,11 +17,11 @@ scipy = "^1.14.1"
 h5py = "^3.12.1"
 matplotlib = "^3.9.3"
 seaborn = "^0.13.2"
+isort = "5.9.3"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
-isort = "^5.13.2"
 pre-commit = "^4.0.1"
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.48"

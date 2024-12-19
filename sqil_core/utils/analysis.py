@@ -25,7 +25,27 @@ def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
     return data - np.mean(data[:, 0:avg], axis=1).reshape(data.shape[0], 1)
 
 
-def remove_linear_background(data: np.ndarray) -> np.ndarray:
+def estimate_linear_background(x: np.ndarray, data: np.ndarray, points_cut=0.1) -> list:
+    is1D = len(data.shape) == 1
+    points = data.shape[0] if is1D else data.shape[1]
+    cut = int(points * points_cut)
+
+    # Consider just the cut points
+    x_data = x[0:cut] if is1D else x[0:cut, :]
+    X = np.vstack([np.ones_like(x_data), x_data]).T
+    y_data = data[0:cut] if is1D else data[0:cut, :]
+
+    # Linear fit
+    coefficients, residuals, _, _ = np.linalg.lstsq(
+        X, y_data if is1D else y_data.T, rcond=None
+    )
+
+    return coefficients
+
+
+def remove_linear_background(
+    x: np.ndarray, data: np.ndarray, points_cut=0.1
+) -> np.ndarray:
     """Removes a linear background from the input data (e.g. the phase background
     of a spectroscopy).
 
@@ -41,11 +61,8 @@ def remove_linear_background(data: np.ndarray) -> np.ndarray:
         The input data with the linear background removed. The shape of the
         returned array matches the input `data`.
     """
-    is1D = len(data.shape) == 1
-    points = data.shape[0] if is1D else data.shape[1]
+    coefficients = estimate_linear_background(x, data, points_cut)
 
-    x_data = np.linspace(0, points - 1, points)
-    X = np.vstack([np.ones_like(x_data), x_data]).T
-
-    coefficients, _, _, _ = np.linalg.lstsq(X, data if is1D else data.T, rcond=None)
+    # Remove background over the whole array
+    X = np.vstack([np.ones_like(x), x]).T
     return data - (X @ coefficients).T
