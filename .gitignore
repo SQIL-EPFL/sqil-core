@@ -47,4 +47,5 @@ coverage.xml
 .dmypy.json
 
 # File for trying out ideas
+sketching/
 sketching.ipynb
