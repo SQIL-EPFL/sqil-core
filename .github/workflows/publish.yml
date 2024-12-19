@@ -28,15 +28,6 @@ jobs:
     - name: Install dependencies
       run: poetry install --no-interaction --no-ansi
 
-    - name: Check version bump
-      run: |
-        VERSION=$(poetry version -s)
-        echo "Current version is $VERSION"
-        if git log -1 --pretty=%B | grep -q "$VERSION"; then
-          echo "Error: Version number has not been updated in pyproject.toml."
-          exit 1
-        fi
-
     - name: Publish to PyPI
       env:
         POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
