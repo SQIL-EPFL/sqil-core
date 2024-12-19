@@ -1,12 +1,22 @@
 name: Publish Package
 
 on:
+  # Trigger when a tag is pushed (usually a version bump like v1.0.0)
   push:
     tags:
-      - 'v*'  # This ensures the action runs only on version tags (e.g., v1.0.0)
+      - 'v*'  # You can adjust the tag pattern as needed (e.g., v1.0.0)
+
+  # Trigger when the "Check formatting and run tests" workflow completes
+  workflow_run:
+    workflows: ["Check formatting and run tests"]
+    types:
+      - completed
 
 jobs:
   publish:
+    # Run the job only if the previous workflow was successful (for `workflow_run` event)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }} 
+
     runs-on: ubuntu-latest
 
     steps:
@@ -24,12 +34,10 @@ jobs:
         export PATH="$HOME/.local/bin:$PATH"
 
     - name: Install dependencies
-      run: |
-        poetry install --no-interaction --no-ansi
+      run: poetry install --no-interaction --no-ansi
 
     - name: Build the package
-      run: |
-        poetry build
+      run: poetry build
 
     - name: Publish to PyPI
       env:
