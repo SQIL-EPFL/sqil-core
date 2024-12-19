@@ -1,0 +1,45 @@
+name: Publish Package
+
+on:
+  workflow_run:
+    workflows: ["Check formatting and run tests"]
+    types:
+      - completed
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        export PATH="$HOME/.local/bin:$PATH"
+
+    - name: Install dependencies
+      run: poetry install --no-interaction --no-ansi
+
+    - name: Check version bump
+      run: |
+        VERSION=$(poetry version -s)
+        echo "Current version is $VERSION"
+        if git log -1 --pretty=%B | grep -q "$VERSION"; then
+          echo "Error: Version number has not been updated in pyproject.toml."
+          exit 1
+        fi
+
+    - name: Publish to PyPI
+      env:
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        poetry build
+        poetry publish --build
