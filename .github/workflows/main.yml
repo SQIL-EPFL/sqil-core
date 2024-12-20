@@ -25,12 +25,10 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Cache Poetry and Virtual Environment
+    - name: Cache dependencies
       uses: actions/cache@v3
       with:
-        path: |
-          ~/.poetry
-          .venv
+        path: .venv
         key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
           poetry-${{ runner.os }}-
@@ -40,19 +38,13 @@ jobs:
         curl -sSL https://install.python-poetry.org | python3 -
         echo "$HOME/.poetry/bin" >> $GITHUB_PATH
 
+    - name: Configure Poetry to use in-project virtualenv
+      run: |
+        poetry config virtualenvs.in-project true
+
     - name: Install dependencies with Poetry
       run: |
         poetry install --sync --no-interaction
-
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.poetry
-          .venv
-        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          poetry-${{ runner.os }}-
 
   check-formatting:
     runs-on: ubuntu-latest
@@ -67,20 +59,22 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          poetry-${{ runner.os }}-
+
     - name: Install Poetry
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
         echo "$HOME/.poetry/bin" >> $GITHUB_PATH
 
-    - name: Restore cached Poetry and Virtual Environment
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.poetry
-          .venv
-        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          poetry-${{ runner.os }}-
+    - name: Configure Poetry to use in-project virtualenv
+      run: |
+        poetry config virtualenvs.in-project true
 
     - name: Check code formatting with Black
       run: |
@@ -109,20 +103,22 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          poetry-${{ runner.os }}-
+
     - name: Install Poetry
       run: |
         curl -sSL https://install.python-poetry.org | python3 -
         echo "$HOME/.poetry/bin" >> $GITHUB_PATH
 
-    - name: Restore cached Poetry and Virtual Environment
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.poetry
-          .venv
-        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          poetry-${{ runner.os }}-
+    - name: Configure Poetry to use in-project virtualenv
+      run: |
+        poetry config virtualenvs.in-project true
 
     - name: Run tests with pytest
       run: |
