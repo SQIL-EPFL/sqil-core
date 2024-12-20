@@ -1,4 +1,4 @@
-name: Check formatting and run tests
+name: check formatting and run tests
 
 on:
   pull_request:
@@ -22,7 +22,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.10'  # Adjust the Python version to match your environment
+        python-version: '3.12'  # Adjust the Python version to match your environment
 
     - name: Install Poetry
       run: |

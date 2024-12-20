@@ -81,7 +81,8 @@ $ poetry run build
 ```
 
 ## Publish
-To publish version X.X.X run the following. This will trigger a GitHub action that deploys to release to PyPi (pip) and GitHub.
+To publish version X.X.X run the commands below. This will trigger a GitHub action that deploys to release to PyPi (pip) and GitHub.
+Remember also to change the version number in the `pyproject.toml` file.
 ```bash
 $ git tag vX.X.X
 $ git push origin vX.X.X

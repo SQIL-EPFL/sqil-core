@@ -26,6 +26,7 @@ def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
 
 
 def estimate_linear_background(x: np.ndarray, data: np.ndarray, points_cut=0.1) -> list:
+    """Estimates a linear background hihi"""
     is1D = len(data.shape) == 1
     points = data.shape[0] if is1D else data.shape[1]
     cut = int(points * points_cut)
