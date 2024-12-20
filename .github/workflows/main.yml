@@ -3,9 +3,9 @@ name: Check formatting and run tests
 on:
   pull_request:
     branches:
-      - '*'
+      - '*'  # Trigger on pull requests for all branches
     paths:
-      - '**.py'
+      - '**.py'  # Only run on changes to Python files
 
   push:
     branches:
@@ -67,6 +67,11 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+
     - name: Restore cached Poetry and Virtual Environment
       uses: actions/cache@v3
       with:
@@ -103,6 +108,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.12'
+
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.poetry/bin" >> $GITHUB_PATH
 
     - name: Restore cached Poetry and Virtual Environment
       uses: actions/cache@v3
