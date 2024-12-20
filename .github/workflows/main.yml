@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - main
+      - test-actions
 
 jobs:
   setup-environment:
