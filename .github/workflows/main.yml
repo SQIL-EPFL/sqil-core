@@ -13,113 +13,39 @@ on:
       - test-actions
 
 jobs:
-  setup-environment:
-    runs-on: ubuntu-latest
+  check-formatting-and-run-tests:
+    runs-on: ubuntu-latest  # You can choose a different runner if necessary
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2  # Checkout the code to the runner
 
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.12'
-
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          poetry-${{ runner.os }}-
+        python-version: '3.12'  # Adjust the Python version to match your environment
 
     - name: Install Poetry
       run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-
-    - name: Configure Poetry to use in-project virtualenv
-      run: |
-        poetry config virtualenvs.in-project true
+        curl -sSL https://install.python-poetry.org | python3 -  # Install Poetry
+        echo "$HOME/.poetry/bin" >> $GITHUB_PATH  # Add Poetry to the PATH
 
     - name: Install dependencies with Poetry
       run: |
-        poetry install --sync --no-interaction
-
-  check-formatting:
-    runs-on: ubuntu-latest
-    needs: setup-environment  # Waits for setup-environment to finish
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.12'
-
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          poetry-${{ runner.os }}-
-
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-
-    - name: Configure Poetry to use in-project virtualenv
-      run: |
-        poetry config virtualenvs.in-project true
+        poetry install
 
     - name: Check code formatting with Black
       run: |
-        poetry run black --check .
-      continue-on-error: false
+        poetry run black --check .  # Check if the code is formatted correctly with Black
+      continue-on-error: false  # Fail the job if Black finds unformatted code
 
     - name: Check imports with isort
       run: |
-        poetry run isort --check-only .
-      continue-on-error: false
+        poetry run isort --check-only .  # Check if the imports are sorted correctly
+      continue-on-error: false  # Fail the job if isort finds unsorted imports
       env:
-        CI: true
-
-  run-tests:
-    runs-on: ubuntu-latest
-    needs:
-      - setup-environment  # Waits for setup-environment to finish
-      - check-formatting  # Also waits for check-formatting to succeed
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.12'
-
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: poetry-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          poetry-${{ runner.os }}-
-
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        echo "$HOME/.poetry/bin" >> $GITHUB_PATH
-
-    - name: Configure Poetry to use in-project virtualenv
-      run: |
-        poetry config virtualenvs.in-project true
+        CI: true  # Prevent isort from modifying files during the check
 
     - name: Run tests with pytest
       run: |
-        poetry run pytest --maxfail=1 --disable-warnings -q
+        poetry run pytest --maxfail=1 --disable-warnings -q  # Run tests using Poetry's virtualenv
