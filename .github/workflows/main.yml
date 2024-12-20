@@ -1,4 +1,4 @@
-name: Check formatting and run tests
+name: check formatting and run tests
 
 on:
   pull_request:
