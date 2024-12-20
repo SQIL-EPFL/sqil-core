@@ -10,7 +10,6 @@ on:
   push:
     branches:
       - main
-      - test-actions
 
 jobs:
   check-formatting-and-run-tests:
