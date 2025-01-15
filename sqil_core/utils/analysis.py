@@ -25,16 +25,22 @@ def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
     return data - np.mean(data[:, 0:avg], axis=1).reshape(data.shape[0], 1)
 
 
-def estimate_linear_background(x: np.ndarray, data: np.ndarray, points_cut=0.1) -> list:
-    """Estimates a linear background hihi hoho"""
+def estimate_linear_background(
+    x: np.ndarray, data: np.ndarray, points_cut=0.1, cut_from_back=False
+) -> list:
     is1D = len(data.shape) == 1
     points = data.shape[0] if is1D else data.shape[1]
     cut = int(points * points_cut)
 
     # Consider just the cut points
-    x_data = x[0:cut] if is1D else x[0:cut, :]
+    if not cut_from_back:
+        x_data = x[0:cut] if is1D else x[0:cut, :]
+        y_data = data[0:cut] if is1D else data[0:cut, :]
+    else:
+        x_data = x[-cut:] if is1D else x[-cut:, :]
+        y_data = data[-cut:] if is1D else data[-cut:, :]
+
     X = np.vstack([np.ones_like(x_data), x_data]).T
-    y_data = data[0:cut] if is1D else data[0:cut, :]
 
     # Linear fit
     coefficients, residuals, _, _ = np.linalg.lstsq(
