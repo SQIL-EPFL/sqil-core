@@ -33,11 +33,6 @@ def fit_circle_algebraic(x: np.ndarray, y: np.ndarray) -> tuple[float, float, fl
     """
     z_data = x + 1j * y
 
-    def dist(x):
-        np.absolute(x, x)
-        c = (x > np.pi).astype(int)
-        return x + c * (-2.0 * x + 2.0 * np.pi)
-
     def calc_moments(z_data):
         xi = z_data.real
         xi_sqr = xi * xi
@@ -260,8 +255,7 @@ def fit_skewed_lorentzian(x: np.ndarray, y: np.ndarray):
     popt[-1] = np.abs(popt[-1])
 
     # Calculate percentage errors
-    std_errs = compute_standard_errors(x, popt, pcov, infodict["fvec"])
-    perc_errs = std_errs / np.abs(popt) * 100
+    std_errs, perc_errs = compute_standard_errors(x, popt, pcov, infodict["fvec"])
 
     return popt, perc_errs
 
@@ -317,38 +311,45 @@ def skewed_lorentzian_fun(
     )
 
 
-def compute_standard_errors(x, popt, pcov, residuals):
+def compute_standard_errors(
+    x: np.ndarray, popt: np.ndarray, pcov: np.ndarray, residuals: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Computes the standard errors of fitted parameters from the covariance matrix.
+    Computes the standard errors and percentage errors of fitted parameters from the covariance matrix.
 
-    This function calculates the standard errors for each parameter obtained from
-    a curve-fitting procedure. It uses the covariance matrix and the residuals
-    to account for data variance and the quality of the fit. The covariance matrix
-    is rescaled by the reduced chi-squared value to provide more accurate error estimates.
+    This function calculates the standard errors for each parameter obtained from a fitting procedure.
+    It uses the covariance matrix and residuals to account for data variance and the quality of the fit.
+    The covariance matrix is rescaled by the reduced chi-squared value to provide more accurate error
+    estimates. Additionally, the percentage errors are computed based on the standard errors relative
+    to the fitted parameters.
 
     Parameters
     ----------
-    x : array-like
+    x : np.ndarray
         The independent variable data used in the fitting process.
-    popt : array-like
+    popt : np.ndarray
         The optimized parameters obtained from the curve fitting.
-    pcov : array-like
-        The covariance matrix returned by the fitting routine (e.g., `scipy.optimize.leastsq`).
-    residuals : array-like
-        The residuals between the fitted model and the observed data (i.e., `y - y_fit`).
+    pcov : np.ndarray
+        The covariance matrix returned by the fitting routine (e.g., scipy.optimize.leastsq).
+    residuals : np.ndarray
+        The residuals between the fitted model and the observed data (i.e., y - y_fit).
 
     Returns
     -------
-    standard_errors : np.ndarray
-        Array of standard errors corresponding to each fitted parameter in `popt`.
+    tuple[np.ndarray, np.ndarray]
+        A tuple containing two arrays:
+        - standard_errors: The standard errors corresponding to each fitted parameter in popt.
+        - percentage_errors: The percentage errors for each parameter in popt.
 
     Notes
     -----
-    - The standard errors are derived by rescaling the covariance matrix with the
-      reduced chi-squared value to account for model accuracy.
-    - Degrees of freedom (DoF) are computed as `N - p`, where `N` is the number of data points
-      and `p` is the number of fitted parameters.
+    - The standard errors are derived by rescaling the covariance matrix with the reduced chi-squared
+      value to account for model accuracy.
+    - Degrees of freedom (DoF) are computed as N - p, where N is the number of data points and p is the
+      number of fitted parameters.
     - Assumes that the residuals are normally distributed.
+    - The percentage errors are calculated as the ratio of standard errors to the absolute value of the
+      fitted parameters, multiplied by 100.
 
     Examples
     --------
@@ -357,8 +358,9 @@ def compute_standard_errors(x, popt, pcov, residuals):
     >>> pcov = np.array([[0.04, 0.01], [0.01, 0.02]])
     >>> residuals = np.array([0.1, -0.2, 0.05, -0.1])
     >>> x = np.linspace(0, 1, 4)
-    >>> std_errs = compute_standard_errors(x, popt, pcov, residuals)
+    >>> std_errs, perc_errs = compute_standard_errors(x, popt, pcov, residuals)
     >>> print("Standard Errors:", std_errs)
+    >>> print("Percentage Errors:", perc_errs)
     """
     if pcov is None:
         if np.allclose(residuals, 0, atol=1e-10):
@@ -375,12 +377,33 @@ def compute_standard_errors(x, popt, pcov, residuals):
 
     # Calculate reduced chi-squared
     dof = len(x) - len(popt)  # degrees of freedom (N - p)
-    chi2_red = np.sum(residuals**2) / dof
+    if dof <= 0:
+        warnings.warn(
+            "Degrees of freedom (dof) is non-positive. This may indicate overfitting or insufficient data."
+        )
+        chi2_red = np.nan  # Invalid value for chi-squared if dof <= 0
+    else:
+        chi2_red = np.sum(residuals**2) / dof
+
     # Rescale the covariance matrix
-    pcov = pcov * chi2_red
+    if np.isnan(chi2_red):
+        pcov_rescaled = np.nan
+    else:
+        pcov_rescaled = pcov * chi2_red
+
     # Calculate standard errors for each parameter
-    standard_errors = np.sqrt(np.diag(pcov))
-    return standard_errors
+    if np.any(np.isnan(pcov_rescaled)):
+        standard_errors = np.full_like(popt, np.nan, dtype=float)
+    else:
+        standard_errors = np.sqrt(np.diag(pcov_rescaled))
+
+    # Calculate percentage errors for each parameter
+    if np.any(popt == 0):
+        percentage_errors = np.full_like(popt, np.nan, dtype=float)
+    else:
+        percentage_errors = (standard_errors / np.abs(popt)) * 100
+
+    return standard_errors, percentage_errors
 
 
 def compute_standard_errors_minimize(x, res, objective, epsilon=1e-8):
