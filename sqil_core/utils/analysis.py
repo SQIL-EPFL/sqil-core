@@ -26,8 +26,50 @@ def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
 
 
 def estimate_linear_background(
-    x: np.ndarray, data: np.ndarray, points_cut=0.1, cut_from_back=False
+    x: np.ndarray,
+    data: np.ndarray,
+    points_cut: float = 0.1,
+    cut_from_back: bool = False,
 ) -> list:
+    """
+    Estimates the linear background for a given data set by fitting a linear model to a subset of the data.
+
+    This function performs a linear regression to estimate the background (offset and slope) from the
+    given data by selecting a portion of the data as specified by the `points_cut` parameter. The linear
+    fit is applied to either the first or last `points_cut` fraction of the data, depending on the `cut_from_back`
+    flag. The estimated background is returned as the coefficients of the linear fit.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        The independent variable data.
+    data : np.ndarray
+        The dependent variable data, which can be 1D or 2D (e.g., multiple measurements or data points).
+    points_cut : float, optional
+        The fraction of the data to be considered for the linear fit. Default is 0.1 (10% of the data).
+    cut_from_back : bool, optional
+        Whether to use the last `points_cut` fraction of the data (True) or the first fraction (False).
+        Default is False.
+
+    Returns
+    -------
+    list
+        The coefficients of the linear fit: a list with two elements, where the first is the offset (intercept)
+        and the second is the slope.
+
+    Notes
+    -----
+    - If `data` is 2D, the fit is performed on each column of the data separately.
+    - The function assumes that `x` and `data` have compatible shapes.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.linspace(0, 10, 100)
+    >>> data = 3 * x + 2 + np.random.normal(0, 1, size=(100,))
+    >>> coefficients = estimate_linear_background(x, data, points_cut=0.2)
+    >>> print("Estimated coefficients:", coefficients)
+    """
     is1D = len(data.shape) == 1
     points = data.shape[0] if is1D else data.shape[1]
     cut = int(points * points_cut)
