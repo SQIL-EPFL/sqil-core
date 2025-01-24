@@ -3,7 +3,6 @@ import os
 
 import h5py
 import numpy as np
-from tabulate import tabulate
 
 from .const import PARAM_METADATA
 
@@ -155,10 +154,3 @@ def read_param_dict(path: str) -> ParamDict:
     if os.path.isdir(path):
         path = os.path.join(path, "param_dict.json")
     return _enrich_param_dict(read_json(path))
-
-
-def print_fit_result(names, params, errors):
-    headers = ["Param", "Fitted value", "% Error"]
-    data = [[names[i], params[i], np.round(errors[i], 2)] for i in range(len(params))]
-    table = tabulate(data, headers=headers, tablefmt="github")
-    print(table)

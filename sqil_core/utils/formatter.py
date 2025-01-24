@@ -1,6 +1,8 @@
 from decimal import ROUND_DOWN, Decimal
 
 import numpy as np
+from scipy.stats import norm
+from tabulate import tabulate
 
 from .const import EXP_UNIT_MAP, PARAM_METADATA
 from .read import read_json
@@ -132,3 +134,94 @@ def build_title(title: str, path: str, params: list[str]) -> str:
         if idx % 2 == 0 and idx != 0:
             title += "\n"
     return title[0:-3]
+
+
+def print_fit_result(param_names, params, errors):
+    # Parameters table
+    headers = ["Param", "Fitted value", "% Error"]
+    data = [
+        [param_names[i], params[i], np.round(errors[i], 2)] for i in range(len(params))
+    ]
+    table = tabulate(data, headers=headers, tablefmt="github")
+    print(table + "\n")
+
+
+def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
+    matrix = [param_names, params]
+
+    headers = ["Param", "Fitted value"]
+    if std_errs is not None:
+        headers.append("STD error")
+        std_errs = [f"{n:.3e}" for n in std_errs]
+        matrix.append(std_errs)
+    if perc_errs is not None:
+        headers.append("% Error")
+        perc_errs = [f"{n:.2f}" for n in perc_errs]
+        matrix.append(perc_errs)
+
+    matrix = np.array(matrix)
+    data = [matrix[:, i] for i in range(len(params))]
+
+    table = tabulate(data, headers=headers, tablefmt="github")
+    print(table + "\n")
+
+
+def print_fit_metrics(fit_quality, keys: list[str] | None = None):
+    if keys is None:
+        keys = fit_quality.keys()
+
+    # Print fit quality parameters
+    for key in keys:
+        value = fit_quality[key]
+        quality = ""
+        # Evaluate R-squared
+        if key == "r2":
+            # Skip if complex
+            if isinstance(value, complex):
+                continue
+            key = "R²"
+            if value < 0:
+                quality = "BAD - a horizontal line would be better"
+            elif value > 0.97:
+                quality = "GREAT"
+            elif value > 0.95:
+                quality = "GOOD"
+            elif value > 0.80:
+                quality = "MEDIUM"
+            else:
+                quality = "BAD"
+        # Normalized mean absolute error NMAE and
+        # normalized root mean square error NRMSE
+        elif (key == "nmae") or (key == "nrmse"):
+            if value < 0.1:
+                quality = "GREAT"
+            elif value < 0.2:
+                quality = "GOOD"
+            else:
+                quality = "BAD"
+
+        # Print result
+        print(f"{key}\t{value:.3e}\t{quality}")
+
+
+def _sigma_for_confidence(confidence_level: float) -> float:
+    """
+    Calculates the sigma multiplier (z-score) for a given confidence level.
+
+    Parameters
+    ----------
+    confidence_level : float
+        The desired confidence level (e.g., 0.95 for 95%, 0.99 for 99%).
+
+    Returns
+    -------
+    float
+        The sigma multiplier to use for the confidence interval.
+    """
+    if not (0 < confidence_level < 1):
+        raise ValueError("Confidence level must be between 0 and 1 (exclusive).")
+
+    alpha = 1 - confidence_level
+    sigma_multiplier = norm.ppf(1 - alpha / 2)
+
+    return sigma_multiplier
