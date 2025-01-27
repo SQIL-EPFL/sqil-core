@@ -4,6 +4,7 @@ import warnings
 import lmfit
 import numpy as np
 import scipy.optimize as spopt
+from lmfit.model import ModelResult
 
 from sqil_core.utils import print_fit_metrics, print_fit_params
 
@@ -81,88 +82,120 @@ def fit_output(fit_func):
         # Perform the fit
         fit_result = fit_func(*args, **kwargs)
 
-        x_data, y_data = args[:2]  # Assume x and y data are the first 2 params
-        fit_function = None
-        param_names = None
-        # Get output type and extract parameters
-        if isinstance(fit_result, tuple):
-            raw_fit_output = fit_result[0]
-            fit_function = fit_result[1] if len(fit_result) > 1 else None
-            param_names = fit_result[2] if len(fit_result) > 2 else None
+        # Extract information from function arguments
+        x_data, y_data = get_xy_data_from_fit_args(*args, **kwargs)
+        sigma = kwargs.get("sigma", None)
+        has_sigma = isinstance(sigma, (list, np.ndarray))
+
+        sqil_dict = {
+            "params": [],
+            "std_err": None,
+            "metrics": None,
+            "predict": None,
+            "output": None,
+            "param_names": None,
+        }
+        metadata = {}
+        formatted = None
+
+        # Check if the fit output is a tuple and separate it into raw_fit_ouput and metadata
+        if (
+            isinstance(fit_result, tuple)
+            and (len(fit_result) == 2)
+            and isinstance(fit_result[1], dict)
+        ):
+            raw_fit_output, metadata = fit_result
         else:
             raw_fit_output = fit_result
+        sqil_dict["output"] = raw_fit_output
 
-        # Standardized processing of different optimizer outputs
-        metrics = None
-        # Check if the result is a custom dictionary output
-        if isinstance(raw_fit_output, dict):
-            params = raw_fit_output.get("params", [])
-            std_err = raw_fit_output.get("std_err", None)
-            fit_function = fit_function or raw_fit_output.get("predict", None)
-            param_names = raw_fit_output.get("param_names", None)
-            metrics = raw_fit_output.get("metrics", None)
+        # Format the raw_fit_output into a standardized dict
+        # Scipy tuple (curve_fit, leastsq)
+        if is_scipy_tuple(raw_fit_output):
+            formatted = format_scipy_tuple(raw_fit_output, has_sigma=has_sigma)
 
-        # Check if the result is a tuple (likely scipy.optimize output)
-        elif isinstance(raw_fit_output, tuple):
-            # It's a scipy result, assume it's in the form (popt, pcov, ...)
-            popt, pcov = raw_fit_output[0], raw_fit_output[1]
+        # Scipy least squares
+        elif is_scipy_least_squares(raw_fit_output):
+            formatted = format_scipy_least_squares(raw_fit_output, has_sigma=has_sigma)
 
-            if len(raw_fit_output) > 2:
-                infodict = raw_fit_output[2]
-                residuals = infodict["fvec"]
-            else:
-                y_fit = fit_function(x_data)
-                residuals = y_data - y_fit
-
-            params = np.array(popt)
-            std_err = compute_standard_errors(x_data, popt, pcov, residuals)
-
-        # Check if the result comes from lmfit
-        elif isinstance(raw_fit_output, lmfit.model.ModelResult):
-            params = np.array(list(raw_fit_output.params.valuesdict().values()))
-            std_err = np.array(
-                [
-                    param.stderr if param.stderr is not None else np.nan
-                    for param in raw_fit_output.params.values()
-                ]
+        # Scipy minimize
+        elif is_scipy_minimize(raw_fit_output):
+            residuals = None
+            predict = metadata.get("predict", None)
+            if predict and callable(predict):
+                residuals = y_data - metadata["predict"](x_data)
+            formatted = format_scipy_minimize(
+                raw_fit_output, residuals=residuals, has_sigma=has_sigma
             )
-            if not fit_function:
-                # Determine the independent variable name used in the fit
-                independent_var = (
-                    raw_fit_output.userkws.keys()
-                    & raw_fit_output.model.independent_vars
-                )
-                independent_var = (
-                    independent_var.pop()
-                    if independent_var
-                    else raw_fit_output.model.independent_vars[0]
-                )
-                fit_function = lambda x: raw_fit_output.eval(**{independent_var: x})
-            param_names = param_names or list(raw_fit_output.params.keys())
+
+        # lmfit
+        elif is_lmfit(raw_fit_output):
+            formatted = format_lmfit(raw_fit_output)
+
+        # Custom fit output
+        elif isinstance(raw_fit_output, dict):
+            formatted = raw_fit_output
 
         else:
-            raise TypeError("Unknown fit result type")
+            raise TypeError(
+                "Couldn't recognize the output.\n"
+                + "Are you using scipy? Did you forget to set `full_output=True` in your fit method?"
+            )
 
-        # Compute fit metrics if not provided
-        if metrics is None:
-            y_fit = fit_function(x_data)
-            metrics = compute_fit_metrics(y_data, y_fit)
+        # Update sqil_dict with the formatted fit_output
+        if formatted is not None:
+            sqil_dict.update(formatted)
 
-        # Return params and a standardized FitResult object
-        return params, FitResult(
-            params, std_err, metrics, fit_function, raw_fit_output, param_names
+        # Add/override fileds using metadata
+        sqil_dict.update(metadata)
+
+        # Assign the optimized parameters to the prediction function
+        if sqil_dict["predict"] is not None:
+            params = sqil_dict["params"]
+            predict = sqil_dict["predict"]
+            n_inputs = _count_function_parameters(predict)
+            if n_inputs == 1 + len(params):
+                sqil_dict["predict"] = lambda x: predict(x, *params)
+
+        return FitResult(
+            params=sqil_dict.get("params", []),
+            std_err=sqil_dict.get("std_err", None),
+            fit_output=raw_fit_output,
+            metrics=sqil_dict.get("metrics", None),
+            predict=sqil_dict.get("predict", None),
+            param_names=sqil_dict.get("param_names", None),
         )
 
     return wrapper
 
 
+def _count_function_parameters(func):
+    sig = inspect.signature(func)
+    return len(
+        [
+            param
+            for param in sig.parameters.values()
+            if param.default == inspect.Parameter.empty
+            and param.kind
+            in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.POSITIONAL_ONLY,
+            )
+        ]
+    )
+
+
 class FitResult:
-    def __init__(self, params, std_err, metrics, predict, fit_output, param_names=None):
+    def __init__(
+        self, params, std_err, fit_output, metrics=None, predict=None, param_names=None
+    ):
         self.params = params  # Dictionary of fitted parameters
         self.std_err = std_err  # Dictionary of parameter standard errors
-        self.metrics = metrics  # Dictionary of fit quality metrics
-        self.predict = predict  # Prediction function with optimized parameters
         self.output = fit_output  # Raw optimizer output
+        self.metrics = metrics  # Dictionary of fit quality metrics
+        self.predict = (
+            predict or self._no_prediction
+        )  # Fit function with optimized parameters
         self.param_names = param_names or list(range(len(params)))
 
     def __repr__(self):
@@ -183,81 +216,19 @@ class FitResult:
             self.std_err / self.params * 100,
         )
 
-
-def compute_fit_metrics(y_true, y_fit):
-    y_range = np.max(y_true) - np.min(y_true)
-    residuals = y_true - y_fit
-
-    # R²
-    # Quantifies how much of the variance in the data is explained by the fitted model
-    ss_res = np.sum(residuals**2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    r2 = 1 - (ss_res / ss_tot)
-
-    # Root mean squared error (RMSE)
-    # Measures the average deviation between the data points and the fit
-    # Penalizes large errors
-    rmse = np.sqrt(np.mean(residuals**2))
-    # Normalized
-    nrmse = rmse / y_range if y_range != 0 else 0
-
-    # Chi² (assuming residual standard deviation as uncertainty)
-    chi2 = np.sum((residuals / np.std(y_true)) ** 2) if np.std(y_true) > 0 else 0
-
-    return {"r2": r2, "rmse": rmse, "nrmse": nrmse, "chi2": chi2}
+    def _no_prediction(self):
+        raise Exception("No predition function available")
 
 
-def compute_standard_errors(
-    x: np.ndarray, popt: np.ndarray, pcov: np.ndarray, residuals: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Computes the standard errors and percentage errors of fitted parameters from the covariance matrix.
-
-    This function calculates the standard errors for each parameter obtained from a fitting procedure.
-    It uses the covariance matrix and residuals to account for data variance and the quality of the fit.
-    The covariance matrix is rescaled by the reduced chi-squared value to provide more accurate error
-    estimates. Additionally, the percentage errors are computed based on the standard errors relative
-    to the fitted parameters.
-
-    Parameters
-    ----------
-    x : np.ndarray
-        The independent variable data used in the fitting process.
-    popt : np.ndarray
-        The optimized parameters obtained from the curve fitting.
-    pcov : np.ndarray
-        The covariance matrix returned by the fitting routine (e.g., scipy.optimize.leastsq).
-    residuals : np.ndarray
-        The residuals between the fitted model and the observed data (i.e., y_data - y_fit).
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray]
-        A tuple containing two arrays:
-        - standard_errors: The standard errors corresponding to each fitted parameter in popt.
-        - percentage_errors: The percentage errors for each parameter in popt.
-
-    Notes
-    -----
-    - The standard errors are derived by rescaling the covariance matrix with the reduced chi-squared
-      value to account for model accuracy.
-    - Degrees of freedom (DoF) are computed as N - p, where N is the number of data points and p is the
-      number of fitted parameters.
-    - Assumes that the residuals are normally distributed.
-    - The percentage errors are calculated as the ratio of standard errors to the absolute value of the
-      fitted parameters, multiplied by 100.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> popt = [1.0, 0.5]
-    >>> pcov = np.array([[0.04, 0.01], [0.01, 0.02]])
-    >>> residuals = np.array([0.1, -0.2, 0.05, -0.1])
-    >>> x = np.linspace(0, 1, 4)
-    >>> std_errs, perc_errs = compute_standard_errors(x, popt, pcov, residuals)
-    >>> print("Standard Errors:", std_errs)
-    >>> print("Percentage Errors:", perc_errs)
-    """
+def compute_adjusted_standard_errors(
+    pcov: np.ndarray,
+    residuals: np.ndarray,
+    red_chi2=None,
+    includes_sigma=True,
+    sigma=None,
+) -> np.ndarray:
+    """`sigma` should only be used in case the optimization doesn't include the experimental error but the experimetal errors are known"""
+    # Check for invalid covariance
     if pcov is None:
         if np.allclose(residuals, 0, atol=1e-10):
             warnings.warn(
@@ -269,82 +240,284 @@ def compute_standard_errors(
                 "Covariance matrix could not be estimated. This could be due to poor model fit "
                 "or numerical instability. Review the data or model configuration."
             )
-        return np.full_like(popt, np.nan, dtype=float)
+        return None
 
     # Calculate reduced chi-squared
-    dof = len(x) - len(popt)  # degrees of freedom (N - p)
-    if dof <= 0:
-        warnings.warn(
-            "Degrees of freedom (dof) is non-positive. This may indicate overfitting or insufficient data."
+    n_params = len(np.diag(pcov))
+    if red_chi2 is None:
+        _, red_chi2 = compute_chi2(
+            residuals, n_params, includes_sigma=includes_sigma, sigma=sigma
         )
-        chi2_red = np.nan  # Invalid value for chi-squared if dof <= 0
-    else:
-        chi2_red = np.sum(residuals**2) / dof
 
     # Rescale the covariance matrix
-    if np.isnan(chi2_red):
+    if np.isnan(red_chi2):
         pcov_rescaled = np.nan
     else:
-        pcov_rescaled = pcov * chi2_red
+        pcov_rescaled = pcov * red_chi2
 
     # Calculate standard errors for each parameter
     if np.any(np.isnan(pcov_rescaled)):
-        standard_errors = np.full_like(popt, np.nan, dtype=float)
+        standard_errors = np.full(n_params, np.nan, dtype=float)
     else:
         standard_errors = np.sqrt(np.diag(pcov_rescaled))
 
     return standard_errors
 
 
-def compute_standard_errors_minimize(x, res, objective, epsilon=1e-8):
-    """
-    Computes standard and percentage errors from the optimization result.
+def compute_chi2(
+    residuals, n_params=None, includes_sigma=True, sigma: np.ndarray = None
+):
+    """`sigma` should only be used in case the optimization doesn't include the experimental error but the experimetal errors are known"""
+    # If the optimization does not account for th experimental sigma,
+    # approximate it with the std of the residuals
+    S = 1 if includes_sigma else np.std(residuals)
+    # If the experimental error is provided, use that instead
+    if sigma is not None:
+        S = sigma
 
-    Parameters
-    ----------
-    res : OptimizeResult
-        The result object from `scipy.optimize.minimize`.
-    objective : callable
-        The objective function used in the optimization.
-    epsilon : float
-        Step size for numerical gradient approximation.
+    # Replace 0 elements of S with the machine epsilon to avoid divisions by 0
+    if not np.isscalar(S):
+        S_safe = np.where(S == 0, np.finfo(float).eps, S)
+    else:
+        S_safe = np.finfo(float).eps if S == 0 else S
 
-    Returns
-    -------
-    std_errors : np.ndarray
-        Standard errors of the fitted parameters.
-    perc_errors : np.ndarray
-        Percentage errors of the fitted parameters.
-    """
-    popt = res.x
-    n_params = len(popt)
+    # Compute chi squared
+    chi2 = np.sum((residuals / S_safe) ** 2)
+    # If number of parameters is not provided return just chi2
+    if n_params is None:
+        return chi2
 
-    # Approximate the Jacobian using finite differences
-    jacobian = spopt.approx_fprime(popt, objective, epsilon)
-
-    # Degrees of freedom (N - p)
-    dof = len(x) - n_params
+    # Reduced chi squared
+    dof = len(residuals) - n_params  # degrees of freedom (N - p)
     if dof <= 0:
         warnings.warn(
             "Degrees of freedom (dof) is non-positive. This may indicate overfitting or insufficient data."
         )
-        chi2_red = np.nan
+        red_chi2 = np.nan
     else:
-        chi2_red = 2 * res.fun / dof  # Approximate reduced chi-squared
+        red_chi2 = np.sum(residuals**2) / dof
 
-    # Approximate covariance matrix
-    try:
-        cov_matrix = (
-            np.linalg.inv(jacobian[:, np.newaxis] @ jacobian[np.newaxis, :]) * chi2_red
-        )
-        std_errors = np.sqrt(np.diag(cov_matrix))
-    except np.linalg.LinAlgError:
-        std_errors = np.full_like(popt, np.nan)
-        print(
-            "Warning: Covariance matrix could not be estimated. Fit may be degenerate or ill-conditioned."
-        )
+    return chi2, red_chi2
 
-    return std_errors
+
+def compute_fit_metrics(residuals, y_data, sigma: np.ndarray = None):
+    y_range = np.max(y_data) - np.min(y_data)
+
+    # R²
+    # Quantifies how much of the variance in the data is explained by the fitted model
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
+    r2 = 1 - (ss_res / ss_tot)
+
+    # Root mean squared error (RMSE)
+    # Measures the average deviation between the data points and the fit
+    # Penalizes large errors
+    rmse = np.sqrt(np.mean(residuals**2))
+    # Normalized
+    nrmse = rmse / y_range if y_range != 0 else 0
+
+    # Chi² (assuming residual standard deviation as uncertainty)
+    sigma = sigma or np.std(residuals)
+    chi2 = np.sum((residuals / sigma) ** 2) if sigma > 0 else 0
+
+    return {"r2": r2, "rmse": rmse, "nrmse": nrmse, "chi2": chi2}
+
+
+def get_xy_data_from_fit_args(*args, **kwargs):
+    # Possible keyword names for x and y data
+    x_keys = ["x_data", "xdata", "x"]
+    y_keys = ["y_data", "ydata", "y"]
+
+    # Validate if an object is a 1D vector
+    def is_valid_vector(obj):
+        return isinstance(obj, (list, np.ndarray)) and np.ndim(obj) == 1
+
+    x_data, y_data = None, None
+
+    # Look for x_data in keyword arguments
+    for key in x_keys:
+        if key in kwargs and is_valid_vector(kwargs[key]):
+            x_data = kwargs[key]
+            break
+    # Look for y_data in keyword arguments
+    for key in y_keys:
+        if key in kwargs and is_valid_vector(kwargs[key]):
+            y_data = kwargs[key]
+            break
+
+    # If both parameters were found, return them
+    if (x_data is not None) and (y_data is not None):
+        return x_data, y_data
+
+    # If the args have only 1 entry
+    if len(args) == 1 and is_valid_vector(args[0]):
+        if y_data is not None:
+            x_data = args[0]
+        else:
+            y_data = args[0]
+
+    # If x and y were not found, try finding the first two consecutive vectors in args
+    if x_data is None or y_data is None:
+        # Check pairs of consecutive elements
+        for i in range(len(args) - 1):
+            if is_valid_vector(args[i]) and is_valid_vector(args[i + 1]):
+                x_data, y_data = args[i], args[i + 1]
+                break
+
+    return x_data, y_data
+
+
+def format_scipy_tuple(result, has_sigma=False):
+    if not isinstance(result, tuple):
+        raise TypeError("Fit result must be a tuple")
+
+    std_err = None
+    popt, pcov, infodict = None, None, None
+
+    # Extract output parameters
+    length = len(result)
+    popt = result[0]
+    pcov = result[1] if length > 1 else None
+    infodict = result[2] if length > 2 else None
+
+    if infodict is not None:
+        residuals = infodict["fvec"]
+        _, red_chi2 = compute_chi2(
+            residuals, n_params=len(popt), includes_sigma=has_sigma
+        )
+        if pcov is not None:
+            std_err = compute_adjusted_standard_errors(
+                pcov, residuals, includes_sigma=has_sigma, red_chi2=red_chi2
+            )
+
+    return {"params": popt, "std_err": std_err, "metrics": {"red_chi2": red_chi2}}
+
+
+def format_scipy_least_squares(result, has_sigma=False):
+    params = result.x
+    residuals = result.fun
+    cov = np.linalg.inv(result.jac.T @ result.jac)
+    _, red_chi2 = compute_chi2(
+        residuals, n_params=len(params), includes_sigma=has_sigma
+    )
+    std_err = compute_adjusted_standard_errors(
+        cov, residuals, includes_sigma=has_sigma, red_chi2=red_chi2
+    )
+
+    return {"params": params, "std_err": std_err, "metrics": {"red_chi2": red_chi2}}
+
+
+def format_scipy_minimize(result, residuals=None, has_sigma=False):
+    """Precise estimation of std_err requires a function to compute residuals"""
+    params = result.x
+    cov = get_covariance_from_scipy_optimize_result(result)
+    metrics = None
+
+    if residuals is None:
+        std_err = np.sqrt(np.abs(result.hess_inv.diagonal()))
+    else:
+        std_err = compute_adjusted_standard_errors(
+            cov, residuals, includes_sigma=has_sigma
+        )
+        _, red_chi2 = compute_chi2(
+            residuals, n_params=len(params), includes_sigma=has_sigma
+        )
+        metrics = {"red_chi2": red_chi2}
+
+    return {"params": params, "std_err": std_err, "metrics": metrics}
+
+
+def format_lmfit(result: ModelResult):
+    """lmfit std errors are already rescaled by the reduced chi"""
+    params = np.array([param.value for param in result.params.values()])
+    param_names = list(result.params.keys())
+    std_err = np.array(
+        [
+            param.stderr if param.stderr is not None else np.nan
+            for param in result.params.values()
+        ]
+    )
+    # Determine the independent variable name used in the fit
+    independent_var = result.userkws.keys() & result.model.independent_vars
+    independent_var = (
+        independent_var.pop() if independent_var else result.model.independent_vars[0]
+    )
+    fit_function = lambda x: result.eval(**{independent_var: x})
+
+    return {
+        "params": params,
+        "std_err": std_err,
+        "metrics": {"red_chi2": result.redchi},
+        "predict": fit_function,
+        "param_names": param_names,
+    }
+
+
+def get_covariance_from_scipy_optimize_result(
+    result: spopt.OptimizeResult,
+) -> np.ndarray:
+    if hasattr(result, "hess_inv"):
+        hess_inv = result.hess_inv
+
+        # Handle different types of hess_inv
+        if isinstance(hess_inv, np.ndarray):
+            return hess_inv
+        elif hasattr(hess_inv, "todense"):
+            return hess_inv.todense()
+
+    if hasattr(result, "hess") and result.hess is not None:
+        try:
+            return np.linalg.inv(result.hess)
+        except np.linalg.LinAlgError:
+            pass  # Hessian is singular, cannot compute covariance
+
+    return None
+
+
+def is_scipy_tuple(result):
+    if isinstance(result, tuple):
+        if len(result) < 3:
+            raise TypeError(
+                "Fit result is a tuple, but couldn't recognize it.\n"
+                + "Are you using scipy? Did you forget to set `full_output=True` in your fit method?"
+            )
+        popt = result[0]
+        cov_ish = result[1]
+        infodict = result[2]
+        keys_to_check = ["fvec"]
+
+        if cov_ish is not None:
+            cov_check = isinstance(cov_ish, np.ndarray) and cov_ish.ndim == 2
+        else:
+            cov_check = True
+        return (
+            isinstance(popt, np.ndarray)
+            and cov_check
+            and (all(key in infodict for key in keys_to_check))
+        )
+    return False
+
+
+def is_scipy_minimize(result):
+    return (
+        isinstance(result, spopt.OptimizeResult)
+        and hasattr(result, "fun")
+        and np.isscalar(result.fun)
+        and hasattr(result, "jac")
+    )
+
+
+def is_scipy_least_squares(result):
+    return (
+        isinstance(result, spopt.OptimizeResult)
+        and hasattr(result, "cost")
+        and hasattr(result, "fun")
+        and hasattr(result, "jac")
+    )
+
+
+def is_lmfit(result):
+    return isinstance(result, ModelResult)
 
 
 @fit_output
