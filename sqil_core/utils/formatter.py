@@ -168,7 +168,7 @@ def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
 
 def print_fit_metrics(fit_quality, keys: list[str] | None = None):
     if keys is None:
-        keys = fit_quality.keys()
+        keys = fit_quality.keys() if fit_quality else []
 
     # Print fit quality parameters
     for key in keys:
