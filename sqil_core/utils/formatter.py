@@ -174,8 +174,20 @@ def print_fit_metrics(fit_quality, keys: list[str] | None = None):
     for key in keys:
         value = fit_quality[key]
         quality = ""
+        # Evaluate reduced Chi-squared
+        if key == "red_chi2":
+            if value <= 0.5:
+                quality = "GREAT (or overfitting)"
+            elif (value > 0.9) and (value <= 1.1):
+                quality = "GREAT"
+            elif (value > 0.5) and (value <= 2):
+                quality = "GOOD"
+            elif (value > 2) and (value <= 5):
+                quality = "MEDIUM"
+            elif value > 5:
+                quality = "BAD"
         # Evaluate R-squared
-        if key == "r2":
+        elif key == "r2":
             # Skip if complex
             if isinstance(value, complex):
                 continue
