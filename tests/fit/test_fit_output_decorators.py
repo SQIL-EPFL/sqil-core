@@ -2,7 +2,7 @@ import pytest
 import scipy.optimize as spopt
 from lmfit import Model, Parameters
 
-from sqil_core.fit.fit import *
+from sqil_core.fit.core import *
 
 TRUE_A, TRUE_X0, TRUE_GAMMA = 10, 5, 2
 
@@ -184,6 +184,19 @@ class TestFitOutputDecorator:
         res = fit(x, y)
         assert isinstance(res.predict(x), np.ndarray)
         assert len(res.predict(x)) == len(x)
+
+    def test_no_prediction_function(self, fit_data):
+        x, y = fit_data
+
+        @fit_output
+        def fit(x, y):
+            p0 = [1, 1, 0.1]
+            res = spopt.curve_fit(_lorentzian, x, y, p0=p0, full_output=True)
+            return (res, {"predict": _lorentzian})
+
+        res = fit(x, y)
+        with pytest.raises(Exception):
+            assert isinstance(res.predict(x), FitResult)
 
     def test_predict_from_lmfit(self, fit_data):
         x, y = fit_data

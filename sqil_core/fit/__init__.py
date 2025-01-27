@@ -1,3 +1,6 @@
+import sqil_core.fit.models as models
+
+from .core import *
 from .fit import *
 
 __all__ = []
