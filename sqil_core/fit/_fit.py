@@ -1,8 +1,9 @@
 import numpy as np
 import scipy.optimize as spopt
 
-from .core import fit_output
-from .models import skewed_lorentzian
+import sqil_core.fit._models as _models
+
+from ._core import fit_output
 
 
 @fit_output
@@ -263,7 +264,7 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
     return (
         (popt, pcov, infodict, errmsg, ier),
         {
-            "predict": lambda x: skewed_lorentzian(x, *popt),
+            "predict": lambda x: _models.skewed_lorentzian(x, *popt),
             "param_names": ["A1", "A2", "A3", "A4", "fr", "Q_tot"],
         },
     )

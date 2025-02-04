@@ -4,9 +4,9 @@ import numpy as np
 import scipy.optimize as spopt
 from lmfit.model import ModelResult
 
-from sqil_core.fit.models import skewed_lorentzian
-from sqil_core.utils import print_fit_metrics, print_fit_params
-from sqil_core.utils.utils import _count_function_parameters
+from sqil_core.utils import print_fit_metrics as _print_fit_metrics
+from sqil_core.utils import print_fit_params as _print_fit_params
+from sqil_core.utils._utils import _count_function_parameters
 
 
 class FitResult:
@@ -32,8 +32,8 @@ class FitResult:
 
     def summary(self):
         """Prints a detailed summary of the fit results."""
-        print_fit_metrics(self.metrics)
-        print_fit_params(
+        _print_fit_metrics(self.metrics)
+        _print_fit_params(
             self.param_names,
             self.params,
             self.std_err,
@@ -416,7 +416,7 @@ def _get_covariance_from_scipy_optimize_result(
 
 
 # TODO: rethink approach
-def fit_input(fit_func):
+def _fit_input(fit_func):
     """Decorator to handle optional fitting inputs like guess, bounds, and fixed parameters."""
 
     def wrapper(

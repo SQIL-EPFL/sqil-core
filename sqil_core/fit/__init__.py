@@ -1,7 +1,13 @@
-import sqil_core.fit.models as models
+# import ._models as models
 
-from .core import *
-from .fit import *
+from ._core import *
+from ._fit import *
 
-__all__ = []
-__all__.extend(name for name in dir() if not name.startswith("_"))
+__all__ = [s for s in dir() if not s.startswith("_")]
+
+# Explicitly remove excluded names from the global namespace
+from sqil_core.config import _EXCLUDED_PACKAGES
+
+_exclude_names = _EXCLUDED_PACKAGES + ["ModelResult"]
+for _name in _exclude_names:
+    globals().pop(_name, None)
