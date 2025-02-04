@@ -176,6 +176,7 @@ def print_fit_metrics(fit_quality, keys: list[str] | None = None):
         quality = ""
         # Evaluate reduced Chi-squared
         if key == "red_chi2":
+            key = "reduced χ²"
             if value <= 0.5:
                 quality = "GREAT (or overfitting)"
             elif (value > 0.9) and (value <= 1.1):
