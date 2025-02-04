@@ -4,7 +4,7 @@ from lmfit import Model
 from scipy.optimize import leastsq, minimize
 
 from sqil_core.fit import fit_circle_algebraic, fit_output, fit_skewed_lorentzian
-from sqil_core.utils import estimate_linear_background, print_fit_result
+from sqil_core.utils import estimate_linear_background
 
 
 @fit_output
