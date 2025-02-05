@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sqil_core.utils.read import *
+from sqil_core.utils._read import *
 
 
 class TestExtractH5Data:

@@ -1,6 +1,6 @@
 import pytest
 
-from sqil_core.utils.formatter import *
+from sqil_core.utils._formatter import *
 
 
 class TestFormatNumber:

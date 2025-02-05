@@ -1,6 +1,6 @@
 import pytest
 
-from sqil_core.utils.analysis import *
+from sqil_core.utils._analysis import *
 
 
 def test_estimate_linear_background():
