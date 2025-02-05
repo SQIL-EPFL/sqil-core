@@ -1,3 +1,3 @@
 Format text for printing in a readable way
 
-:::sqil_core.utils.formatter
+:::sqil_core.utils._formatter

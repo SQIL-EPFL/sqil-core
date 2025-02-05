@@ -115,3 +115,93 @@ def remove_linear_background(
     # Remove background over the whole array
     X = np.vstack([np.ones_like(x), x]).T
     return data - (X @ coefficients).T
+
+
+def linear_interpolation(
+    x: float | np.ndarray, x1: float, y1: float, x2: float, y2: float
+) -> float | np.ndarray:
+    """
+    Performs linear interpolation to estimate the value of y at a given x.
+
+    This function computes the interpolated y-value for a given x using two known points (x1, y1) and (x2, y2)
+    on a straight line. It supports both scalar and array inputs for x, enabling vectorized operations.
+
+    Parameters
+    ----------
+    x : float or np.ndarray
+        The x-coordinate(s) at which to interpolate.
+    x1 : float
+        The x-coordinate of the first known point.
+    y1 : float
+        The y-coordinate of the first known point.
+    x2 : float
+        The x-coordinate of the second known point.
+    y2 : float
+        The y-coordinate of the second known point.
+
+    Returns
+    -------
+    float or np.ndarray
+        The interpolated y-value(s) at x.
+
+    Notes
+    -----
+    - If x1 and x2 are the same, the function returns y1 to prevent division by zero.
+    - Assumes that x lies between x1 and x2 for meaningful interpolation.
+
+    Examples
+    --------
+    >>> linear_interpolation(3, 2, 4, 6, 8)
+    5.0
+    >>> x_vals = np.array([3, 4, 5])
+    >>> linear_interpolation(x_vals, 2, 4, 6, 8)
+    array([5., 6., 7.])
+    """
+    if x1 == x2:
+        return y1
+    return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+
+
+def line_between_2_points(
+    x1: float, y1: float, x2: float, y2: float
+) -> tuple[float, float]:
+    """
+    Computes the equation of a line passing through two points.
+
+    Given two points (x1, y1) and (x2, y2), this function returns the y-intercept and slope of the line
+    connecting them. If x1 and x2 are the same, the function returns y1 as the intercept and a slope of 0
+    to avoid division by zero.
+
+    Parameters
+    ----------
+    x1 : float
+        The x-coordinate of the first point.
+    y1 : float
+        The y-coordinate of the first point.
+    x2 : float
+        The x-coordinate of the second point.
+    y2 : float
+        The y-coordinate of the second point.
+
+    Returns
+    -------
+    tuple[float, float]
+        A tuple containing:
+        - The y-intercept (float), which is y1.
+        - The slope (float) of the line passing through the points.
+
+    Notes
+    -----
+    - If x1 and x2 are the same, the function assumes a vertical line and returns a slope of 0.
+    - The returned y-intercept is based on y1 for consistency in edge cases.
+
+    Examples
+    --------
+    >>> line_between_2_points(1, 2, 3, 4)
+    (2, 1.0)
+    >>> line_between_2_points(2, 5, 2, 10)
+    (5, 0)
+    """
+    if x1 == x2:
+        return y1, 0
+    return y1, (y2 - y1) / (x2 - x1)
