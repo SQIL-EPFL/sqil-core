@@ -56,12 +56,23 @@ extra_javascript:
 
 plugins:
   - search
-  - mkdocstrings
+  - mkdocs-jupyter
+  - mkdocstrings:
+      handlers:
+            python:
+              options:
+                docstring_style: numpy
 
 nav:
   - Getting started: index.md
+  - Notebooks:
+    - The fit_output decorator: 'Notebooks/fit_output_decorator.ipynb'
   - API reference:
+    - Fit:
+      - Core: 'API reference/fit/core.md'
+      - Fit: 'API reference/fit/fit.md'
+    - Resonator: 'API reference/resonator/resonator.md'
     - Utilies:
-      - Read data: 'API reference/utils/Read data.md'
-      - Formatter: 'API reference/utils/Formatter.md'
-      - Analysis: 'API reference/utils/Analysis.md'
+      - Read data: 'API reference/utils/read data.md'
+      - Formatter: 'API reference/utils/formatter.md'
+      - Analysis: 'API reference/utils/analysis.md'

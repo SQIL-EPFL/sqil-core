@@ -3,13 +3,11 @@ import scipy.optimize as spopt
 
 import sqil_core.fit._models as _models
 
-from ._core import fit_output
+from ._core import FitResult, fit_output
 
 
 @fit_output
-def fit_circle_algebraic(
-    x_data: np.ndarray, y_data: np.ndarray
-) -> tuple[float, float, float]:
+def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
     """Fits a circle in the xy plane and returns the radius and the position of the center.
 
     Reference: https://arxiv.org/abs/1410.3365
@@ -26,15 +24,12 @@ def fit_circle_algebraic(
 
     Returns
     -------
-    tuple[float, float, float]
-        A tuple containing the fitted circle parameters:
-        - xc (float): x-coordinate of the circle's center.
-        - yc (float): y-coordinate of the circle's center.
-        - r0 (float): Radius of the circle.
+    FitResult
 
     Examples
     --------
-    >>> xc, yc, r0 = fit_circle_algebraic(x_data, y_data)
+    >>> fit_result = fit_circle_algebraic(x_data, y_data)
+    >>> fit_result.summary()
     """
     z_data = x_data + 1j * y_data
 
@@ -181,6 +176,7 @@ def fit_circle_algebraic(
 
 
 def _compute_circle_fit_errors(x, y, xc, yc, r0):
+    """Compute the standard errors for the algebraic circle fit"""
     # Residuals: distance from each point to the fitted circle
     distances = np.sqrt((x - xc) ** 2 + (y - yc) ** 2)
     residuals = distances - r0
@@ -206,6 +202,7 @@ def _compute_circle_fit_errors(x, y, xc, yc, r0):
 
 
 def _compute_circle_fit_metrics(x_data, y_data, xc, yc, r0):
+    """Computed metrics for the algebraic circle fit"""
     # Compute the distance of each data point to the fitted circle center
     r_data = np.sqrt((x_data - xc) ** 2 + (y_data - yc) ** 2)
 
@@ -226,6 +223,33 @@ def _compute_circle_fit_metrics(x_data, y_data, xc, yc, r0):
 
 @fit_output
 def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
+    """
+    Fits a skewed Lorentzian model to the given data using least squares optimization.
+
+    This function performs a two-step fitting process to find the best-fitting parameters for a skewed Lorentzian model.
+    The first fitting step provides initial estimates for the parameters, and the second step refines those estimates
+    using a full model fit.
+
+    The skewed Lorentzian model is defined as:
+        A1 + A2 * (x - fra) + (A3 + A4 * (x - fra)) / (1.0 + 4.0 * Q_tot^2 * ((x - fra) / fra) ^ 2)
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        A 1D numpy array containing the x data points for the fit.
+
+    y_data : np.ndarray
+        A 1D numpy array containing the y data points for the fit.
+
+    Returns
+    -------
+    FitResult
+
+    Examples
+    --------
+    >>> fit_result = fit_skewed_lorentzian(x_data, y_data)
+    >>> fit_result.summary()
+    """
     A1a = np.minimum(y_data[0], y_data[-1])
     A3a = -np.max(y_data)
     fra = x_data[np.argmin(y_data)]

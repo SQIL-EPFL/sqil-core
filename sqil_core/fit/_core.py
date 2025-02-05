@@ -10,16 +10,46 @@ from sqil_core.utils._utils import _count_function_parameters
 
 
 class FitResult:
+    """
+    Stores the result of a fitting procedure.
+
+    This class encapsulates the fitted parameters, their standard errors, optimizer output,
+    and fit quality metrics. It also provides functionality for summarizing the results and
+    making predictions using the fitted model.
+
+    Parameters
+    ----------
+    params : dict
+        Array of fitted parameters.
+    std_err : dict
+        Array of standard errors of the fitted parameters.
+    fit_output : any
+        Raw output from the optimization routine.
+    metrics : dict, optional
+        Dictionary of fit quality metrics (e.g., R-squared, reduced chi-squared).
+    predict : callable, optional
+        Function of x that returns predictions based on the fitted parameters.
+        If not provided, an exception will be raised when calling it.
+    param_names : list, optional
+        List of parameter names, defaulting to a range based on the number of parameters.
+
+    Methods
+    -------
+    summary()
+        Prints a detailed summary of the fit results, including parameter values,
+        standard errors, and fit quality metrics.
+    _no_prediction()
+        Raises an exception when no prediction function is available.
+    """
+
     def __init__(
         self, params, std_err, fit_output, metrics=None, predict=None, param_names=None
     ):
-        self.params = params  # Dictionary of fitted parameters
-        self.std_err = std_err  # Dictionary of parameter standard errors
-        self.output = fit_output  # Raw optimizer output
-        self.metrics = metrics  # Dictionary of fit quality metrics
-        self.predict = (
-            predict or self._no_prediction
-        )  # Fit function with optimized parameters
+        self.params = params
+        self.std_err = std_err
+        self.output = fit_output
+        self.metrics = metrics
+        self.predict = predict or self._no_prediction
         self.param_names = param_names or list(range(len(params)))
 
     def __repr__(self):
@@ -45,7 +75,58 @@ class FitResult:
 
 
 def fit_output(fit_func):
-    """Decorator to standardize the output of fitting functions."""
+    """
+    Decorator to standardize the output of fitting functions.
+
+    This decorator processes the raw output of various fitting libraries
+    (such as SciPy's curve_fit, least_squares leastsq, and minimize, as well as lmfit)
+    and converts it into a unified `FitResult` object. It extracts
+    optimized parameters, their standard errors, fit quality metrics,
+    and a prediction function.
+
+    Parameters
+    ----------
+    fit_func : Callable
+        A function that performs fitting and returns raw fit output,
+        possibly along with metadata.
+
+    Returns
+    -------
+    Callable
+        A wrapped function that returns a `FitResult` object containing:
+        - `params` : list
+            Optimized parameter values.
+        - `std_err` : list or None
+            Standard errors of the fitted parameters.
+        - `metrics` : dict or None
+            Dictionary of fit quality metrics (e.g., reduced chi-squared).
+        - `predict` : Callable or None
+            A function that predicts values using the optimized parameters.
+        - `output` : object
+            The raw optimizer output from the fitting process.
+        - `param_names` : list or None
+            Names of the fitted parameters.
+
+    Raises
+    ------
+    TypeError
+        If the fitting function's output format is not recognized.
+
+    Notes
+    -----
+    - If the fit function returns a tuple `(raw_output, metadata)`,
+      the metadata is extracted and applied to enhance the fit results.
+      In case of any conflicts, the metadata overrides the computed values.
+
+    Examples
+    --------
+    >>> @fit_output
+    ... def my_fitting_function(x, y):
+    ...     return some_raw_fit_output
+    ...
+    >>> fit_result = my_fitting_function(x_data, y_data)
+    >>> print(fit_result.params)
+    """
 
     def wrapper(*args, **kwargs):
         # Perform the fit
@@ -92,7 +173,7 @@ def fit_output(fit_func):
             residuals = None
             predict = metadata.get("predict", None)
             if predict and callable(predict):
-                residuals = y_data - metadata["predict"](x_data)
+                residuals = y_data - metadata["predict"](x_data, *raw_fit_output.x)
             formatted = _format_scipy_minimize(
                 raw_fit_output, residuals=residuals, has_sigma=has_sigma
             )
@@ -142,10 +223,62 @@ def compute_adjusted_standard_errors(
     pcov: np.ndarray,
     residuals: np.ndarray,
     red_chi2=None,
-    includes_sigma=True,
+    cov_rescaled=True,
     sigma=None,
 ) -> np.ndarray:
-    """`sigma` should only be used in case the optimization doesn't include the experimental error but the experimetal errors are known"""
+    """
+    Compute adjusted standard errors for fitted parameters.
+
+    This function adjusts the covariance matrix based on the reduced chi-squared
+    value and calculates the standard errors for each parameter. It accounts for
+    cases where the covariance matrix is not available or the fit is nearly perfect.
+
+    Parameters
+    ----------
+    pcov : np.ndarray
+        Covariance matrix of the fitted parameters, typically obtained from an
+        optimization routine.
+    residuals : np.ndarray
+        Residuals of the fit, defined as the difference between observed and
+        model-predicted values.
+    red_chi2 : float, optional
+        Precomputed reduced chi-squared value. If `None`, it is computed from
+        `residuals` and `sigma`.
+    cov_rescaled : bool, default=True
+        Whether the fitting process already rescales the covariance matrix with
+        the reduced chi-squared.
+    sigma : np.ndarray, optional
+        Experimental uncertainties. Only used if `cov_rescaled=False` AND
+        known experimental errors are available.
+
+    Returns
+    -------
+    np.ndarray
+        Standard errors for each fitted parameter. If the covariance matrix is
+        undefined, returns `None`.
+
+    Warnings
+    --------
+    - If the covariance matrix is not available (`pcov is None`), the function
+      issues a warning about possible numerical instability or a near-perfect fit.
+    - If the reduced chi-squared value is `NaN`, the function returns `NaN` for
+      all standard errors.
+
+    Notes
+    -----
+    - The covariance matrix is scaled by the reduced chi-squared value to adjust
+      for under- or overestimation of uncertainties.
+    - If `red_chi2` is not provided, it is computed internally using the residuals.
+    - If a near-perfect fit is detected (all residuals close to zero), the function
+      warns that standard errors may not be necessary.
+
+    Examples
+    --------
+    >>> pcov = np.array([[0.04, 0.01], [0.01, 0.09]])
+    >>> residuals = np.array([0.1, -0.2, 0.15])
+    >>> compute_adjusted_standard_errors(pcov, residuals)
+    array([0.2, 0.3])
+    """
     # Check for invalid covariance
     if pcov is None:
         if np.allclose(residuals, 0, atol=1e-10):
@@ -164,7 +297,7 @@ def compute_adjusted_standard_errors(
     n_params = len(np.diag(pcov))
     if red_chi2 is None:
         _, red_chi2 = compute_chi2(
-            residuals, n_params, includes_sigma=includes_sigma, sigma=sigma
+            residuals, n_params, cov_rescaled=cov_rescaled, sigma=sigma
         )
 
     # Rescale the covariance matrix
@@ -182,13 +315,62 @@ def compute_adjusted_standard_errors(
     return standard_errors
 
 
-def compute_chi2(
-    residuals, n_params=None, includes_sigma=True, sigma: np.ndarray = None
-):
-    """`sigma` should only be used in case the optimization doesn't include the experimental error but the experimetal errors are known"""
+def compute_chi2(residuals, n_params=None, cov_rescaled=True, sigma: np.ndarray = None):
+    """
+    Compute the chi-squared (χ²) and reduced chi-squared (χ²_red) statistics.
+
+    This function calculates the chi-squared value based on residuals and an
+    estimated or provided uncertainty (`sigma`). If the number of model parameters
+    (`n_params`) is specified, it also computes the reduced chi-squared.
+
+    Parameters
+    ----------
+    residuals : np.ndarray
+        The difference between observed and model-predicted values.
+    n_params : int, optional
+        Number of fitted parameters. If provided, the function also computes
+        the reduced chi-squared (χ²_red).
+    cov_rescaled : bool, default=True
+        Whether the covariance matrix has been already rescaled by the fit method.
+        If `True`, the function assumes proper uncertainty scaling. Otherwise,
+        it estimates uncertainty from the standard deviation of the residuals.
+    sigma : np.ndarray, optional
+        Experimental uncertainties. Should only be used when the fitting process
+        does not account for experimental errors AND known uncertainties are available.
+
+    Returns
+    -------
+    chi2 : float
+        The chi-squared statistic (χ²), which measures the goodness of fit.
+    red_chi2 : float (if `n_params` is provided)
+        The reduced chi-squared statistic (χ²_red), computed as χ² divided by
+        the degrees of freedom (N - p). If `n_params` is `None`, only χ² is returned.
+
+    Warnings
+    --------
+    - If the degrees of freedom (N - p) is non-positive, a warning is issued,
+      and χ²_red is set to NaN. This may indicate overfitting or an insufficient
+      number of data points.
+    - If any uncertainty value in `sigma` is zero, it is replaced with machine epsilon
+      to prevent division by zero.
+
+    Notes
+    -----
+    - If `sigma` is not provided and `cov_rescaled=False`, the function estimates
+      the uncertainty using the standard deviation of residuals.
+    - The reduced chi-squared value (χ²_red) should ideally be close to 1 for a good fit.
+      Values significantly greater than 1 indicate underfitting, while values much less
+      than 1 suggest overfitting.
+
+    Examples
+    --------
+    >>> residuals = np.array([0.1, -0.2, 0.15, -0.05])
+    >>> compute_chi2(residuals, n_params=2)
+    (0.085, 0.0425)  # Example output
+    """
     # If the optimization does not account for th experimental sigma,
     # approximate it with the std of the residuals
-    S = 1 if includes_sigma else np.std(residuals)
+    S = 1 if cov_rescaled else np.std(residuals)
     # If the experimental error is provided, use that instead
     if sigma is not None:
         S = sigma
@@ -219,6 +401,9 @@ def compute_chi2(
 
 
 def _is_scipy_tuple(result):
+    """
+    Check whether the given result follows the expected structure of a SciPy optimization tuple.
+    """
     if isinstance(result, tuple):
         if len(result) < 3:
             raise TypeError(
@@ -243,6 +428,9 @@ def _is_scipy_tuple(result):
 
 
 def _is_scipy_minimize(result):
+    """
+    Check whether the given result follows the expected structure of a SciPy minimize.
+    """
     return (
         isinstance(result, spopt.OptimizeResult)
         and hasattr(result, "fun")
@@ -252,6 +440,9 @@ def _is_scipy_minimize(result):
 
 
 def _is_scipy_least_squares(result):
+    """
+    Check whether the given result follows the expected structure of a SciPy least_squares.
+    """
     return (
         isinstance(result, spopt.OptimizeResult)
         and hasattr(result, "cost")
@@ -261,10 +452,40 @@ def _is_scipy_least_squares(result):
 
 
 def _is_lmfit(result):
+    """
+    Check whether the given result follows the expected structure of a lmfit fit.
+    """
     return isinstance(result, ModelResult)
 
 
 def _format_scipy_tuple(result, has_sigma=False):
+    """
+    Formats the output of a SciPy fitting function into a standardized dictionary.
+
+    This function takes the tuple returned by SciPy optimization functions (e.g., `curve_fit`, `leastsq`)
+    and extracts relevant fitting parameters, standard errors, and reduced chi-squared values. It ensures
+    the result is structured consistently for further processing.
+
+    Parameters
+    ----------
+    result : tuple
+        A tuple containing the fitting results from a SciPy function. Expected structure:
+        - `result[0]`: `popt` (optimized parameters, NumPy array)
+        - `result[1]`: `pcov` (covariance matrix, NumPy array or None)
+        - `result[2]`: `infodict` (dictionary containing residuals, required for error computation)
+
+    has_sigma : bool, optional
+        Indicates whether the fitting procedure considered experimental errors (`sigma`).
+        If `True`, the covariance matrix (`pcov`) does not need rescaling.
+
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - `"params"`: The optimized parameters (`popt`).
+        - `"std_err"`: The standard errors computed from the covariance matrix (`pcov`).
+        - `"metrics"`: A dictionary containing the reduced chi-squared (`red_chi2`).
+    """
     if not isinstance(result, tuple):
         raise TypeError("Fit result must be a tuple")
 
@@ -280,32 +501,86 @@ def _format_scipy_tuple(result, has_sigma=False):
     if infodict is not None:
         residuals = infodict["fvec"]
         _, red_chi2 = compute_chi2(
-            residuals, n_params=len(popt), includes_sigma=has_sigma
+            residuals, n_params=len(popt), cov_rescaled=has_sigma
         )
         if pcov is not None:
             std_err = compute_adjusted_standard_errors(
-                pcov, residuals, includes_sigma=has_sigma, red_chi2=red_chi2
+                pcov, residuals, cov_rescaled=has_sigma, red_chi2=red_chi2
             )
 
     return {"params": popt, "std_err": std_err, "metrics": {"red_chi2": red_chi2}}
 
 
 def _format_scipy_least_squares(result, has_sigma=False):
+    """
+    Formats the output of a SciPy least-squares optimization into a standardized dictionary.
+
+    This function processes the result of a SciPy least-squares fitting function (e.g., `scipy.optimize.least_squares`)
+    and structures the fitting parameters, standard errors, and reduced chi-squared values for consistent downstream use.
+
+    Parameters
+    ----------
+    result : `scipy.optimize.OptimizeResult`
+        The result of a least-squares optimization (e.g., from `scipy.optimize.least_squares`).
+        It must contain the following fields:
+        - `result.x`: Optimized parameters (NumPy array)
+        - `result.fun`: Residuals (array of differences between the observed and fitted data)
+        - `result.jac`: Jacobian matrix (used to estimate covariance)
+
+    has_sigma : bool, optional
+        Indicates whether the fitting procedure considered experimental errors (`sigma`).
+        If `True`, the covariance matrix does not need rescaling.
+
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - `"params"`: Optimized parameters (`result.x`).
+        - `"std_err"`: Standard errors computed from the covariance matrix and residuals.
+        - `"metrics"`: A dictionary containing the reduced chi-squared (`red_chi2`).
+    """
     params = result.x
     residuals = result.fun
     cov = np.linalg.inv(result.jac.T @ result.jac)
-    _, red_chi2 = compute_chi2(
-        residuals, n_params=len(params), includes_sigma=has_sigma
-    )
+    _, red_chi2 = compute_chi2(residuals, n_params=len(params), cov_rescaled=has_sigma)
     std_err = compute_adjusted_standard_errors(
-        cov, residuals, includes_sigma=has_sigma, red_chi2=red_chi2
+        cov, residuals, cov_rescaled=has_sigma, red_chi2=red_chi2
     )
 
     return {"params": params, "std_err": std_err, "metrics": {"red_chi2": red_chi2}}
 
 
 def _format_scipy_minimize(result, residuals=None, has_sigma=False):
-    """Precise estimation of std_err requires a function to compute residuals"""
+    """
+    Formats the output of a SciPy minimize optimization into a standardized dictionary.
+
+    This function processes the result of a SciPy minimization optimization (e.g., `scipy.optimize.minimize`)
+    and structures the fitting parameters, standard errors, and reduced chi-squared values for consistent downstream use.
+
+    Parameters
+    ----------
+    result : `scipy.optimize.OptimizeResult`
+        The result of a minimization optimization (e.g., from `scipy.optimize.minimize`).
+        It must contain the following fields:
+        - `result.x`: Optimized parameters (NumPy array).
+        - `result.hess_inv`: Inverse Hessian matrix used to estimate the covariance.
+
+    residuals : array-like, optional
+        The residuals (differences between observed data and fitted model).
+        If not provided, standard errors will be computed based on the inverse Hessian matrix.
+
+    has_sigma : bool, optional
+        Indicates whether the fitting procedure considered experimental errors (`sigma`).
+        If `True`, the covariance matrix does not need rescaling.
+
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - `"params"`: Optimized parameters (`result.x`).
+        - `"std_err"`: Standard errors computed either from the Hessian matrix or based on the residuals.
+        - `"metrics"`: A dictionary containing the reduced chi-squared (`red_chi2`), if residuals are provided.
+    """
     params = result.x
     cov = _get_covariance_from_scipy_optimize_result(result)
     metrics = None
@@ -314,10 +589,10 @@ def _format_scipy_minimize(result, residuals=None, has_sigma=False):
         std_err = np.sqrt(np.abs(result.hess_inv.diagonal()))
     else:
         std_err = compute_adjusted_standard_errors(
-            cov, residuals, includes_sigma=has_sigma
+            cov, residuals, cov_rescaled=has_sigma
         )
         _, red_chi2 = compute_chi2(
-            residuals, n_params=len(params), includes_sigma=has_sigma
+            residuals, n_params=len(params), cov_rescaled=has_sigma
         )
         metrics = {"red_chi2": red_chi2}
 
@@ -325,7 +600,38 @@ def _format_scipy_minimize(result, residuals=None, has_sigma=False):
 
 
 def _format_lmfit(result: ModelResult):
-    """lmfit std errors are already rescaled by the reduced chi"""
+    """
+    Formats the output of an lmfit model fitting result into a standardized dictionary.
+
+    This function processes the result of an lmfit model fitting (e.g., from `lmfit.Model.fit`) and
+    structures the fitting parameters, their standard errors, reduced chi-squared, and a prediction function.
+
+    Parameters
+    ----------
+    result : `lmfit.ModelResult`
+        The result of an lmfit model fitting procedure. It must contain the following fields:
+        - `result.params`: A dictionary of fitted parameters and their values.
+        - `result.redchi`: The reduced chi-squared value.
+        - `result.eval`: A method to evaluate the fitted model using independent variable values.
+        - `result.userkws`: Dictionary of user-supplied keywords that includes the independent variable.
+        - `result.model.independent_vars`: List of independent variable names in the model.
+
+    Returns
+    -------
+    dict
+        A dictionary containing:
+        - `"params"`: Optimized parameters (as a NumPy array).
+        - `"std_err"`: Standard errors of the parameters.
+        - `"metrics"`: A dictionary containing the reduced chi-squared (`red_chi2`).
+        - `"predict"`: A function that predicts the model's output given an input (using optimized parameters).
+        - `"param_names"`: List of parameter names.
+
+    Notes
+    -----
+    - lmfit already rescales standard errors by the reduced chi-squared, so no further adjustments are made.
+    - The independent variable name used in the fit is determined from `result.userkws` and `result.model.independent_vars`.
+    - The function creates a prediction function (`predict`) from the fitted model.
+    """
     params = np.array([param.value for param in result.params.values()])
     param_names = list(result.params.keys())
     std_err = np.array(
@@ -350,7 +656,89 @@ def _format_lmfit(result: ModelResult):
     }
 
 
+def _get_covariance_from_scipy_optimize_result(
+    result: spopt.OptimizeResult,
+) -> np.ndarray:
+    """
+    Extracts the covariance matrix (or an approximation) from a scipy optimization result.
+
+    This function attempts to retrieve the covariance matrix of the fitted parameters from the
+    result object returned by a scipy optimization method. It first checks for the presence of
+    the inverse Hessian (`hess_inv`), which is used to estimate the covariance. If it's not available,
+    the function attempts to compute the covariance using the Hessian matrix (`hess`).
+
+    Parameters
+    ----------
+    result : `scipy.optimize.OptimizeResult`
+        The result object returned by a scipy optimization function, such as `scipy.optimize.minimize` or `scipy.optimize.curve_fit`.
+        This object contains the optimization results, including the Hessian or its inverse.
+
+    Returns
+    -------
+    np.ndarray or None
+        The covariance matrix of the optimized parameters, or `None` if it cannot be computed.
+        If the inverse Hessian (`hess_inv`) is available, it will be returned directly.
+        If the Hessian matrix (`hess`) is available and not singular, its inverse will be computed and returned.
+        If neither is available, the function returns `None`.
+
+    Notes
+    -----
+    - If the Hessian matrix (`hess`) is singular or nearly singular, the covariance matrix cannot be computed.
+    - In some cases, the inverse Hessian (`hess_inv`) is directly available and provides the covariance without further computation.
+    """
+    if hasattr(result, "hess_inv"):
+        hess_inv = result.hess_inv
+
+        # Handle different types of hess_inv
+        if isinstance(hess_inv, np.ndarray):
+            return hess_inv
+        elif hasattr(hess_inv, "todense"):
+            return hess_inv.todense()
+
+    if hasattr(result, "hess") and result.hess is not None:
+        try:
+            return np.linalg.inv(result.hess)
+        except np.linalg.LinAlgError:
+            pass  # Hessian is singular, cannot compute covariance
+
+    return None
+
+
 def _get_xy_data_from_fit_args(*args, **kwargs):
+    """
+    Extracts x and y data from the given arguments and keyword arguments.
+
+    This helper function retrieves the x and y data (1D vectors) from the function's arguments or keyword arguments.
+    The function checks for common keyword names like "x_data", "xdata", "x", "y_data", "ydata", and "y", and returns
+    the corresponding data. If no keyword arguments are found, it attempts to extract the first two consecutive 1D
+    vectors from the positional arguments.
+
+    Parameters
+    ----------
+    *args : variable length argument list
+        The positional arguments passed to the function, potentially containing the x and y data.
+
+    **kwargs : keyword arguments
+        The keyword arguments passed to the function, potentially containing keys such as "x_data", "x", "y_data", or "y".
+
+    Returns
+    -------
+    tuple of (np.ndarray, np.ndarray)
+        A tuple containing the x data and y data as 1D numpy arrays or lists. If no valid data is found, returns (None, None).
+
+    Raises
+    ------
+    ValueError
+        If both x and y data cannot be found in the input arguments.
+
+    Notes
+    -----
+    - The function looks for the x and y data in the keyword arguments first, in the order of x_keys and y_keys.
+    - If both x and y data are not found in keyword arguments, the function will look for the first two consecutive
+      1D vectors in the positional arguments.
+    - If the data cannot be found, the function will return (None, None).
+    - The function validates that the extracted x and y data are 1D vectors (either lists or numpy arrays).
+    """
     # Possible keyword names for x and y data
     x_keys = ["x_data", "xdata", "x"]
     y_keys = ["y_data", "ydata", "y"]
@@ -392,27 +780,6 @@ def _get_xy_data_from_fit_args(*args, **kwargs):
                 break
 
     return x_data, y_data
-
-
-def _get_covariance_from_scipy_optimize_result(
-    result: spopt.OptimizeResult,
-) -> np.ndarray:
-    if hasattr(result, "hess_inv"):
-        hess_inv = result.hess_inv
-
-        # Handle different types of hess_inv
-        if isinstance(hess_inv, np.ndarray):
-            return hess_inv
-        elif hasattr(hess_inv, "todense"):
-            return hess_inv.todense()
-
-    if hasattr(result, "hess") and result.hess is not None:
-        try:
-            return np.linalg.inv(result.hess)
-        except np.linalg.LinAlgError:
-            pass  # Hessian is singular, cannot compute covariance
-
-    return None
 
 
 # TODO: rethink approach
