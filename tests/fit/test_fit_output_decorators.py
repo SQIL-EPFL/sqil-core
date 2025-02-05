@@ -2,7 +2,7 @@ import pytest
 import scipy.optimize as spopt
 from lmfit import Model, Parameters
 
-from sqil_core.fit.core import *
+from sqil_core.fit._core import *
 
 TRUE_A, TRUE_X0, TRUE_GAMMA = 10, 5, 2
 

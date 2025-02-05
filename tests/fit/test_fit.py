@@ -1,6 +1,6 @@
 import numpy as np
 
-from sqil_core.fit.fit import *
+from sqil_core.fit._fit import *
 
 # class TestComputeStandardErrors:
 
