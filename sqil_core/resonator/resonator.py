@@ -712,4 +712,4 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
 
 
 def compute_Q_int(Q_tot, Q_ext_mag, Q_ext_phase):
-    return 1 / (1 / Q_tot - np.real(1 / (Q_ext_mag * np.exp(1j * Q_ext_phase))))
+    return 1 / (1 / Q_tot - np.real(1 / (Q_ext_mag * np.exp(-1j * Q_ext_phase))))
