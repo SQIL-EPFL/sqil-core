@@ -657,11 +657,11 @@ def quick_fit(
 def full_fit(
     freq, data, measurement, a, alpha, tau, Q_tot, Q_ext, fr, phi0, mag_bg=None
 ):
-    def S11_reflection_fixed(freq, a, alpha, tau, Q_tot, Q_ext, f_r, phi):
-        return S11_reflection(freq, a, alpha, tau, Q_tot, Q_ext, f_r, phi, mag_bg)
+    def S11_reflection_fixed(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi):
+        return S11_reflection(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi, mag_bg)
 
-    def S21_hanger_fixed(freq, a, alpha, tau, Q_tot, Q_ext, f_r, phi):
-        return S21_hanger(freq, a, alpha, tau, Q_tot, Q_ext, f_r, phi, mag_bg)
+    def S21_hanger_fixed(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi):
+        return S21_hanger(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi, mag_bg)
 
     if measurement == "reflection":
         model = Model(S11_reflection_fixed)
@@ -669,7 +669,7 @@ def full_fit(
         model = Model(S21_hanger_fixed)
 
     params = model.make_params(
-        a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, Q_ext=Q_ext, f_r=fr, phi=phi0
+        a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, Q_ext_mag=Q_ext, f_r=fr, phi=phi0
     )
     res = model.fit(data, params, freq=freq)
 
@@ -709,3 +709,7 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
     fig.suptitle(title)
     fig.tight_layout()
     plt.show()
+
+
+def compute_Q_int(Q_tot, Q_ext_mag, Q_ext_phase):
+    return 1 / (1 / Q_tot - np.real(1 / (Q_ext_mag * np.exp(1j * Q_ext_phase))))
