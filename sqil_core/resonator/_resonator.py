@@ -43,10 +43,12 @@ def fit_phase_vs_freq_global(
 
     Returns
     -------
-    res.x : np.ndarray
-        Optimized parameters `[θ₀, Q_tot, fr]` after fitting.
-    perc_errors : np.ndarray
-        Percentage errors for each optimized parameter, providing uncertainty estimates.
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`red_chi2`).
+        - A callable `predict` function for generating fitted responses.
 
     Notes
     -----
@@ -120,10 +122,12 @@ def fit_phase_vs_freq(freq, phase, theta0, Q_tot, fr):
 
     Returns
     -------
-    p_final : np.ndarray
-        Optimized parameters [θ₀, Q_tot, f_r].
-    perc_errs : np.ndarray
-        Percentage errors of the fitted parameters [θ₀_error%, Q_tot_error%, f_r_error%].
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`red_chi2`).
+        - A callable `predict` function for generating fitted responses.
 
     Notes
     -----
@@ -657,6 +661,69 @@ def quick_fit(
 def full_fit(
     freq, data, measurement, a, alpha, tau, Q_tot, Q_ext, fr, phi0, mag_bg=None
 ):
+    """
+    Performs a full fit of the measured resonator data using a selected model
+    (either reflection or hanger-type measurement). The fitting is handled
+    using the lmfit Model framework.
+
+    IMPORTANT: This fitting function should only be used to refine already
+    good initial guesses!
+
+    Parameters
+    ----------
+    freq : np.ndarray
+        A 1D array of frequency values in Hz.
+
+    data : np.ndarray
+        A 1D array of complex-valued measured resonator data.
+
+    measurement : str
+        Type of measurement. Should be either:
+        - `"reflection"`: Uses the `S11_reflection` model.
+        - `"hanger"`: Uses the `S21_hanger` model.
+
+    a : float
+        Amplitude scaling factor.
+
+    alpha : float
+        Phase offset parameter.
+
+    tau : float
+        Cable delay or propagation time.
+
+    Q_tot : float
+        Total quality factor of the resonator.
+
+    Q_ext : float
+        External quality factor (coupling quality factor).
+
+    fr : float
+        Resonant frequency.
+
+    phi0 : float
+        Phase offset at resonance.
+
+    mag_bg : np.ndarray, optional
+        A 1D array representing the magnitude background response, if available.
+        Default is None.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`red_chi2`).
+        - A callable `predict` function for generating fitted responses.
+
+    Example
+    -------
+    >>> freq = np.linspace(1e9, 2e9, 1000)  # Example frequency range
+    >>> data = np.exp(1j * freq * 2 * np.pi / 1e9)  # Example complex response
+    >>> fit_result = full_fit(freq, data, "reflection", 1, 0, 0, 1e4, 2e4, 1.5e9, 0)
+    >>> fit_result.summary()
+    """
+
     def S11_reflection_fixed(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi):
         return S11_reflection(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi, mag_bg)
 
@@ -677,6 +744,30 @@ def full_fit(
 
 
 def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title=""):
+    """
+    Plots the resonator response in three different representations:
+    - Complex plane (Re vs. Im)
+    - Magnitude response (Amplitude vs. Frequency)
+    - Phase response (Phase vs. Frequency)
+
+    Parameters
+    ----------
+    freq : np.ndarray
+        A 1D array representing the frequency values.
+
+    data : np.ndarray
+        A 1D array of complex-valued data points corresponding to the resonator response.
+
+    fit : np.ndarray, optional
+        A 1D array of complex values representing the fitted model response. Default is None.
+
+    mag_bg : np.ndarray, optional
+        A 1D array representing the background magnitude response, if available. Default is None.
+
+    title : str, optional
+        The title of the plot. Default is an empty string.
+    """
+
     fig = plt.figure(figsize=(10, 5))
     gs = fig.add_gridspec(2, 2)
 
@@ -712,4 +803,5 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
 
 
 def compute_Q_int(Q_tot, Q_ext_mag, Q_ext_phase):
+    """Compute Q_internal given Q_total and the manitude and phase of Q_external."""
     return 1 / (1 / Q_tot - np.real(1 / (Q_ext_mag * np.exp(-1j * Q_ext_phase))))

@@ -25,6 +25,11 @@ def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
     Returns
     -------
     FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
 
     Examples
     --------
@@ -244,6 +249,11 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
     Returns
     -------
     FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`red_chi2`).
+        - A callable `predict` function for generating fitted responses.
 
     Examples
     --------
