@@ -1,9 +1,366 @@
+import warnings
+
 import numpy as np
-import scipy.optimize as spopt
+from scipy.optimize import curve_fit, fsolve, leastsq
 
 import sqil_core.fit._models as _models
 
 from ._core import FitResult, fit_output
+
+
+@fit_output
+def fit_lorentzian(x_data, y_data, guess=None, bounds=None):
+    """
+    Fits a Lorentzian function to the given x_data and y_data.
+
+    Parameters:
+    - x_data: 1D numpy array of x values (e.g., frequency).
+    - y_data: 1D numpy array of corresponding y values (e.g., signal intensity).
+    - guess: Optional initial guess for parameters [A, x0, fwhm, y0].
+    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
+    """
+
+    x, y = x_data, y_data
+
+    # Default intial guess if not provided
+    if guess is None:
+        median_y = np.median(y)
+        max_y, min_y = np.max(y), np.min(y)
+
+        # Determine A, x0, y0 based on peak prominence
+        if max_y - median_y >= median_y - min_y:
+            y0 = min_y
+            idx = np.argmax(y)
+            A = 1 / (max_y - median_y)
+        else:
+            y0 = max_y
+            idx = np.argmin(y)
+            A = 1 / (min_y - median_y)
+
+        x0 = x[idx]
+        half = y0 + A / 2.0
+        dx = np.abs(np.diff(x[np.argsort(np.abs(y - half))]))
+        dx_min = np.abs(np.diff(x))
+        dx = dx[dx >= 2.0 * dx_min]
+
+        fwhm = dx[0] / 2.0 if dx.size else dx_min
+        guess = [A, x0, fwhm, y0]
+
+    # Default bounds if not provided
+    if bounds is None:
+        bounds = (
+            [-5.0 * np.abs(guess[0]), np.min(x), guess[2] / 100.0, np.min(y)],
+            [5.0 * np.abs(guess[0]), np.max(x), 10.0 * guess[2], np.max(y)],
+        )
+
+    res = curve_fit(_models.lorentzian, x, y, p0=guess, bounds=bounds, full_output=True)
+
+    return res, {
+        "param_names": ["A", "x0", "fwhm", "y0"],
+        "predict": _models.lorentzian,
+    }
+
+
+@fit_output
+def fit_gaussian(x_data, y_data, guess=None, bounds=None):
+    """
+    Fits a Gaussian function to the given x_data and y_data.
+
+    Parameters:
+    - x_data: 1D numpy array of x values (e.g., frequency).
+    - y_data: 1D numpy array of corresponding y values (e.g., signal intensity).
+    - guess: Optional initial guess for parameters [A, x0, sigma, y0].
+    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
+        - A metadata dictionary containing the FWHM.
+    """
+    x, y = x_data, y_data
+
+    # Default initial guess if not provided
+    if guess is None:
+        median_y = np.median(y)
+        max_x, min_x = np.max(x), np.min(x)
+        max_y, min_y = np.max(y), np.min(y)
+
+        # Determine A, x0, y0 based on peak prominence
+        if max_y - median_y >= median_y - min_y:
+            y0 = min_y
+            idx = np.argmax(y)
+            A = max_y - median_y
+        else:
+            y0 = max_y
+            idx = np.argmin(y)
+            A = min_y - median_y
+
+        x0 = x[idx]
+        half = y0 + A / 2.0
+        dx = np.abs(np.diff(x[np.argsort(np.abs(y - half))]))
+        dx_min = np.abs(np.diff(x))
+        dx = dx[dx >= 2.0 * dx_min]
+
+        sigma = dx[0] / 2.0 if dx.size else dx_min
+        guess = [A, x0, sigma, y0]
+
+    # Default bounds if not provided
+    if bounds is None:
+        bounds = (
+            [-5.0 * np.abs(guess[0]), np.min(x), guess[2] / 100.0, np.min(y)],
+            [5.0 * np.abs(guess[0]), np.max(x), 10.0 * guess[2], np.max(y)],
+        )
+
+    res = curve_fit(_models.gaussian, x, y, p0=guess, bounds=bounds, full_output=True)
+
+    # Compute FWHM from sigma
+    _, _, sigma, _ = res[0]
+    fwhm = 2 * np.sqrt(2 * np.log(2)) * sigma
+
+    return res, {
+        "param_names": ["A", "x0", "sigma", "y0"],
+        "predict": _models.gaussian,
+        "fwhm": fwhm,
+    }
+
+
+@fit_output
+def fit_decaying_exp(x_data, y_data, guess=None, bounds=None):
+    """
+    Fits a decaying exponential function to the given x_data and y_data.
+
+    Parameters:
+    - x_data: 1D numpy array of x values (e.g., time).
+    - y_data: 1D numpy array of corresponding y values (e.g., signal intensity).
+    - guess: Optional initial guess for parameters [A, tau, C].
+    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
+    """
+
+    x, y = x_data, y_data
+
+    # Default initial guess if not provided
+    if guess is None:
+        max_y = np.max(y)
+        min_y = np.min(y)
+        half = 0.5 * (max_y + min_y)
+
+        if y[0] > y[-1]:
+            tau0_idx = np.argmax(y < half)
+        else:
+            tau0_idx = np.argmax(y > half)
+
+        b0 = x[tau0_idx] if tau0_idx != 0 else 0.5 * (x[0] + x[-1])
+        guess = [y[0] - y[-1], b0, y[-1]]
+
+    # Default bounds if not provided
+    if bounds is None:
+        span_y = np.max(y) - np.min(y)
+        c0_min = np.min(y) - 100.0 * span_y
+        c0_max = np.max(y) + 100.0 * span_y
+        bounds = (
+            [-100.0 * span_y, 0.0, c0_min],
+            [100.0 * span_y, 100.0 * (np.max(x) - np.min(x)), c0_max],
+        )
+
+    res = curve_fit(
+        _models.decaying_exp, x, y, p0=guess, bounds=bounds, full_output=True
+    )
+
+    return res, {
+        "param_names": ["A", "tau", "y0"],
+        "predict": _models.decaying_exp,
+    }
+
+
+@fit_output
+def fit_qubit_relaxation_qp(
+    x_data, y_data, guess=None, bounds=None, maxfev=10000, ftol=1e-11
+):
+    """
+    Fits a qubit relaxation taking into account T1 and effects due to quasi-particles.
+    Previously called DoubleExponent.
+
+    Parameters:
+    - x_data: 1D numpy array of x values (e.g., time).
+    - y_data: 1D numpy array of corresponding y values.
+    - guess: Optional initial guess for parameters [A, T1R, C, T1QP, nQP].
+    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+    - maxfev: Max function evaluations for curve fitting.
+    - ftol: Fit tolerance.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
+        - A metadata dictionary containing the FWHM
+    """
+
+    # Use a single exponential fit for initial parameter guesses
+    from scipy.optimize import curve_fit
+
+    def single_exp(x, a, tau, c):
+        return a * np.exp(-x / tau) + c
+
+    single_guess = [y_data[0] - y_data[-1], np.mean(x_data), y_data[-1]]
+    single_popt, _ = curve_fit(single_exp, x_data, y_data, p0=single_guess)
+
+    a_guess, T1R_guess, c_guess = single_popt
+    T1QP_guess = 0.1 * T1R_guess
+    nQP_guess = 1.0
+
+    # Default initial guess
+    if guess is None:
+        guess = [a_guess * np.exp(1.0), 2.0 * T1R_guess, c_guess, T1QP_guess, nQP_guess]
+
+    # Default parameter bounds
+    if bounds is None:
+        bounds = (
+            [
+                -20.0 * np.abs(a_guess),
+                1.0e-1 * T1R_guess,
+                -10.0 * np.abs(c_guess),
+                1.0e-4 * T1R_guess,
+                0.0,
+            ],
+            [
+                20.0 * np.abs(a_guess),
+                1.0e3 * T1R_guess,
+                10.0 * np.abs(c_guess),
+                10.0 * T1R_guess,
+                1.0e3,
+            ],
+        )
+
+    res = curve_fit(
+        _models.qubit_relaxation_qp,
+        x_data,
+        y_data,
+        p0=guess,
+        bounds=bounds,
+        maxfev=maxfev,
+        ftol=ftol,
+        full_output=True,
+    )
+
+    return res, {
+        "param_names": ["A", "T1R", "y0", "T1QP", "nQP"],
+        "predict": _models.qubit_relaxation_qp,
+    }
+
+
+@fit_output
+def fit_decaying_oscillations(x_data, y_data, num_init=10):
+    """
+    Fits a decaying oscillation function to given x_data and y_data.
+
+    Parameters:
+    - x_data: 1D numpy array (time values).
+    - y_data: 1D numpy array (signal values).
+    - guess: Optional initial parameter guess [A, tau, C, phi, T].
+    - num_init: Number of phase shift initializations to try.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
+        - A metadata dictionary containing the pi_time and its standard error.
+    """
+
+    # Extract key features from the data
+    min_y, max_y = np.min(y_data), np.max(y_data)
+    period_guess = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
+    time_span = np.max(x_data) - np.min(x_data)
+
+    best_fit = None
+    best_popt = None
+
+    # Try multiple initializations
+    for phi_guess in np.linspace(0.0, np.pi * period_guess, num_init):
+        for factor in [y_data[-1], np.mean(y_data)]:
+            p0 = [y_data[0] - y_data[-1], time_span, factor, phi_guess, period_guess]
+
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    fit_output = curve_fit(
+                        _models.decaying_oscillations,
+                        x_data,
+                        y_data,
+                        p0,
+                        full_output=True,
+                    )
+                popt = fit_output[0]
+                best_fit, best_popt = fit_output, popt
+            except:
+                if best_fit is None:
+
+                    def _decaying_osc_res(p, x, y):
+                        return _models.decaying_oscillations(x, *p) - y
+
+                    result = least_squares(
+                        _decaying_osc_res,
+                        p0,
+                        loss="soft_l1",
+                        f_scale=0.1,
+                        args=(x_data, y_data),
+                    )
+                    best_fit, best_popt = result, result.x
+
+    # Compute π-time (half-period + phase offset)
+    pi_time_raw = 0.5 * best_popt[4] + best_popt[3]
+    while pi_time_raw > 0.75 * np.abs(best_popt[4]):
+        pi_time_raw -= 0.5 * np.abs(best_popt[4])
+    while pi_time_raw < 0.25 * np.abs(best_popt[4]):
+        pi_time_raw += 0.5 * np.abs(best_popt[4])
+
+    def _get_pi_time_std_err(sqil_dict):
+        if sqil_dict["std_err"] is not None:
+            phi_err = sqil_dict["std_err"][3]
+            T_err = sqil_dict["std_err"][4]
+            if np.isfinite(T_err) and np.isfinite(phi_err):
+                return np.sqrt((T_err / 2) ** 2 + phi_err**2)
+        return np.nan
+
+    # Metadata dictionary
+    metadata = {
+        "param_names": ["A", "tau", "y0", "phi", "T"],
+        "predict": _models.decaying_oscillations,
+        "pi_time": pi_time_raw,
+        "@pi_time_std_err": _get_pi_time_std_err,
+    }
+
+    return best_fit, metadata
 
 
 @fit_output
@@ -146,7 +503,7 @@ def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
     def d_func(x):
         return a1 + 2 * a2 * x + 3 * a3 * x * x + 4 * a4 * x * x * x
 
-    x0 = spopt.fsolve(func, 0.0, fprime=d_func)
+    x0 = fsolve(func, 0.0, fprime=d_func)
 
     def solve_eq_sys(val, M):
         # prepare
@@ -275,7 +632,7 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
         return err
 
     p0 = [0.0, 0.0, 1e3]
-    p_final, _ = spopt.leastsq(residuals, p0, args=(np.array(x_data), np.array(y_data)))
+    p_final, _ = leastsq(residuals, p0, args=(np.array(x_data), np.array(y_data)))
     A2a, A4a, Q_tota = p_final
 
     # Full parameter fit
@@ -289,7 +646,7 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
         return err
 
     p0 = [A1a, A2a, A3a, A4a, fra, Q_tota]
-    popt, pcov, infodict, errmsg, ier = spopt.leastsq(
+    popt, pcov, infodict, errmsg, ier = leastsq(
         residuals2, p0, args=(np.array(x_data), np.array(y_data)), full_output=True
     )
     # Since Q_tot is always present as a square it may turn out negative
