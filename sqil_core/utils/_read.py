@@ -4,7 +4,7 @@ import os
 import h5py
 import numpy as np
 
-from ._const import PARAM_METADATA
+from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
 
 
 def extract_h5_data(
@@ -90,14 +90,22 @@ class ParamInfo:
     def __init__(self, id, value):
         self.id = id
         self.value = value
-        if id in PARAM_METADATA:
-            meta = PARAM_METADATA[id]
+        if id in _PARAM_METADATA:
+            meta = _PARAM_METADATA[id]
         else:
             meta = {}
         self.name = meta["name"] if "name" in meta else id
         self.symbol = meta["symbol"] if "symbol" in meta else id
         self.unit = meta["unit"] if "unit" in meta else ""
         self.scale = meta["scale"] if "scale" in meta else 1
+
+    def get_name_and_unit(self):
+        res = self.name
+        if self.unit != "":
+            exponent = -(int(f"{self.scale:.0e}".split("e")[1]) // 3) * 3
+            unit = f" [{_EXP_UNIT_MAP[exponent]}{self.unit}]"
+            res += unit
+        return res
 
     def to_dict(self):
         """Convert ParamInfo to a dictionary."""
@@ -120,6 +128,9 @@ class ParamInfo:
         if isinstance(other, (int, float, complex, str)):
             return self.value == other
         return False
+
+    def __bool__(self):
+        return bool(self.id)
 
 
 ParamDict = dict[str, ParamInfo | dict[str, ParamInfo]]
@@ -154,3 +165,15 @@ def read_param_dict(path: str) -> ParamDict:
     if os.path.isdir(path):
         path = os.path.join(path, "param_dict.json")
     return _enrich_param_dict(read_json(path))
+
+
+def get_sweep_param(path: str, exp_id: str):
+    params = read_param_dict(path)
+    sweep_id = params[exp_id]["sweep"].value
+    if sweep_id:
+        return params[sweep_id]
+    return ParamInfo("", "")
+
+
+def get_measurement_id(path):
+    return os.path.basename(path)[0:5]

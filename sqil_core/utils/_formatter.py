@@ -4,8 +4,7 @@ import numpy as np
 from scipy.stats import norm
 from tabulate import tabulate
 
-from ._const import EXP_UNIT_MAP, PARAM_METADATA
-from ._read import read_json
+from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
 
 
 def _cut_to_significant_digits(number, n):
@@ -44,7 +43,7 @@ def format_number(
     """
     # Handle arrays
     if isinstance(num, (list, np.ndarray)):
-        return [format_number(n, unit, latex) for n in num]
+        return [format_number(n, precision, unit, latex) for n in num]
 
     # Return if not a number
     if not isinstance(num, (int, float, complex)):
@@ -70,7 +69,7 @@ def format_number(
 
     # Build string
     if unit:
-        res = f"{base_precise}{'~' if latex else ' '}{EXP_UNIT_MAP[exponent]}{unit}"
+        res = f"{base_precise}{'~' if latex else ' '}{_EXP_UNIT_MAP[exponent]}{unit}"
     else:
         res = f"{base_precise}" + (f" x 10^{{{exponent}}}" if exponent != 0 else "")
     return f"${res}$" if latex else res
@@ -89,51 +88,10 @@ def get_name_and_unit(param_id: str) -> str:
     str
         Name and [unit]
     """
-    meta = PARAM_METADATA[param_id]
+    meta = _PARAM_METADATA[param_id]
     scale = meta["scale"] if "scale" in meta else 1
     exponent = -(int(f"{scale:.0e}".split("e")[1]) // 3) * 3
-    return f"{meta['name']} [{EXP_UNIT_MAP[exponent]}{meta['unit']}]"
-
-
-def get_x_id_by_plot_dim(exp_id: str, plot_dim: str, sweep_param: str | None) -> str:
-    if exp_id == "CW_onetone":
-        if plot_dim == "1":
-            return sweep_param or "ro_freq"
-        return "ro_freq"
-
-
-def build_title(title: str, path: str, params: list[str]) -> str:
-    """Build a plot title that includes the values of given parameters found in
-    the params_dict.json file, e.g. One tone with I = 0.5 mA.
-
-    Parameters
-    ----------
-    title : str
-        Title of the plot to which the parameters will be appended.
-
-    path: str
-        Path to the param_dict.json file.
-
-    params : List[str]
-        List of keys of parameters in the param_dict.json file.
-
-    Returns
-    -------
-    str
-        The original title followed by parameter values.
-    """
-    dic = read_json(f"{path}/param_dict.json")
-    title += " with "
-    for idx, param in enumerate(params):
-        if not (param in PARAM_METADATA.keys()) or not (param in dic):
-            title += f"{param} = ? & "
-            continue
-        meta = PARAM_METADATA[param]
-        value = format_number(dic[param], meta["unit"])
-        title += f"${meta['symbol']} =${value} & "
-        if idx % 2 == 0 and idx != 0:
-            title += "\n"
-    return title[0:-3]
+    return f"{meta['name']} [{_EXP_UNIT_MAP[exponent]}{meta['unit']}]"
 
 
 def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
