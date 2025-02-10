@@ -33,6 +33,8 @@ class FitResult:
         If not provided, an exception will be raised when calling it.
     param_names : list, optional
         List of parameter names, defaulting to a range based on the number of parameters.
+    metadata : dict, optional
+        Additional information that can be passed in the fit result.
 
     Methods
     -------
@@ -44,7 +46,14 @@ class FitResult:
     """
 
     def __init__(
-        self, params, std_err, fit_output, metrics=None, predict=None, param_names=None
+        self,
+        params,
+        std_err,
+        fit_output,
+        metrics=None,
+        predict=None,
+        param_names=None,
+        metadata={},
     ):
         self.params = params
         self.std_err = std_err
@@ -52,6 +61,7 @@ class FitResult:
         self.metrics = metrics
         self.predict = predict or self._no_prediction
         self.param_names = param_names or list(range(len(params)))
+        self.metadata = metadata
 
     def __repr__(self):
         return (
@@ -138,16 +148,13 @@ def fit_output(fit_func):
         sigma = kwargs.get("sigma", None)
         has_sigma = isinstance(sigma, (list, np.ndarray))
 
-        sqil_dict = {
-            "params": [],
-            "std_err": None,
-            "metrics": None,
-            "predict": None,
-            "output": None,
-            "param_names": None,
-        }
+        # Initilize variables
+        sqil_keys = ["params", "std_err", "metrics", "predict", "output", "param_names"]
+        sqil_dict = {key: None for key in sqil_keys}
         metadata = {}
         formatted = None
+        # Set the default parameters to an empty array instead of None
+        sqil_dict["params"] = []
 
         # Check if the fit output is a tuple and separate it into raw_fit_ouput and metadata
         if (
@@ -159,6 +166,7 @@ def fit_output(fit_func):
         else:
             raw_fit_output = fit_result
         sqil_dict["output"] = raw_fit_output
+        print(metadata)
 
         # Format the raw_fit_output into a standardized dict
         # Scipy tuple (curve_fit, leastsq)
@@ -200,6 +208,9 @@ def fit_output(fit_func):
         # Add/override fileds using metadata
         sqil_dict.update(metadata)
 
+        # Remove fields already present in sqil_dict from metadata
+        filtered_metadata = {k: v for k, v in metadata.items() if k not in sqil_keys}
+
         # Assign the optimized parameters to the prediction function
         if sqil_dict["predict"] is not None:
             params = sqil_dict["params"]
@@ -215,6 +226,7 @@ def fit_output(fit_func):
             metrics=sqil_dict.get("metrics", None),
             predict=sqil_dict.get("predict", None),
             param_names=sqil_dict.get("param_names", None),
+            metadata=filtered_metadata,
         )
 
     return wrapper
