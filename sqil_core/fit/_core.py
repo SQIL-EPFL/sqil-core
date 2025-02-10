@@ -1,4 +1,5 @@
 import inspect
+import warnings
 
 import numpy as np
 import scipy.optimize as spopt
@@ -780,68 +781,3 @@ def _get_xy_data_from_fit_args(*args, **kwargs):
                 break
 
     return x_data, y_data
-
-
-# TODO: rethink approach
-def _fit_input(fit_func):
-    """Decorator to handle optional fitting inputs like guess, bounds, and fixed parameters."""
-
-    def wrapper(
-        x_data,
-        y_data,
-        guess=None,
-        bounds=None,
-        fixed_params=None,
-        fixed_bound_factor=1e-6,
-        **kwargs,
-    ):
-        # Inspect function to check if it requires guess and bounds
-        func_params = inspect.signature(fit_func).parameters
-
-        # Process guess if the function accepts it
-        if "guess" in func_params:
-            num_params = len(guess) if guess is not None else 0
-            guess = np.full(num_params, None) if guess is None else np.array(guess)
-        else:
-            guess = None
-
-        # Process bounds if the function accepts it
-        if "bounds" in func_params:
-            if guess is not None:
-                num_params = len(guess)
-                bounds = [(None, None)] * num_params if bounds is None else bounds
-                processed_bounds = np.array(
-                    [(-np.inf, np.inf) if b is None else b for b in bounds]
-                )
-                lower_bounds, upper_bounds = (
-                    processed_bounds[:, 0],
-                    processed_bounds[:, 1],
-                )
-
-                # Fix parameters by setting a very tight bound
-                if fixed_params is not None:
-                    for idx in fixed_params:
-                        tolerance = (
-                            abs(guess[idx]) * fixed_bound_factor
-                            if guess[idx] != 0
-                            else fixed_bound_factor
-                        )
-                        lower_bounds[idx] = guess[idx] - tolerance
-                        upper_bounds[idx] = guess[idx] + tolerance
-            else:
-                lower_bounds, upper_bounds = None, None
-        else:
-            lower_bounds, upper_bounds = None, None
-
-        # Prepare arguments dynamically
-        fit_args = {"x_data": x_data, "y_data": y_data, **kwargs}
-
-        if guess is not None and "guess" in func_params:
-            fit_args["guess"] = guess
-        if bounds is not None and "bounds" in func_params:
-            fit_args["bounds"] = (lower_bounds, upper_bounds)
-
-        # Call the wrapped function with preprocessed inputs
-        return fit_func(**fit_args)
-
-    return wrapper

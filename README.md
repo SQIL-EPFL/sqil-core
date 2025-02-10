@@ -82,7 +82,11 @@ $ poetry run build
 $ pip install PATH_TO_SQIL_CORE_FOLDER/dist/SQIL_CORE-VERSION.whl
 ```
 
-If you're using a jupyter notebook remember to restart the kernel
+If you're testing a new function remember to import it in the folder's `__init__.py` file.
+
+
+If you're using a jupyter notebook remember to restart the kernel.
+
 
 ## Build
 
