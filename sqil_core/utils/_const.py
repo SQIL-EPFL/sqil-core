@@ -1,4 +1,6 @@
-EXP_UNIT_MAP = {
+import numpy as np
+
+_EXP_UNIT_MAP = {
     -15: "p",
     -12: "f",
     -9: "n",
@@ -12,7 +14,7 @@ EXP_UNIT_MAP = {
     15: "P",
 }
 
-PARAM_METADATA = {
+_PARAM_METADATA = {
     "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
     "ro_freq": {
         "name": "Readout frequency",
@@ -35,4 +37,13 @@ PARAM_METADATA = {
     "qu_power": {"name": "Qubit power", "symbol": "P_q", "unit": "dBm", "scale": 1},
     "vna_bw": {"name": "VNA bandwidth", "symbol": "BW_{VNA}", "unit": "Hz", "scale": 1},
     "vna_avg": {"name": "VNA averages", "symbol": "avg_{VNA}", "unit": "", "scale": 1},
+    "index": {"name": "Index", "symbol": "idx", "unit": "", "scale": 1},
 }
+
+ONE_TONE_PARAMS = np.array(
+    ["current", "ro_power", "vna_bw", "vna_avg", "qu_power", "qu_freq"]
+)
+
+TWO_TONE_PARAMS = np.array(
+    ["ro_freq", "ro_power", "current", "vna_bw", "vna_avg", "qu_power"]
+)

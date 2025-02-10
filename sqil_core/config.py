@@ -8,4 +8,6 @@ _EXCLUDED_PACKAGES = [
     "h5py",
     "json",
     "tabulate",
+    "matplotlib",
+    "plt",
 ]

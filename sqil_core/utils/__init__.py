@@ -1,5 +1,7 @@
 from ._analysis import *
+from ._const import *
 from ._formatter import *
+from ._plot import *
 from ._read import *
 
 __all__ = [name for name in dir() if (not name.startswith("_"))]

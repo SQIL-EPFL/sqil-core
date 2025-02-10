@@ -76,20 +76,20 @@ def estimate_linear_background(
 
     # Consider just the cut points
     if not cut_from_back:
-        x_data = x[0:cut] if is1D else x[0:cut, :]
-        y_data = data[0:cut] if is1D else data[0:cut, :]
+        x_data = x[0:cut] if is1D else x[:, 0:cut]
+        y_data = data[0:cut] if is1D else data[:, 0:cut]
     else:
-        x_data = x[-cut:] if is1D else x[-cut:, :]
-        y_data = data[-cut:] if is1D else data[-cut:, :]
+        x_data = x[-cut:] if is1D else x[:, -cut:]
+        y_data = data[-cut:] if is1D else data[:, -cut:]
 
-    X = np.vstack([np.ones_like(x_data), x_data]).T
-
+    ones_column = np.ones_like(x_data[0, :]) if not is1D else np.ones_like(x_data)
+    X = np.vstack([ones_column, x_data[0, :] if not is1D else x_data]).T
     # Linear fit
     coefficients, residuals, _, _ = np.linalg.lstsq(
         X, y_data if is1D else y_data.T, rcond=None
     )
 
-    return coefficients
+    return coefficients.T
 
 
 def remove_linear_background(
@@ -113,8 +113,10 @@ def remove_linear_background(
     coefficients = estimate_linear_background(x, data, points_cut)
 
     # Remove background over the whole array
-    X = np.vstack([np.ones_like(x), x]).T
-    return data - (X @ coefficients).T
+    is1D = len(data.shape) == 1
+    ones_column = np.ones_like(x[0, :]) if not is1D else np.ones_like(x)
+    X = np.vstack([ones_column, x[0, :] if not is1D else x]).T
+    return data - (X @ coefficients.T).T
 
 
 def linear_interpolation(
@@ -203,5 +205,50 @@ def line_between_2_points(
     (5, 0)
     """
     if x1 == x2:
-        return y1, 0
-    return y1, (y2 - y1) / (x2 - x1)
+        return np.inf, y1
+    slope = (y2 - y1) / (x2 - x1)
+    intercept = y1 - slope * x1
+    return slope, intercept
+
+
+def compute_snr_peaked(
+    x_data, y_data, x0, fwhm, noise_region_factor=2.5, min_points=20
+):
+    """
+    Computes the Signal-to-Noise Ratio (SNR) using the fit parameters of a peaked function,
+    e.g. Lorentzian, Gaussian.
+
+    Parameters:
+    - x_data: 1D numpy array of x values (e.g., frequency).
+    - y_data: 1D numpy array of y values (e.g., signal intensity).
+    - x0: Peak position on the x axis.
+    - fwhm: Full-width at half-maximum.
+    - noise_region_factor: How far from x0 (in multiples of FWHM) to measure noise (default: 2.5).
+    - min_points: Minimum required data points in the noise region (default: 20).
+
+    Returns:
+    - snr: The computed signal-to-noise ratio.
+    """
+
+    # Signal strength at x0
+    signal = y_data[np.argmin(np.abs(x_data - x0))]
+
+    # Define noise region (outside noise_region_factor * FWHM)
+    noise_mask = (x_data < (x0 - noise_region_factor * fwhm)) | (
+        x_data > (x0 + noise_region_factor * fwhm)
+    )
+    noise_data = y_data[noise_mask]
+
+    # Check if there are enough data points for noise estimation
+    if len(noise_data) < min_points:
+        Warning(
+            f"Only {len(noise_data)} points found in the noise region. Consider reducing noise_region_factor."
+        )
+
+    # Compute noise standard deviation
+    noise_std = np.std(noise_data)
+
+    # Compute SNR
+    snr = signal / noise_std if noise_std > 0 else np.inf  # Avoid division by zero
+
+    return snr
