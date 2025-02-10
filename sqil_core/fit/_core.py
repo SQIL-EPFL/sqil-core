@@ -1,5 +1,6 @@
 import inspect
 import warnings
+from functools import wraps
 
 import numpy as np
 import scipy.optimize as spopt
@@ -139,6 +140,7 @@ def fit_output(fit_func):
     >>> print(fit_result.params)
     """
 
+    @wraps(fit_func)
     def wrapper(*args, **kwargs):
         # Perform the fit
         fit_result = fit_func(*args, **kwargs)
@@ -166,7 +168,6 @@ def fit_output(fit_func):
         else:
             raw_fit_output = fit_result
         sqil_dict["output"] = raw_fit_output
-        print(metadata)
 
         # Format the raw_fit_output into a standardized dict
         # Scipy tuple (curve_fit, leastsq)
@@ -208,6 +209,8 @@ def fit_output(fit_func):
         # Add/override fileds using metadata
         sqil_dict.update(metadata)
 
+        # Process metadata
+        metadata = _process_metadata(metadata, sqil_dict)
         # Remove fields already present in sqil_dict from metadata
         filtered_metadata = {k: v for k, v in metadata.items() if k not in sqil_keys}
 
@@ -230,6 +233,21 @@ def fit_output(fit_func):
         )
 
     return wrapper
+
+
+def _process_metadata(metadata: dict, sqil_dict: dict):
+    """Process metadata by computing values that cannot be calculated before having
+    the sqil_dict. For example use the standard errors to compute a different metric.
+
+    Treats items whose key starts with @ as functions that take sqil_dict as input.
+    So it evaluates them and renames the key removing the @.
+    """
+    res = metadata.copy()
+    for key, value in metadata.items():
+        if key.startswith("@"):
+            res[key[1:]] = value(sqil_dict)
+            del res[key]
+    return res
 
 
 def compute_adjusted_standard_errors(
