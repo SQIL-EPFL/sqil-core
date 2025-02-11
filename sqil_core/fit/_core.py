@@ -235,6 +235,116 @@ def fit_output(fit_func):
     return wrapper
 
 
+# TODO: make a function that handles the bounds for lmfit.
+# Such a function will take the bounds as they are returned by @fit_input, i.e lower and upper bounds
+# and it will iterated through the lmfit parameters to apply the bounds.
+def fit_input(fit_func):
+    """
+    Decorator to handle optional fitting inputs like initial guesses, bounds, and fixed parameters
+    for a fitting function.
+
+    - `guess` : list or np.ndarray, optional, default=None
+        The initial guess for the fit. If None it's not passed to the fit function
+    - `bounds` : list or np.ndarray, optional, default=None
+        The bounds on the fit parameters in the form [(min, max), (min, max), ...].
+    - `fixed_params` : list or np.ndarray, optional, default=None
+        Indices of the parameters that must remain fixed during the optimization.
+        For example fitting `f(x, a, b)`, if we want to fix the value of `a` we would pass
+        `fit_f(guess=[a_guess, b_guess], fixed_params=[0])`
+
+    Parameters
+    ----------
+    fit_func : callable
+        The fitting function to be decorated. This function should accept `x_data` and `y_data` as
+        mandatory parameters and may optionally accept `guess` and `bounds` (plus any other additional
+        parameter).
+
+    Returns
+    -------
+    callable
+        A wrapper function that processes the input arguments and then calls the original fitting
+        function with the preprocessed inputs. This function also handles warnings if unsupported
+        parameters are passed to the fit function.
+
+    Notes
+    -----
+    - The parameters in `guess`, `bounds` and `fixed_params` must be in the same order as in the
+      modeled function definition.
+    - The decorator can fix certain parameters by narrowing their bounds based on an initial guess
+      and a specified `fixed_bound_factor`.
+    - The decorator processes bounds by setting them as `(-np.inf, np.inf)` if they are not specified (`None`).
+
+    Examples
+    -------
+    >>> @fit_input
+    ... def my_fit_func(x_data, y_data, guess=None, bounds=None, fixed_params=None):
+    ...     # Perform fitting...
+    ...     return fit_result
+    >>> x_data = np.linspace(0, 10, 100)
+    >>> y_data = np.sin(x_data) + np.random.normal(0, 0.1, 100)
+    >>> result = my_fit_func(x_data, y_data, guess=[1, 1], bounds=[(0, 5), (-np.inf, np.inf)])
+    """
+
+    @wraps(fit_func)
+    def wrapper(
+        x_data,
+        y_data,
+        guess=None,
+        bounds=None,
+        fixed_params=None,
+        fixed_bound_factor=1e-6,
+        **kwargs,
+    ):
+        # Inspect function to check if it requires guess and bounds
+        func_params = inspect.signature(fit_func).parameters
+
+        # Check if the user passed parameters that are not supported by the fit fun
+        if guess and ("guess" not in func_params):
+            warnings.warn("The fit function doesn't allow any initial guess.")
+        if bounds and ("bounds" not in func_params):
+            warnings.warn("The fit function doesn't allow any bounds.")
+        if fixed_params and (not guess):
+            raise ValueError("Using fixed_params requires an initial guess.")
+
+        # Process bounds if the function accepts it
+        if bounds and ("bounds" in func_params):
+            processed_bounds = np.array(
+                [(-np.inf, np.inf) if b is None else b for b in bounds],
+                dtype=np.float64,
+            )
+            lower_bounds, upper_bounds = (
+                processed_bounds[:, 0],
+                processed_bounds[:, 1],
+            )
+
+            # Fix parameters by setting a very tight bound
+            if (fixed_params is not None) and (guess is not None):
+                for idx in fixed_params:
+                    tolerance = (
+                        abs(guess[idx]) * fixed_bound_factor
+                        if guess[idx] != 0
+                        else fixed_bound_factor
+                    )
+                    lower_bounds[idx] = guess[idx] - tolerance
+                    upper_bounds[idx] = guess[idx] + tolerance
+
+        else:
+            lower_bounds, upper_bounds = None, None
+
+        # Prepare arguments dynamically
+        fit_args = {"x_data": x_data, "y_data": y_data, **kwargs}
+
+        if guess is not None and "guess" in func_params:
+            fit_args["guess"] = guess
+        if bounds is not None and "bounds" in func_params:
+            fit_args["bounds"] = (lower_bounds, upper_bounds)
+
+        # Call the wrapped function with preprocessed inputs
+        return fit_func(**fit_args)
+
+    return wrapper
+
+
 def _process_metadata(metadata: dict, sqil_dict: dict):
     """Process metadata by computing values that cannot be calculated before having
     the sqil_dict. For example use the standard errors to compute a different metric.

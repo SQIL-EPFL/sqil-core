@@ -1,1 +1,1 @@
-:::sqil_core.resonator.resonator
+:::sqil_core.resonator._resonator

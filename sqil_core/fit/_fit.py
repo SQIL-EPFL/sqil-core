@@ -1,23 +1,46 @@
 import warnings
 
 import numpy as np
-from scipy.optimize import curve_fit, fsolve, leastsq
+from scipy.optimize import curve_fit, fsolve, least_squares, leastsq
 
 import sqil_core.fit._models as _models
 
-from ._core import FitResult, fit_output
+from ._core import FitResult, fit_input, fit_output
 
 
+@fit_input
 @fit_output
-def fit_lorentzian(x_data, y_data, guess=None, bounds=None):
-    """
-    Fits a Lorentzian function to the given x_data and y_data.
+def fit_lorentzian(
+    x_data: np.ndarray, y_data: np.ndarray, guess: list = None, bounds: tuple = None
+) -> FitResult:
+    r"""
+    Fits a Lorentzian function to the provided data. The function estimates the
+    amplitude (A), center (x0), full width at half maximum (FWHM), and baseline (y0)
+    of the Lorentzian function.
 
-    Parameters:
-    - x_data: 1D numpy array of x values (e.g., frequency).
-    - y_data: 1D numpy array of corresponding y values (e.g., signal intensity).
-    - guess: Optional initial guess for parameters [A, x0, fwhm, y0].
-    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+    L(x) = A * (|FWHM| / 2) / ((x - x0)^2 + (FWHM^2 / 4)) + y0
+
+    $$L(x) = A \frac{\left| \text{FWHM} \right|}{2} \frac{1}{(x - x_0)^2 + \frac{\text{FWHM}^2}{4}} + y_0$$
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        The independent variable (e.g., x values of the data).
+
+    y_data : np.ndarray
+        The dependent variable (e.g., y values of the data).
+
+    guess : list, optional
+        Initial guesses for the fit parameters [A, x0, fwhm, y0]. If not provided,
+        defaults are calculated based on the data.
+
+    bounds : list[tuple[float]], optional
+        The bounds for the fit parameters in the format [(min, max), ...].
+        If not provided, defaults are calculated.
+
+    fixed_params : list[int], optional, default: None
+        A list of indices representing parameters in the initial guess that should
+        remain unchanged during the fitting process.
 
     Returns
     -------
@@ -70,16 +93,39 @@ def fit_lorentzian(x_data, y_data, guess=None, bounds=None):
     }
 
 
+@fit_input
 @fit_output
-def fit_gaussian(x_data, y_data, guess=None, bounds=None):
-    """
-    Fits a Gaussian function to the given x_data and y_data.
+def fit_gaussian(
+    x_data: np.ndarray, y_data: np.ndarray, guess: list = None, bounds: tuple = None
+) -> FitResult:
+    r"""
+    Fits a Gaussian function to the provided data. The function estimates the
+    amplitude, mean, standard deviation (sigma), and baseline of the Gaussian
+    function, and computes the full width at half maximum (FWHM).
 
-    Parameters:
-    - x_data: 1D numpy array of x values (e.g., frequency).
-    - y_data: 1D numpy array of corresponding y values (e.g., signal intensity).
-    - guess: Optional initial guess for parameters [A, x0, sigma, y0].
-    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+    G(x) = A / (|σ| * sqrt(2π)) * exp(- (x - x0)^2 / (2σ^2)) + y0
+
+    $$G(x) = A \frac{1}{\left| \sigma \right| \sqrt{2\pi}} \exp\left( -\frac{(x - x_0)^2}{2\sigma^2} \right) + y_0$$
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        The independent variable (e.g., x values of the data).
+
+    y_data : np.ndarray
+        The dependent variable (e.g., y values of the data).
+
+    guess : list, optional
+        Initial guesses for the fit parameters [A, x0, sigma, y0]. If not provided,
+        defaults are calculated based on the data.
+
+    bounds : list[tuple[float]], optional
+        The bounds for the fit parameters in the format [(min, max), ...].
+        If not provided, defaults are calculated.
+
+    fixed_params : list[int], optional, default: None
+        A list of indices representing parameters in the initial guess that should
+        remain unchanged during the fitting process.
 
     Returns
     -------
@@ -91,6 +137,7 @@ def fit_gaussian(x_data, y_data, guess=None, bounds=None):
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the FWHM.
     """
+
     x, y = x_data, y_data
 
     # Default initial guess if not provided
@@ -138,16 +185,39 @@ def fit_gaussian(x_data, y_data, guess=None, bounds=None):
     }
 
 
+@fit_input
 @fit_output
-def fit_decaying_exp(x_data, y_data, guess=None, bounds=None):
-    """
-    Fits a decaying exponential function to the given x_data and y_data.
+def fit_decaying_exp(
+    x_data: np.ndarray, y_data: np.ndarray, guess: list = None, bounds: tuple = None
+) -> FitResult:
+    r"""
+    Fits a decaying exponential function to the provided data. The function estimates
+    the amplitude (A), decay time constant (tau), and baseline (y0) of the decaying
+    exponential function.
 
-    Parameters:
-    - x_data: 1D numpy array of x values (e.g., time).
-    - y_data: 1D numpy array of corresponding y values (e.g., signal intensity).
-    - guess: Optional initial guess for parameters [A, tau, C].
-    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
+    f(x) = A * exp(-x / τ) + y0
+
+    $$f(x) = A \exp\left( -\frac{x}{\tau} \right) + y_0$$
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        The independent variable (e.g., x values of the data).
+
+    y_data : np.ndarray
+        The dependent variable (e.g., y values of the data).
+
+    guess : list, optional
+        Initial guesses for the fit parameters [A, tau, y0]. If not provided,
+        defaults are calculated based on the data.
+
+    bounds : list[tuple[float]], optional
+        The bounds for the fit parameters in the format [(min, max), ...].
+        If not provided, defaults are calculated.
+
+    fixed_params : list[int], optional, default: None
+        A list of indices representing parameters in the initial guess that should
+        remain unchanged during the fitting process.
 
     Returns
     -------
@@ -158,7 +228,6 @@ def fit_decaying_exp(x_data, y_data, guess=None, bounds=None):
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
     """
-
     x, y = x_data, y_data
 
     # Default initial guess if not provided
@@ -195,21 +264,51 @@ def fit_decaying_exp(x_data, y_data, guess=None, bounds=None):
     }
 
 
+@fit_input
 @fit_output
 def fit_qubit_relaxation_qp(
-    x_data, y_data, guess=None, bounds=None, maxfev=10000, ftol=1e-11
-):
-    """
-    Fits a qubit relaxation taking into account T1 and effects due to quasi-particles.
-    Previously called DoubleExponent.
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    guess: list[float] | None = None,
+    bounds: tuple[list[float], list[float]] | None = None,
+    maxfev: int = 10000,
+    ftol: float = 1e-11,
+) -> FitResult:
+    r"""
+    Fits a qubit relaxation model with quasiparticle (QP) effects using a
+    biexponential decay function. The fitting procedure starts with an initial
+    guess derived from a single exponential fit.
 
-    Parameters:
-    - x_data: 1D numpy array of x values (e.g., time).
-    - y_data: 1D numpy array of corresponding y values.
-    - guess: Optional initial guess for parameters [A, T1R, C, T1QP, nQP].
-    - bounds: Optional tuple of (lower_bounds, upper_bounds) for curve fitting.
-    - maxfev: Max function evaluations for curve fitting.
-    - ftol: Fit tolerance.
+    f(x) = A * exp(|nQP| * (exp(-x / T1QP) - 1)) * exp(-x / T1R) + y0
+
+    $$f(x) = A \exp\left( |\text{n}_{\text{QP}}| \left( \exp\left(-\frac{x}{T_{1QP}}\right)
+    - 1 \right) \right) \exp\left(-\frac{x}{T_{1R}}\right) + y_0$$
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        Time data points for the relaxation curve.
+
+    y_data : np.ndarray
+        Measured relaxation data.
+
+    guess : list[float], optional
+        Initial parameter guesses. If None, a default guess is computed
+        using a single exponential fit.
+
+    bounds : tuple[list[float], list[float]], optional
+        The bounds for the fit parameters in the format [(min, max), ...].
+        If None, reasonable bounds based on the initial guess are applied.
+
+    maxfev : int, optional, default=10000
+        Maximum number of function evaluations allowed for the curve fitting.
+
+    ftol : float, optional, default=1e-11
+        Relative tolerance for convergence in the least-squares optimization.
+
+    fixed_params : list[int], optional, default: None
+        A list of indices representing parameters in the initial guess that should
+        remain unchanged during the fitting process.
 
     Returns
     -------
@@ -219,7 +318,6 @@ def fit_qubit_relaxation_qp(
         - Standard errors (`std_err`).
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
-        - A metadata dictionary containing the FWHM
     """
 
     # Use a single exponential fit for initial parameter guesses
@@ -276,15 +374,28 @@ def fit_qubit_relaxation_qp(
 
 
 @fit_output
-def fit_decaying_oscillations(x_data, y_data, num_init=10):
-    """
-    Fits a decaying oscillation function to given x_data and y_data.
+def fit_decaying_oscillations(
+    x_data: np.ndarray, y_data: np.ndarray, num_init: int = 10
+) -> FitResult:
+    r"""
+    Fits a decaying oscillation model to data. The function estimates key features
+    like the oscillation period and phase, and tries multiple initial guesses for
+    the optimization process.
 
-    Parameters:
-    - x_data: 1D numpy array (time values).
-    - y_data: 1D numpy array (signal values).
-    - guess: Optional initial parameter guess [A, tau, C, phi, T].
-    - num_init: Number of phase shift initializations to try.
+    f(x) = A * exp(-x / τ) * cos(2π * (x - φ) / T) + y0
+
+    $$f(x) = A \exp\left( -\frac{x}{\tau} \right) \cos\left( 2\pi \frac{x - \phi}{T} \right) + y_0$$
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        The independent variable (e.g., time) of the data.
+
+    y_data : np.ndarray
+        The dependent variable (e.g., signal) of the data.
+
+    num_init : int, optional, default=10
+        The number of initial guesses for the phase to use in the fitting process.
 
     Returns
     -------
@@ -296,7 +407,6 @@ def fit_decaying_oscillations(x_data, y_data, num_init=10):
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the pi_time and its standard error.
     """
-
     # Extract key features from the data
     min_y, max_y = np.min(y_data), np.max(y_data)
     period_guess = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
@@ -585,15 +695,17 @@ def _compute_circle_fit_metrics(x_data, y_data, xc, yc, r0):
 
 @fit_output
 def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
-    """
+    r"""
     Fits a skewed Lorentzian model to the given data using least squares optimization.
 
     This function performs a two-step fitting process to find the best-fitting parameters for a skewed Lorentzian model.
     The first fitting step provides initial estimates for the parameters, and the second step refines those estimates
     using a full model fit.
 
-    The skewed Lorentzian model is defined as:
-        A1 + A2 * (x - fra) + (A3 + A4 * (x - fra)) / (1.0 + 4.0 * Q_tot^2 * ((x - fra) / fra) ^ 2)
+    L(f) = A1 + A2 * (f - fr) + (A3 + A4 * (f - fr)) / [1 + (2 * Q_tot * ((f / fr) - 1))²]
+
+    $$L(f) = A_1 + A_2 \cdot (f - f_r)+ \frac{A_3 + A_4 \cdot (f - f_r)}{1
+    + 4 Q_{\text{tot}}^2 \left( \frac{f - f_r}{f_r} \right)^2}$$
 
     Parameters
     ----------
