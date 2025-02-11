@@ -76,3 +76,4 @@ nav:
       - Read data: 'API reference/utils/read data.md'
       - Formatter: 'API reference/utils/formatter.md'
       - Analysis: 'API reference/utils/analysis.md'
+      - Plot: 'API reference/utils/plot.md'

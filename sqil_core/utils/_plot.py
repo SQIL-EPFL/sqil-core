@@ -6,6 +6,7 @@ from ._read import read_json
 
 
 def set_plot_style(plt):
+    """Sets the matplotlib plotting style to a SQIL curated one."""
     style = {
         "font.size": 20,
         "xtick.labelsize": 18,  # X-axis tick labels
@@ -27,6 +28,7 @@ def set_plot_style(plt):
 
 
 def reset_plot_style(plt):
+    """Resets the matplotlib plotting style to its default value."""
     return plt.rcParams.update(plt.rcParamsDefault)
 
 
