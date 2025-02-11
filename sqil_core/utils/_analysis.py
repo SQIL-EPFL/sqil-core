@@ -212,22 +212,60 @@ def line_between_2_points(
 
 
 def compute_snr_peaked(
-    x_data, y_data, x0, fwhm, noise_region_factor=2.5, min_points=20
-):
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    x0: float,
+    fwhm: float,
+    noise_region_factor: float = 2.5,
+    min_points: int = 20,
+) -> float:
     """
-    Computes the Signal-to-Noise Ratio (SNR) using the fit parameters of a peaked function,
-    e.g. Lorentzian, Gaussian.
+    Computes the Signal-to-Noise Ratio (SNR) for a peaked function (e.g., Lorentzian, Gaussian)
+    based on the provided fit parameters. The SNR is calculated by comparing the signal strength
+    at the peak (x0) with the noise level estimated from a region outside the peak.
 
-    Parameters:
-    - x_data: 1D numpy array of x values (e.g., frequency).
-    - y_data: 1D numpy array of y values (e.g., signal intensity).
-    - x0: Peak position on the x axis.
-    - fwhm: Full-width at half-maximum.
-    - noise_region_factor: How far from x0 (in multiples of FWHM) to measure noise (default: 2.5).
-    - min_points: Minimum required data points in the noise region (default: 20).
+    Parameters
+    ----------
+    x_data : np.ndarray
+        Array of x values (independent variable), typically representing frequency or position.
 
-    Returns:
-    - snr: The computed signal-to-noise ratio.
+    y_data : np.ndarray
+        Array of y values (dependent variable), representing the measured values (e.g., intensity, amplitude).
+
+    x0 : float
+        The location of the peak (center of the distribution), often the resonance frequency or peak position.
+
+    fwhm : float
+        The Full Width at Half Maximum (FWHM) of the peak. This defines the width of the peak and helps determine
+        the region for noise estimation.
+
+    noise_region_factor : float, optional, default=2.5
+        The factor used to define the width of the noise region as a multiple of the FWHM. The noise region is
+        considered outside the interval `(x0 - noise_region_factor * fwhm, x0 + noise_region_factor * fwhm)`.
+
+    min_points : int, optional, default=20
+        The minimum number of data points required in the noise region to estimate the noise level. If the number
+        of points in the noise region is smaller than this threshold, a warning is issued.
+
+    Returns
+    -------
+    float
+        The computed Signal-to-Noise Ratio (SNR), which is the ratio of the signal strength at `x0` to the
+        standard deviation of the noise. If the noise standard deviation is zero, the SNR is set to infinity.
+
+    Notes
+    -----
+    - The function assumes that the signal has a clear peak at `x0` and that the surrounding data represents noise.
+    - If the noise region contains fewer than `min_points` data points, a warning is raised suggesting the adjustment of `noise_region_factor`.
+
+    Example
+    -------
+    >>> x_data = np.linspace(-10, 10, 1000)
+    >>> y_data = np.exp(-(x_data**2))  # Example Gaussian
+    >>> x0 = 0
+    >>> fwhm = 2.0
+    >>> snr = compute_snr_peaked(x_data, y_data, x0, fwhm)
+    >>> print(snr)
     """
 
     # Signal strength at x0
