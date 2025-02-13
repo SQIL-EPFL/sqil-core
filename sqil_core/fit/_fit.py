@@ -11,7 +11,10 @@ from ._core import FitResult, fit_input, fit_output
 @fit_input
 @fit_output
 def fit_lorentzian(
-    x_data: np.ndarray, y_data: np.ndarray, guess: list = None, bounds: tuple = None
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    guess: list = None,
+    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
 ) -> FitResult:
     r"""
     Fits a Lorentzian function to the provided data. The function estimates the
@@ -96,7 +99,10 @@ def fit_lorentzian(
 @fit_input
 @fit_output
 def fit_gaussian(
-    x_data: np.ndarray, y_data: np.ndarray, guess: list = None, bounds: tuple = None
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    guess: list = None,
+    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
 ) -> FitResult:
     r"""
     Fits a Gaussian function to the provided data. The function estimates the
@@ -188,7 +194,10 @@ def fit_gaussian(
 @fit_input
 @fit_output
 def fit_decaying_exp(
-    x_data: np.ndarray, y_data: np.ndarray, guess: list = None, bounds: tuple = None
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    guess: list = None,
+    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
 ) -> FitResult:
     r"""
     Fits a decaying exponential function to the provided data. The function estimates
@@ -270,7 +279,7 @@ def fit_qubit_relaxation_qp(
     x_data: np.ndarray,
     y_data: np.ndarray,
     guess: list[float] | None = None,
-    bounds: tuple[list[float], list[float]] | None = None,
+    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
     maxfev: int = 10000,
     ftol: float = 1e-11,
 ) -> FitResult:
