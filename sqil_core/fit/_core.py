@@ -244,13 +244,18 @@ def fit_input(fit_func):
     for a fitting function.
 
     - `guess` : list or np.ndarray, optional, default=None
-        The initial guess for the fit. If None it's not passed to the fit function
-    - `bounds` : list or np.ndarray, optional, default=None
+        The initial guess for the fit. If None it's not passed to the fit function.
+    - `bounds` : list or np.ndarray, optional, default=(-np.inf, np.inf)
         The bounds on the fit parameters in the form [(min, max), (min, max), ...].
     - `fixed_params` : list or np.ndarray, optional, default=None
         Indices of the parameters that must remain fixed during the optimization.
         For example fitting `f(x, a, b)`, if we want to fix the value of `a` we would pass
         `fit_f(guess=[a_guess, b_guess], fixed_params=[0])`
+    - `fixed_bound_factor` : float, optional, default=1e-6
+        The relative tolerance allowed for parameters that must remain fixed (`fixed_params`).
+
+    IMPORTANT: This decorator requires the x and y input vectors to be named `x_data` and `y_data`.
+        The initial guess must be called `guess` and the bounds `bounds`.
 
     Parameters
     ----------
@@ -316,27 +321,31 @@ def fit_input(fit_func):
                 processed_bounds[:, 0],
                 processed_bounds[:, 1],
             )
-
-            # Fix parameters by setting a very tight bound
-            if (fixed_params is not None) and (guess is not None):
-                for idx in fixed_params:
-                    tolerance = (
-                        abs(guess[idx]) * fixed_bound_factor
-                        if guess[idx] != 0
-                        else fixed_bound_factor
-                    )
-                    lower_bounds[idx] = guess[idx] - tolerance
-                    upper_bounds[idx] = guess[idx] + tolerance
-
         else:
             lower_bounds, upper_bounds = None, None
+
+        # Fix parameters by setting a very tight bound
+        if (fixed_params is not None) and (guess is not None):
+            if bounds is None:
+                lower_bounds = -np.inf * np.ones(len(guess))
+                upper_bounds = np.inf * np.ones(len(guess))
+            for idx in fixed_params:
+                tolerance = (
+                    abs(guess[idx]) * fixed_bound_factor
+                    if guess[idx] != 0
+                    else fixed_bound_factor
+                )
+                lower_bounds[idx] = guess[idx] - tolerance
+                upper_bounds[idx] = guess[idx] + tolerance
 
         # Prepare arguments dynamically
         fit_args = {"x_data": x_data, "y_data": y_data, **kwargs}
 
         if guess is not None and "guess" in func_params:
             fit_args["guess"] = guess
-        if bounds is not None and "bounds" in func_params:
+        if (
+            (bounds is not None) or (fixed_params is not None)
+        ) and "bounds" in func_params:
             fit_args["bounds"] = (lower_bounds, upper_bounds)
 
         # Call the wrapped function with preprocessed inputs

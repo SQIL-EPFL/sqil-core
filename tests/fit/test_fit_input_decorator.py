@@ -62,6 +62,14 @@ class TestFitInputDecorator:
             ),  # Guess + bounds, no fixed params
             (
                 [1, 5, 1],
+                None,
+                [0],
+                [1 - 1e-6, -np.inf, -np.inf],
+                [1 + 1e-6, np.inf, np.inf],
+            ),
+            # Guess + fixed params, no bounds
+            (
+                [1, 5, 1],
                 [(0, 10), (0, 10), (0, 10)],
                 [0],
                 [1 - 1e-6, 0, 0],
@@ -93,8 +101,7 @@ class TestFitInputDecorator:
         )
 
         # Check bounds processing
-        if bounds:
-            print(bounds, result["bounds"], expected_lower_bounds)
+        if bounds or fixed_params:
             assert result["bounds"] is not None
             assert len(result["bounds"]) == 2
             assert np.allclose(result["bounds"][0], expected_lower_bounds)

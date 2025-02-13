@@ -67,6 +67,7 @@ nav:
   - Getting started: index.md
   - Notebooks:
     - The fit_output decorator: 'Notebooks/fit_output_decorator.ipynb'
+    - The fit_input decorator: 'Notebooks/fit_input_decorator.ipynb'
   - API reference:
     - Fit:
       - Core: 'API reference/fit/core.md'
