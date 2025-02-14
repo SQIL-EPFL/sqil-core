@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.scripts]
 build = "scripts:build"
-docs-serve = "scripts:docs_serve"
+docs-dev = "scripts:docs_dev"
 docs-build = "scripts:docs_build"
 
 [tool.poetry.dependencies]
