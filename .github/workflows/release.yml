@@ -4,11 +4,6 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release'
-        required: true
 
 env:
   PACKAGE_NAME: "sqil-core"
