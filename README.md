@@ -30,7 +30,7 @@ You can find the documentation for this package [here](https://sqil-epfl.github.
 
 ```bash
 $ pip install poetry
-$ poetry self add poetry-plugin-shell
+$ pip install poetry-plugin-shell
 ```
 
 2. **Install the required packages using poetry**
