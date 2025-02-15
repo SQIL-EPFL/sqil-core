@@ -94,6 +94,38 @@ class TestFitOutputDecorator:
         assert res.predict == metadata["predict"]
         assert res.param_names == metadata["param_names"]
 
+    def test_metadata_fields_not_present_in_FitResult_go_in_metadata_dict(self):
+        metadata = {"other_field": 5}
+
+        @fit_output
+        def fit():
+            return CUSTOM_RESULT, metadata
+
+        res = fit()
+        assert isinstance(res, FitResult)
+        assert res.metadata == metadata
+        assert res.metadata["other_field"] == 5
+
+    def test_can_pass_functions_in_metadata(self):
+        def double_errors(sqil_dict):
+            return sqil_dict["std_err"] * 2
+
+        # Define a function in metadata (starts with @)
+        # That is evaluated on sqil_dict when all the fit_output
+        # information has been computed
+        metadata = {"@doubled_errors": double_errors}
+
+        @fit_output
+        def fit():
+            return CUSTOM_RESULT, metadata
+
+        res = fit()
+        assert isinstance(res, FitResult)
+        # The filed with @ is removed
+        assert res.metadata.get("@doubled_errors", None) == None
+        # And is replaced by the computed value
+        assert res.metadata["doubled_errors"] == res.std_err * 2
+
     def test_scipy_curve_fit(self, fit_data):
         x, y = fit_data
 
