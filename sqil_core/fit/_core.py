@@ -118,6 +118,10 @@ def fit_output(fit_func):
             The raw optimizer output from the fitting process.
         - `param_names` : list or None
             Names of the fitted parameters.
+        - `metadata` : dict
+            A dictionary containing extra information. Advanced uses include passing
+            functions that get evaluated after fit result has been processed.
+            See the documentation, Notebooks/The fit_output decorator
 
     Raises
     ------
