@@ -7,7 +7,7 @@ def build():
     subprocess.run(["poetry", "build"])
 
 
-def docs_serve():
+def docs_dev():
     subprocess.run(["poetry", "run", "mkdocs", "serve"])
 
 

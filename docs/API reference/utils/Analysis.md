@@ -1,1 +1,1 @@
-:::sqil_core.utils.analysis
+:::sqil_core.utils._analysis

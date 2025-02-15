@@ -19,34 +19,44 @@ path = 'path to your data folder'
 mag, phase, freq = sqil.extract_h5_data(path, ['mag_dB', 'phase', 'ro_freq'])
 ```
 
+## Documentation
+You can find the documentation for this package [here](https://sqil-epfl.github.io/sqil-core/)
+
 # For developers
 
 ## Development
 
 1. **Install poetry if you haven't already**
+
 ```bash
 $ pip install poetry
+$ pip install poetry-plugin-shell
 ```
 
 2. **Install the required packages using poetry**
+
 ```bash
 $ poetry install
 ```
 
 3. **Install the pre-commit hooks**
-If you are on windows you need to install git ([https://git-scm.com/downloads](here)) and add it to your windows PATH.
-After the installation open a new terminal.
+   If you are on windows you need to install git ([https://git-scm.com/downloads](here)) and add it to your windows PATH.
+   After the installation open a new terminal.
+
 ```bash
 $ poetry run pre-commit install
 ```
+
 This will check if your python files are formatted correctly when you try to commit.
 If that's not the case the commit will be canceled and the files will be automatically formatted.
 Then you'll have to add and commit again the new files.
 
 4. **Start the virtual environment**
+
 ```bash
 $ poetry shell
 ```
+
 To exit the virtual environment just use `exit`
 
 #### Test your changes
@@ -72,7 +82,11 @@ $ poetry run build
 $ pip install PATH_TO_SQIL_CORE_FOLDER/dist/SQIL_CORE-VERSION.whl
 ```
 
-If you're using a jupyter notebook remember to restart the kernel
+If you're testing a new function remember to import it in the folder's `__init__.py` file.
+
+
+If you're using a jupyter notebook remember to restart the kernel.
+
 
 ## Build
 
@@ -81,8 +95,10 @@ $ poetry run build
 ```
 
 ## Publish
+
 To publish version X.X.X run the commands below. This will trigger a GitHub action that deploys to release to PyPi (pip) and GitHub.
 Remember also to change the version number in the `pyproject.toml` file.
+
 ```bash
 $ git tag vX.X.X
 $ git push origin vX.X.X
