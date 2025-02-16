@@ -1,7 +1,7 @@
 import warnings
 
 import numpy as np
-from scipy.optimize import curve_fit, fsolve, least_squares, leastsq
+from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
 
 import sqil_core.fit._models as _models
 
@@ -780,3 +780,130 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
             "param_names": ["A1", "A2", "A3", "A4", "fr", "Q_tot"],
         },
     )
+
+
+def transform_data(
+    data: np.ndarray,
+    transform_type: str = "optm",
+    params: list = None,
+    deg: bool = True,
+    full_output: bool = False,
+) -> np.ndarray | tuple[np.ndarray, list, np.ndarray]:
+    """
+    Transforms complex-valued data using various transformation methods, including
+    optimization-based alignment, real/imaginary extraction, amplitude, and phase.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        The complex-valued data to be transformed.
+
+    transform_type : str, optional
+        The type of transformation to apply. Options include:
+        - 'optm' (default): Optimized translation and rotation.
+        - 'trrt': Translation and rotation using provided params.
+        - 'real': Extract the real part.
+        - 'imag': Extract the imaginary part.
+        - 'ampl': Compute the amplitude.
+        - 'angl': Compute the phase (in degrees if `deg=True`).
+
+    params : list, optional
+        Transformation parameters [x0, y0, phi]. If None and `transform_type='optm'`,
+        parameters are estimated automatically.
+
+    deg : bool, optional
+        If True, phase transformations return values in degrees (default: True).
+
+    full_output : bool, optional
+        If True, returns transformed data, transformation parameters, and residuals.
+
+    Returns
+    -------
+    np.ndarray
+        The transformed data.
+
+    tuple[np.ndarray, list, np.ndarray] (if `full_output=True`)
+        Transformed data, transformation parameters, and residuals.
+
+    Notes
+    -----
+    - The function applies different transformations based on `transform_type`.
+    - If `optm` is selected and `params` is not provided, an optimization routine
+      is used to determine the best transformation parameters.
+
+    Example
+    -------
+    >>> data = np.array([1 + 1j, 2 + 2j, 3 + 3j])
+    >>> transformed, params, residuals = transform_data(data, full_output=True)
+    >>> print(transformed, params, residuals)
+    """
+
+    def transform(data, x0, y0, phi):
+        return (data - x0 - 1.0j * y0) * np.exp(1.0j * phi)
+
+    def opt_transform(data):
+        """Finds optimal transformation parameters."""
+
+        def transform_err(x):
+            return np.sum((transform(data, x[0], x[1], x[2]).imag) ** 2)
+
+        res = minimize(
+            fun=transform_err,
+            method="Nelder-Mead",
+            x0=[
+                np.mean(data.real),
+                np.mean(data.imag),
+                -np.arctan2(np.std(data.imag), np.std(data.real)),
+            ],
+            options={"maxiter": 1000},
+        )
+
+        params = res.x
+        transformed_data = transform(data, *params)
+        if transformed_data[0] < transformed_data[-1]:
+            params[2] += np.pi
+        return params
+
+    # Normalize transform_type
+    transform_type = str(transform_type).lower()
+    if transform_type.startswith(("op", "pr")):
+        transform_type = "optm"
+    elif transform_type.startswith("translation+rotation"):
+        transform_type = "trrt"
+    elif transform_type.startswith(("re", "qu")):
+        transform_type = "real"
+    elif transform_type.startswith(("im", "in")):
+        transform_type = "imag"
+    elif transform_type.startswith("am"):
+        transform_type = "ampl"
+    elif transform_type.startswith(("ph", "an")):
+        transform_type = "angl"
+
+    # Compute parameters if needed
+    if transform_type == "optm" and params is None:
+        params = opt_transform(data)
+
+    # Apply transformation
+    if transform_type in ["optm", "trrt"]:
+        transformed_data = transform(data, *params).real
+        residual = transform(data, *params).imag
+    elif transform_type == "real":
+        transformed_data = data.real
+        residual = data.imag
+    elif transform_type == "imag":
+        transformed_data = data.imag
+        residual = data.real
+    elif transform_type == "ampl":
+        transformed_data = np.abs(data)
+        residual = np.unwrap(np.angle(data))
+        if deg:
+            residual = np.degrees(residual)
+    elif transform_type == "angl":
+        transformed_data = np.unwrap(np.angle(data))
+        residual = np.abs(data)
+        if deg:
+            transformed_data = np.degrees(transformed_data)
+
+    if full_output:
+        return np.array(transformed_data), params, residual
+    return np.array(transformed_data)
