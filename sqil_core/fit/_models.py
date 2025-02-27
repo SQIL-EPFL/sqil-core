@@ -55,7 +55,7 @@ def decaying_oscillations(x, A, tau, y0, phi, T):
 def skewed_lorentzian(
     f: np.ndarray, A1: float, A2: float, A3: float, A4: float, fr: float, Q_tot: float
 ) -> np.ndarray:
-    """
+    r"""
     Computes the skewed Lorentzian function.
 
     This function models asymmetric resonance peaks using a skewed Lorentzian
