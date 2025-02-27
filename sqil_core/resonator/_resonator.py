@@ -1,3 +1,5 @@
+from typing import Literal
+
 import matplotlib.pyplot as plt
 import numpy as np
 from lmfit import Model
@@ -440,7 +442,7 @@ def S11_reflection_mesh(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi):
 def quick_fit(
     freq: np.ndarray,
     data: np.ndarray,
-    measurement: str,
+    measurement: Literal["reflection", "hanger"],
     tau: float | None = None,
     Q_tot: float | None = None,
     fr: float | None = None,
@@ -654,7 +656,7 @@ def quick_fit(
         fig.tight_layout()
         plt.show()
 
-    return a, alpha, Q_tot, Q_ext, fr, phi0, theta0
+    return a, alpha, tau, Q_tot, Q_ext, fr, phi0, theta0
 
 
 @fit_output
