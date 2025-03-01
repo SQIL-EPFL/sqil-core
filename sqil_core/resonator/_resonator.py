@@ -190,7 +190,7 @@ def fit_phase_vs_freq(freq, phase, theta0, Q_tot, fr):
     p_final = leastsq(
         lambda a, b, c: residuals_3(a, b, c, theta0, Q_tot), p0, args=(freq, phase)
     )
-    fr = float(p_final[0])
+    fr = float(p_final[0].item())
 
     # Step 4: Optimize Q_tot alone
     def residuals_4(p, x, y, theta0, fr):
@@ -202,7 +202,7 @@ def fit_phase_vs_freq(freq, phase, theta0, Q_tot, fr):
     p_final = leastsq(
         lambda a, b, c: residuals_4(a, b, c, theta0, fr), p0, args=(freq, phase)
     )
-    Q_tot = float(p_final[0])
+    Q_tot = float(p_final[0].item())
 
     # Step 5: Joint optimization of θ₀, Q_tot, and fr
     def residuals_5(p, x, y):
