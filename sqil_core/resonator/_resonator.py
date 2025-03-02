@@ -492,11 +492,11 @@ def quick_fit(
         A tuple containing:
         - a (float): Amplitude scaling factor from the off-resonant point.
         - alpha (float): Phase offset from the off-resonant point (in radians).
+        - tau (float): Estimated cable delay (in radians).
         - Q_tot (float): Total quality factor.
         - Q_ext (complex): External quality factor, accounting for impedance mismatch.
         - fr (float): Resonance frequency.
         - phi0 (float): Phase shift due to impedance mismatch (in radians).
-        - theta0 (float): Refined phase offset at resonance.
 
     Notes
     -----
@@ -656,7 +656,7 @@ def quick_fit(
         fig.tight_layout()
         plt.show()
 
-    return a, alpha, tau, Q_tot, Q_ext, fr, phi0, theta0
+    return a, alpha, tau, Q_tot, Q_ext, fr, phi0
 
 
 @fit_output
