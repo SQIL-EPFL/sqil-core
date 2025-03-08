@@ -1,4 +1,5 @@
 from sqil_core.config_log import logger
+from sqil_core.measurement._events import after_experiment, before_experiment
 from sqil_core.utils._read import read_yaml
 
 
@@ -23,8 +24,11 @@ class Experiment:
             setup_path = read_yaml(config["setup_path"])
         setup = read_yaml(setup_path)
 
+        # Load/connect instruments
         instrument_dict = setup.get("instruments", None)
         self._connect_instruments(instrument_dict)
+        # Handle custom setup of instruments
+        self.setup_instruments()
 
     def _connect_instruments(self, instrument_dict: dict | None):
         if not instrument_dict:
@@ -41,4 +45,14 @@ class Experiment:
         self.instruments = Instruments(instance_dict)
 
     def setup_instruments(self):
+        """Custom instrument setup defined by the user"""
         pass
+
+    def sequence(self):
+        """Experimental sequence defined by the user"""
+        pass
+
+    def run(self):
+        before_experiment.send()
+        self.sequence()
+        after_experiment.send()
