@@ -28,6 +28,7 @@ from ._read import (
     get_sweep_param,
     read_json,
     read_param_dict,
+    read_yaml,
 )
 
 __all__ = [
@@ -55,6 +56,7 @@ __all__ = [
     # Read
     "extract_h5_data",
     "read_json",
+    "read_yaml",
     "ParamInfo",
     "ParamDict",
     "read_param_dict",

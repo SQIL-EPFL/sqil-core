@@ -3,6 +3,7 @@ import os
 
 import h5py
 import numpy as np
+import yaml
 
 from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
 
@@ -73,6 +74,14 @@ def read_json(path: str) -> dict:
     with open(path) as f:
         dictionary = json.load(f)
     return dictionary
+
+
+def read_yaml(path: str) -> dict:
+    with open(path) as stream:
+        try:
+            return yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
 
 
 class ParamInfo:

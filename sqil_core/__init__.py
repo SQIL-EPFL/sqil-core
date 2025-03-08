@@ -1,4 +1,5 @@
 import sqil_core.fit as fit
+import sqil_core.measurement as measurement
 import sqil_core.resonator as resonator
 import sqil_core.utils as utils
 from sqil_core.utils import *
