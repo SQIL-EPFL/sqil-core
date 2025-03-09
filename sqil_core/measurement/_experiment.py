@@ -1,3 +1,5 @@
+from experiment.instruments.local_oscillator import LocalOscillator
+
 from sqil_core.config_log import logger
 from sqil_core.measurement._events import after_experiment, before_experiment
 from sqil_core.utils._read import read_yaml
@@ -39,9 +41,19 @@ class Experiment:
             self.instruments = Instruments({})
             return
 
-        # TODO: create the right instance for each instrument and map it by name
-        # in instance dict. Currently (and maybe ever) we have only 1 type, LocalOscillator
         instance_dict = {}
+        for instrument_id, config in instrument_dict.items():
+            if config.get("type") == "LO":
+                try:
+                    instance = LocalOscillator(instrument_id, self.__setup_path)
+                    instance_dict[instrument_id] = instance
+                    logger.info(
+                        f"Successfully connected to {config.get('name', instrument_id)}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
+                    )
         self.instruments = Instruments(instance_dict)
 
     def setup_instruments(self):
