@@ -8,8 +8,14 @@ instruments:
     model: "RohdeSchwarzSGS100A"
     type: "LO"
 
-  signalcore:
+  SC5511A:
     name: "SC"
     address: "10003C68"
     model: "SignalCore_SC5511A"
+    type: "LO"
+
+  SC5521A:
+    name: "mw1"
+    address: "" #name based connection, don't need address
+    model: "SC5521A"
     type: "LO"

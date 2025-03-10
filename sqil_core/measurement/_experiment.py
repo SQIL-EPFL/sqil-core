@@ -45,6 +45,7 @@ class Experiment:
         for instrument_id, config in instrument_dict.items():
             if config.get("type") == "LO":
                 try:
+                    # the init method calls connect automatically
                     instance = LocalOscillator(instrument_id, self.__setup_path)
                     instance_dict[instrument_id] = instance
                     logger.info(
