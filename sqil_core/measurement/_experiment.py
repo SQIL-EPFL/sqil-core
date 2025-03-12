@@ -15,6 +15,10 @@ class Experiment:
     instruments: Instruments | None = None
     __setup_path = ""
 
+    _instrument_factories = {
+        "LO": LocalOscillator,
+    }
+
     def __init__(
         self, params: dict = {}, param_dict_path: str = "", setup_path: str = ""
     ):
@@ -43,18 +47,26 @@ class Experiment:
 
         instance_dict = {}
         for instrument_id, config in instrument_dict.items():
-            if config.get("type") == "LO":
-                try:
-                    # the init method calls connect automatically
-                    instance = LocalOscillator(instrument_id, self.__setup_path)
-                    instance_dict[instrument_id] = instance
-                    logger.info(
-                        f"Successfully connected to {config.get('name', instrument_id)}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
-                    )
+            instrument_type = config.get("type")
+            instrument_factory = self._instrument_factories.get(instrument_type)
+
+            if not instrument_factory:
+                logger.warning(
+                    f"Unknown instrument type '{instrument_type}' for '{instrument_id}'. "
+                    f"Available types: {list(self._instrument_factories.keys())}"
+                )
+                continue
+
+            try:
+                instance = instrument_factory(instrument_id, config=config)
+                instance_dict[instrument_id] = instance
+                logger.info(
+                    f"Successfully connected to {config.get('name', instrument_id)}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
+                )
         self.instruments = Instruments(instance_dict)
 
     def setup_instruments(self):
