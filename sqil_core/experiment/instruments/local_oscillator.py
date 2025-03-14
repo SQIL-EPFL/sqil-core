@@ -3,6 +3,7 @@ from qcodes.instrument_drivers.rohde_schwarz import RohdeSchwarzSGS100A
 from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
 from sqil_core.config_log import logger
+from sqil_core.experiment.lo_event_handler import lo_event_handlers
 
 from .drivers.SignalCore_SC5511A import SignalCore_SC5511A
 
@@ -37,11 +38,9 @@ class LocalOscillator:
         elif config is None:
             raise ValueError("Either config or config_path must be provided")
 
-        # Store instrument configuration
         self.id = instrument_id
         self.config = config
 
-        # Extract required parameters with validation
         if "name" not in config:
             raise ValueError(f"Missing 'name' for instrument '{instrument_id}'")
         self.name = config["name"]
@@ -50,7 +49,6 @@ class LocalOscillator:
             raise ValueError(f"Missing 'model' for instrument '{instrument_id}'")
         self.model = config["model"]
 
-        # Address is required for most models except SC5521A
         if self.model != "SC5521A" and "address" not in config:
             raise ValueError(f"Missing 'address' for instrument '{instrument_id}'")
 
@@ -60,6 +58,8 @@ class LocalOscillator:
 
         # Connect automatically
         self.connect()
+
+        lo_event_handlers.register_local_oscillator(self)
 
     def connect(self):
         logger.info(f"Connecting to {self.name} at {self.address}")
@@ -129,3 +129,18 @@ class LocalOscillator:
         elif self.model == "SC5521A":
             self.device.status("off")
         logger.debug("-> done")
+
+    # these methods are for readability on call
+    def unregister(self):
+        lo_event_handlers.unregister_local_oscillator(self)
+
+    def register(self):
+        lo_event_handlers.register_local_oscillator(self)
+
+    @classmethod
+    def disable_all_auto_control(cls):
+        lo_event_handlers.disable_auto_control()
+
+    @classmethod
+    def enable_all_auto_control(cls):
+        lo_event_handlers.enable_auto_control()

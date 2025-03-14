@@ -1,7 +1,7 @@
 from experiment.instruments.local_oscillator import LocalOscillator
 
 from sqil_core.config_log import logger
-from sqil_core.measurement._events import after_experiment, before_experiment
+from sqil_core.experiment._events import after_experiment, before_experiment
 from sqil_core.utils._read import read_yaml
 
 
