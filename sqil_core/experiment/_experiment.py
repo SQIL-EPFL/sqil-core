@@ -2,6 +2,7 @@ from experiment.instruments.local_oscillator import LocalOscillator
 
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import after_experiment, before_experiment
+from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import read_yaml
 
 
@@ -69,9 +70,39 @@ class Experiment:
                 )
         self.instruments = Instruments(instance_dict)
 
-    def setup_instruments(self):
-        """Custom instrument setup defined by the user"""
-        pass
+    def _setup_instruments(self):
+        """Default setup for all instruments with support for custom setups"""
+        logger.info("Setting up instruments")
+        if not hasattr(self, "instruments"):
+            logger.warning("No instruments to set up")
+            return
+
+        for attr_name in dir(self.instruments):
+            # because self.instruments contains methods like __class__ or __dict__
+            if attr_name.startswith("_"):
+                continue
+
+            instrument = getattr(self.instruments, attr_name)
+            # for robustness against future modifications
+            if not hasattr(instrument, "setup"):
+                continue
+
+            try:
+                instrument_id = instrument.id
+                instrument_name = getattr(instrument, "name", attr_name)
+
+                if setup_registry.has_custom_setup(instrument_id):
+                    logger.info(
+                        f"Applying registered custom setup for {instrument_name}"
+                    )
+                    setup_registry.apply_setup(instrument_id, instrument)
+                else:
+                    logger.info(f"Running default setup for {instrument_name}")
+                    instrument.setup()
+            except Exception as e:
+                logger.error(
+                    f"Error during setup of {getattr(instrument, 'name', attr_name)}: {str(e)}"
+                )
 
     def sequence(self):
         """Experimental sequence defined by the user"""
