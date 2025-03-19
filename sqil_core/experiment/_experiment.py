@@ -7,15 +7,20 @@ from sqil_core.utils._read import read_yaml
 
 class Instruments:
     def __init__(self, data):
+        self._instruments = data
         for key, value in data.items():
             setattr(self, key, value)
+
+    def __iter__(self):
+        """Allow iteration directly over instrument instances."""
+        return iter(self._instruments.values())
 
 
 class Experiment:
     instruments: Instruments | None = None
     __setup_path = ""
 
-    _instrument_factories = {
+    _instrument_classes = {
         "LO": LocalOscillator,
     }
 
@@ -48,12 +53,12 @@ class Experiment:
         instance_dict = {}
         for instrument_id, config in instrument_dict.items():
             instrument_type = config.get("type")
-            instrument_factory = self._instrument_factories.get(instrument_type)
+            instrument_factory = self._instrument_classes.get(instrument_type)
 
             if not instrument_factory:
                 logger.warning(
                     f"Unknown instrument type '{instrument_type}' for '{instrument_id}'. "
-                    f"Available types: {list(self._instrument_factories.keys())}"
+                    f"Available types: {list(self._instrument_classes.keys())}"
                 )
                 continue
 
@@ -76,19 +81,14 @@ class Experiment:
             logger.warning("No instruments to set up")
             return
 
-        for attr_name in dir(self.instruments):
-            # because self.instruments contains methods like __class__ or __dict__
-            if attr_name.startswith("_"):
-                continue
-
-            instrument = getattr(self.instruments, attr_name)
+        for instrument in self.instruments:
             # for robustness against future modifications
             if not hasattr(instrument, "setup"):
                 continue
 
             try:
                 instrument_id = instrument.id
-                instrument_name = getattr(instrument, "name", attr_name)
+                instrument_name = getattr(instrument, "name", instrument_id)
 
                 if setup_registry.has_custom_setup(instrument_id):
                     logger.info(
@@ -100,7 +100,7 @@ class Experiment:
                     instrument.setup()
             except Exception as e:
                 logger.error(
-                    f"Error during setup of {getattr(instrument, 'name', attr_name)}: {str(e)}"
+                    f"Error during setup of {getattr(instrument, 'name', instrument_id)}: {str(e)}"
                 )
 
     def sequence(self):
