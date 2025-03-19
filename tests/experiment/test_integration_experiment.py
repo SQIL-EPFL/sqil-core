@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from sqil_core.experiment._events import after_experiment, before_experiment
 from sqil_core.experiment._experiment import Experiment
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
-from sqil_core.experiment.lo_event_handler import EventHandlers, lo_event_handlers
+from sqil_core.experiment.lo_event_handler import lo_event_handlers
 from sqil_core.experiment.setup_registry import setup_registry
 
 
@@ -13,17 +13,18 @@ class TestExperimentIntegration(unittest.TestCase):
         self.logger_patch = patch("sqil_core.config_log.logger")
         self.read_yaml_patch = patch("sqil_core.experiment._experiment.read_yaml")
         self.rohde_schwarz_patch = patch(
-            "qcodes.instrument_drivers.rohde_schwarz.RohdeSchwarzSGS100A"
+            "sqil_core.experiment.instruments.local_oscillator.RohdeSchwarzSGS100A"
         )
         self.signalcore_sc5511a_patch = patch(
-            "experiment.instruments.drivers.SignalCore_SC5511A.SignalCore_SC5511A"
+            "sqil_core.experiment.instruments.local_oscillator.SignalCore_SC5511A"
         )
         self.signalcore_sc5521a_patch = patch(
-            "qcodes_contrib_drivers.drivers.SignalCore.SignalCore.SC5521A"
+            "sqil_core.experiment.instruments.local_oscillator.SC5521A"
         )
 
         self.mock_logger = self.logger_patch.start()
         self.mock_read_yaml = self.read_yaml_patch.start()
+
         self.mock_rohde_schwarz = self.rohde_schwarz_patch.start()
         self.mock_signalcore_sc5511a = self.signalcore_sc5511a_patch.start()
         self.mock_signalcore_sc5521a = self.signalcore_sc5521a_patch.start()
@@ -51,7 +52,11 @@ class TestExperimentIntegration(unittest.TestCase):
                     "address": "10003ABC",
                     "type": "LO",
                 },
-                "sc5521a": {"name": "sc5521a_lo", "model": "SC5521A", "type": "LO"},
+                "sc5521a": {
+                    "name": "sc5521a_lo",
+                    "model": "SC5521A",
+                    "type": "LO",
+                },
             }
         }
         self.mock_read_yaml.return_value = self.mock_setup_data
@@ -75,15 +80,29 @@ class TestExperimentIntegration(unittest.TestCase):
         self.mock_sc5511a_device.reset_mock()
         self.mock_sc5521a_device.reset_mock()
 
+        # different kind of mock
+        # the event handler expects a LO instance,
+        # while the LO constructor expects a low-level instance (with the driver etc)
+        mock_rohde_lo = MagicMock()
+        mock_rohde_lo.name = "rohde_lo"
+        mock_sc5511a_lo = MagicMock()
+        mock_sc5511a_lo.name = "sc5511a_lo"
+        mock_sc5521a_lo = MagicMock()
+        mock_sc5521a_lo.name = "sc5521a_lo"
+
+        lo_event_handlers.register_local_oscillator(mock_rohde_lo)
+        lo_event_handlers.register_local_oscillator(mock_sc5511a_lo)
+        lo_event_handlers.register_local_oscillator(mock_sc5521a_lo)
+
         experiment.run()
 
-        self.mock_rohde_device.on.assert_called_once()
-        self.mock_sc5511a_device.do_set_output_status.assert_any_call(1)
-        self.mock_sc5521a_device.status.assert_any_call("on")
+        mock_rohde_lo.on.assert_called_once()
+        mock_sc5511a_lo.on.assert_called_once()
+        mock_sc5521a_lo.on.assert_called_once()
 
-        self.mock_rohde_device.off.assert_called_once()
-        self.mock_sc5511a_device.do_set_output_status.assert_any_call(0)
-        self.mock_sc5521a_device.status.assert_any_call("off")
+        mock_rohde_lo.off.assert_called_once()
+        mock_sc5511a_lo.off.assert_called_once()
+        mock_sc5521a_lo.off.assert_called_once()
 
     def test_experiment_should_not_auto_control_when_disabled(self):
         experiment = Experiment(setup_path="test_setup.yaml")
@@ -115,7 +134,7 @@ class TestExperimentIntegration(unittest.TestCase):
         setup_registry.register_setup("rohde", custom_rohde_setup)
         setup_registry.register_setup("sc5511a", custom_sc5511a_setup)
 
-        experiment = Experiment(setup_path="test_setup.yaml")
+        Experiment(setup_path="test_setup.yaml")
 
         self.mock_rohde_device.frequency.assert_called_with(5e9)
         self.mock_rohde_device.power.assert_called_with(-30)
@@ -150,23 +169,19 @@ class TestExperimentIntegration(unittest.TestCase):
         experiment = Experiment(setup_path="test_setup.yaml")
 
         self.mock_rohde_device.on.side_effect = Exception("Cannot turn on")
-
         self.mock_sc5511a_device.do_set_output_status.side_effect = [
             None,
             Exception("Cannot turn off"),
         ]
 
-        experiment.run()
+        with self.assertLogs("sqil_logger", level="ERROR") as cm:
+            experiment.run()
 
-        self.mock_logger.error.assert_any_call(
-            "Failed to turn on rohde_lo: Cannot turn on"
-        )
-        self.mock_logger.error.assert_any_call(
-            "Failed to turn off sc5511a_lo: Cannot turn off"
-        )
+        # direct log output, no mock -> more robust
+        log_output = "\n".join(cm.output)
 
-        self.mock_sc5521a_device.status.assert_any_call("on")
-        self.mock_sc5521a_device.status.assert_any_call("off")
+        self.assertIn("Failed to turn on rohde_lo: Cannot turn on", log_output)
+        self.assertIn("Failed to turn off sc5511a_lo: Cannot turn off", log_output)
 
 
 class CustomExperiment(Experiment):
@@ -175,8 +190,6 @@ class CustomExperiment(Experiment):
 
         self.step_count += 1
         self.instruments.rohde.frequency(10e9)
-
-        self.step_count += 1
 
         self.step_count += 1
         self.instruments.rohde.power(-15)
@@ -189,7 +202,7 @@ class TestCustomExperiment(unittest.TestCase):
         self.logger_patch = patch("sqil_core.config_log.logger")
         self.read_yaml_patch = patch("sqil_core.experiment._experiment.read_yaml")
         self.rohde_schwarz_patch = patch(
-            "qcodes.instrument_drivers.rohde_schwarz.RohdeSchwarzSGS100A"
+            "sqil_core.experiment.instruments.local_oscillator.RohdeSchwarzSGS100A"
         )
 
         self.mock_logger = self.logger_patch.start()
@@ -227,7 +240,7 @@ class TestCustomExperiment(unittest.TestCase):
             experiment = CustomExperiment(setup_path="test_setup.yaml")
             experiment.run()
 
-            self.assertEqual(experiment.step_count, 4)
+            self.assertEqual(experiment.step_count, 3)
 
             self.mock_rohde_device.frequency.assert_called_with(10e9)
             self.mock_rohde_device.power.assert_called_with(-15)

@@ -1,7 +1,6 @@
-from experiment.instruments.local_oscillator import LocalOscillator
-
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import after_experiment, before_experiment
+from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import read_yaml
 
@@ -35,7 +34,7 @@ class Experiment:
         instrument_dict = setup.get("instruments", None)
         self._connect_instruments(instrument_dict)
         # Handle custom setup of instruments
-        self.setup_instruments()
+        self._setup_instruments()
 
     def _connect_instruments(self, instrument_dict: dict | None):
         if not instrument_dict:

@@ -15,18 +15,19 @@ class TestLocalOscillator(unittest.TestCase):
             "type": "LO",
         }
 
+        # Patch objects as they are imported in the local_oscillator module.
         self.logger_patch = patch("sqil_core.config_log.logger")
         self.event_handler_patch = patch(
-            "sqil_core.experiment.lo_event_handler.lo_event_handlers"
+            "sqil_core.experiment.instruments.local_oscillator.lo_event_handlers"
         )
         self.rohde_patch = patch(
-            "qcodes.instrument_drivers.rohde_schwarz.RohdeSchwarzSGS100A"
+            "sqil_core.experiment.instruments.local_oscillator.RohdeSchwarzSGS100A"
         )
         self.sc5511a_patch = patch(
-            "experiment.instruments.drivers.SignalCore_SC5511A.SignalCore_SC5511A"
+            "sqil_core.experiment.instruments.local_oscillator.SignalCore_SC5511A"
         )
         self.sc5521a_patch = patch(
-            "qcodes_contrib_drivers.drivers.SignalCore.SignalCore.SC5521A"
+            "sqil_core.experiment.instruments.local_oscillator.SC5521A"
         )
 
         self.mock_logger = self.logger_patch.start()
@@ -59,7 +60,6 @@ class TestLocalOscillator(unittest.TestCase):
         self.mock_rohde.assert_called_once_with(
             "test_lo", "TCPIP0::1.2.3.4::inst0::INSTR"
         )
-
         self.mock_event_handler.register_local_oscillator.assert_called_once_with(lo)
 
     @patch(
@@ -85,7 +85,6 @@ class TestLocalOscillator(unittest.TestCase):
 
         self.assertEqual(lo.name, "yaml_lo")
         self.assertEqual(lo.address, "TCPIP0::5.6.7.8::inst0::INSTR")
-
         mock_file.assert_called_once_with("fake_path.yaml", "r")
 
     def test_init_should_raise_value_error_when_missing_name(self):
@@ -94,7 +93,6 @@ class TestLocalOscillator(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             LocalOscillator("test_id", config=config_without_name, config_path=None)
-
         self.assertIn("Missing 'name'", str(context.exception))
 
     def test_init_should_raise_value_error_when_missing_model(self):
@@ -103,7 +101,6 @@ class TestLocalOscillator(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             LocalOscillator("test_id", config=config_without_model, config_path=None)
-
         self.assertIn("Missing 'model'", str(context.exception))
 
     def test_init_should_raise_value_error_when_missing_address_for_non_sc5521a(self):
@@ -112,16 +109,12 @@ class TestLocalOscillator(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             LocalOscillator("test_id", config=config_without_address, config_path=None)
-
         self.assertIn("Missing 'address'", str(context.exception))
 
     def test_connect_should_instantiate_correct_driver_for_rohdeschwarz(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
-
         self.mock_rohde.reset_mock()
-
         lo.connect()
-
         self.mock_rohde.assert_called_once_with(
             "test_lo", "TCPIP0::1.2.3.4::inst0::INSTR"
         )
@@ -129,16 +122,12 @@ class TestLocalOscillator(unittest.TestCase):
     def test_connect_should_instantiate_correct_driver_for_signalcore_sc5511a(self):
         sc5511a_config = self.mock_config.copy()
         sc5511a_config["model"] = "SignalCore_SC5511A"
+        sc5511a_config["address"] = "10003C68"
 
         lo = LocalOscillator("test_id", config=sc5511a_config, config_path=None)
-
         self.mock_sc5511a.reset_mock()
-
         lo.connect()
-
-        self.mock_sc5511a.assert_called_once_with(
-            "test_lo", "TCPIP0::1.2.3.4::inst0::INSTR"
-        )
+        self.mock_sc5511a.assert_called_once_with("test_lo", "10003C68")
 
     def test_connect_should_instantiate_correct_driver_for_sc5521a(self):
         sc5521a_config = self.mock_config.copy()
@@ -146,27 +135,21 @@ class TestLocalOscillator(unittest.TestCase):
         sc5521a_config["address"] = None
 
         lo = LocalOscillator("test_id", config=sc5521a_config, config_path=None)
-
         self.mock_sc5521a.reset_mock()
-
         lo.connect()
-
         self.mock_sc5521a.assert_called_once_with("test_lo")
 
     def test_connect_should_raise_value_error_for_unsupported_model(self):
         invalid_model_config = self.mock_config.copy()
         invalid_model_config["model"] = "UnsupportedModel"
 
-        lo = LocalOscillator("test_id", config=invalid_model_config, config_path=None)
-
         with self.assertRaises(ValueError) as context:
-            lo.connect()
+            LocalOscillator("test_id", config=invalid_model_config, config_path=None)
 
         self.assertIn("Unsupported instrument type", str(context.exception))
 
     def test_setup_should_configure_rohdeschwarz_correctly(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
-
         lo.setup(frequency=10)
 
         self.mock_device.status.assert_called_once_with(False)
@@ -175,9 +158,9 @@ class TestLocalOscillator(unittest.TestCase):
     def test_setup_should_configure_signalcore_sc5511a_correctly(self):
         sc5511a_config = self.mock_config.copy()
         sc5511a_config["model"] = "SignalCore_SC5511A"
+        sc5511a_config["address"] = "10003C68"
 
         lo = LocalOscillator("test_id", config=sc5511a_config, config_path=None)
-
         lo.setup(frequency=20)
 
         self.mock_device.power.assert_called_once_with(-40)
@@ -193,7 +176,6 @@ class TestLocalOscillator(unittest.TestCase):
         sc5521a_config["address"] = None
 
         lo = LocalOscillator("test_id", config=sc5521a_config, config_path=None)
-
         lo.setup(frequency=30)
 
         self.mock_device.status.assert_called_once_with("off")
@@ -202,16 +184,12 @@ class TestLocalOscillator(unittest.TestCase):
 
     def test_power_should_pass_value_to_device(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
-
         lo.power(-25)
-
         self.mock_device.power.assert_called_with(-25)
 
     def test_frequency_should_pass_value_to_device(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
-
         lo.frequency(12.5e9)
-
         self.mock_device.frequency.assert_called_with(12.5e9)
 
     def test_on_should_call_correct_method_for_each_instrument_type(self):
@@ -221,46 +199,36 @@ class TestLocalOscillator(unittest.TestCase):
                 "address": "TCPIP0::1.2.3.4::inst0::INSTR",
                 "expected_method": "on",
                 "expected_args": (),
-                "expected_kwargs": {},
             },
             {
                 "model": "SignalCore_SC5511A",
                 "address": "10003ABC",
                 "expected_method": "do_set_output_status",
                 "expected_args": (1,),
-                "expected_kwargs": {},
             },
             {
                 "model": "SC5521A",
                 "address": None,
                 "expected_method": "status",
                 "expected_args": ("on",),
-                "expected_kwargs": {},
             },
         ]
 
         for test_case in test_cases:
             config = self.mock_config.copy()
             config["model"] = test_case["model"]
-            if test_case["address"] is None:
-                if "address" in config:
-                    del config["address"]
-            else:
-                config["address"] = test_case["address"]
+            config["address"] = test_case["address"]
 
-            self.mock_rohde_device.reset_mock()
-            self.mock_sc5511a_device.reset_mock()
-            self.mock_sc5521a_device.reset_mock()
+            self.mock_rohde.reset_mock()
+            self.mock_sc5511a.reset_mock()
+            self.mock_sc5521a.reset_mock()
             self.mock_device.reset_mock()
 
             lo = LocalOscillator("test_id", config=config, config_path=None)
             lo.on()
 
             expected_method = getattr(self.mock_device, test_case["expected_method"])
-
-            expected_method.assert_called_once_with(
-                *test_case["expected_args"], **test_case["expected_kwargs"]
-            )
+            expected_method.assert_called_once_with(*test_case["expected_args"])
 
     def test_off_should_call_correct_method_for_each_instrument_type(self):
         test_cases = [
@@ -269,50 +237,39 @@ class TestLocalOscillator(unittest.TestCase):
                 "address": "TCPIP0::1.2.3.4::inst0::INSTR",
                 "expected_method": "off",
                 "expected_args": (),
-                "expected_kwargs": {},
             },
             {
                 "model": "SignalCore_SC5511A",
                 "address": "10003ABC",
                 "expected_method": "do_set_output_status",
                 "expected_args": (0,),
-                "expected_kwargs": {},
             },
             {
                 "model": "SC5521A",
                 "address": None,
                 "expected_method": "status",
                 "expected_args": ("off",),
-                "expected_kwargs": {},
             },
         ]
 
         for test_case in test_cases:
             config = self.mock_config.copy()
             config["model"] = test_case["model"]
-            if test_case["address"] is None:
-                if "address" in config:
-                    del config["address"]
-            else:
-                config["address"] = test_case["address"]
+            config["address"] = test_case["address"]
 
-            self.mock_rohde_device.reset_mock()
-            self.mock_sc5511a_device.reset_mock()
-            self.mock_sc5521a_device.reset_mock()
+            self.mock_rohde.reset_mock()
+            self.mock_sc5511a.reset_mock()
+            self.mock_sc5521a.reset_mock()
             self.mock_device.reset_mock()
 
             lo = LocalOscillator("test_id", config=config, config_path=None)
             lo.off()
 
             expected_method = getattr(self.mock_device, test_case["expected_method"])
-
-            expected_method.assert_called_once_with(
-                *test_case["expected_args"], **test_case["expected_kwargs"]
-            )
+            expected_method.assert_called_once_with(*test_case["expected_args"])
 
     def test_register_unregister_should_call_event_handler_methods(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
-
         self.mock_event_handler.reset_mock()
 
         lo.unregister()
