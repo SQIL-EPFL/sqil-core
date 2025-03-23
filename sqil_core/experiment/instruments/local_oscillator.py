@@ -9,8 +9,6 @@ from .drivers.SignalCore_SC5511A import SignalCore_SC5511A
 
 
 class LocalOscillator:
-    # Class to unify the APIs of each local oscillator
-
     def __init__(self, instrument_id, config=None, config_path="setup.yaml"):
         """
         Initialize a local oscillator by ID from configuration.

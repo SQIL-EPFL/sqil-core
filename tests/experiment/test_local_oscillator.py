@@ -20,7 +20,7 @@ class TestLocalOscillator(unittest.TestCase):
         self.event_handler_patch = patch(
             "sqil_core.experiment.instruments.local_oscillator.lo_event_handlers"
         )
-        self.rohde_patch = patch(
+        self.sgs_patch = patch(
             "sqil_core.experiment.instruments.local_oscillator.RohdeSchwarzSGS100A"
         )
         self.sc5511a_patch = patch(
@@ -32,19 +32,19 @@ class TestLocalOscillator(unittest.TestCase):
 
         self.mock_logger = self.logger_patch.start()
         self.mock_event_handler = self.event_handler_patch.start()
-        self.mock_rohde = self.rohde_patch.start()
+        self.mock_sgs = self.sgs_patch.start()
         self.mock_sc5511a = self.sc5511a_patch.start()
         self.mock_sc5521a = self.sc5521a_patch.start()
 
         self.mock_device = MagicMock()
-        self.mock_rohde.return_value = self.mock_device
+        self.mock_sgs.return_value = self.mock_device
         self.mock_sc5511a.return_value = self.mock_device
         self.mock_sc5521a.return_value = self.mock_device
 
     def tearDown(self):
         self.logger_patch.stop()
         self.event_handler_patch.stop()
-        self.rohde_patch.stop()
+        self.sgs_patch.stop()
         self.sc5511a_patch.stop()
         self.sc5521a_patch.stop()
 
@@ -57,7 +57,7 @@ class TestLocalOscillator(unittest.TestCase):
         self.assertEqual(lo.address, "TCPIP0::1.2.3.4::inst0::INSTR")
         self.assertEqual(lo.type, "LO")
 
-        self.mock_rohde.assert_called_once_with(
+        self.mock_sgs.assert_called_once_with(
             "test_lo", "TCPIP0::1.2.3.4::inst0::INSTR"
         )
         self.mock_event_handler.register_local_oscillator.assert_called_once_with(lo)
@@ -110,9 +110,9 @@ class TestLocalOscillator(unittest.TestCase):
 
     def test_connect_should_instantiate_correct_driver_for_rohdeschwarz_sgs(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
-        self.mock_rohde.reset_mock()
+        self.mock_sgs.reset_mock()
         lo.connect()
-        self.mock_rohde.assert_called_once_with(
+        self.mock_sgs.assert_called_once_with(
             "test_lo", "TCPIP0::1.2.3.4::inst0::INSTR"
         )
 
@@ -145,7 +145,7 @@ class TestLocalOscillator(unittest.TestCase):
 
         self.assertIn("Unsupported instrument type", str(context.exception))
 
-    def test_setup_should_configure_rohdeschwarz_correctly(self):
+    def test_setup_should_configure_rohdeschwarz_sgs_correctly(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
         lo.setup(frequency=10)
 
@@ -216,7 +216,7 @@ class TestLocalOscillator(unittest.TestCase):
             config["model"] = test_case["model"]
             config["address"] = test_case["address"]
 
-            self.mock_rohde.reset_mock()
+            self.mock_sgs.reset_mock()
             self.mock_sc5511a.reset_mock()
             self.mock_sc5521a.reset_mock()
             self.mock_device.reset_mock()
@@ -254,7 +254,7 @@ class TestLocalOscillator(unittest.TestCase):
             config["model"] = test_case["model"]
             config["address"] = test_case["address"]
 
-            self.mock_rohde.reset_mock()
+            self.mock_sgs.reset_mock()
             self.mock_sc5511a.reset_mock()
             self.mock_sc5521a.reset_mock()
             self.mock_device.reset_mock()
