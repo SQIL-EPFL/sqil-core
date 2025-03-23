@@ -87,20 +87,19 @@ class Experiment:
                 continue
 
             try:
-                instrument_id = instrument.id
-                instrument_name = getattr(instrument, "name", instrument_id)
+                instrument_name = getattr(instrument, "name", instrument.id)
 
-                if setup_registry.has_custom_setup(instrument_id):
+                if setup_registry.has_custom_setup(instrument.id):
                     logger.info(
-                        f"Applying registered custom setup for {instrument_name}"
+                        f"Applying registered custom setup to {instrument_name}"
                     )
-                    setup_registry.apply_setup(instrument_id, instrument)
+                    setup_registry.apply_setup(instrument.id, instrument)
                 else:
-                    logger.info(f"Running default setup for {instrument_name}")
+                    logger.info(f"Running default setup to {instrument_name}")
                     instrument.setup()
             except Exception as e:
                 logger.error(
-                    f"Error during setup of {getattr(instrument, 'name', instrument_id)}: {str(e)}"
+                    f"Error during setup of {getattr(instrument, 'name', instrument.id)}: {str(e)}"
                 )
 
     def sequence(self):

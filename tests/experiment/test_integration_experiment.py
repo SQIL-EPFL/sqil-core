@@ -12,7 +12,7 @@ class TestExperimentIntegration(unittest.TestCase):
     def setUp(self):
         self.logger_patch = patch("sqil_core.config_log.logger")
         self.read_yaml_patch = patch("sqil_core.experiment._experiment.read_yaml")
-        self.rohde_schwarz_patch = patch(
+        self.rohde_schwarz_sgs_patch = patch(
             "sqil_core.experiment.instruments.local_oscillator.RohdeSchwarzSGS100A"
         )
         self.signalcore_sc5511a_patch = patch(
@@ -25,12 +25,12 @@ class TestExperimentIntegration(unittest.TestCase):
         self.mock_logger = self.logger_patch.start()
         self.mock_read_yaml = self.read_yaml_patch.start()
 
-        self.mock_rohde_schwarz = self.rohde_schwarz_patch.start()
+        self.mock_rohde_schwarz_sgs = self.rohde_schwarz_sgs_patch.start()
         self.mock_signalcore_sc5511a = self.signalcore_sc5511a_patch.start()
         self.mock_signalcore_sc5521a = self.signalcore_sc5521a_patch.start()
 
-        self.mock_rohde_device = MagicMock()
-        self.mock_rohde_schwarz.return_value = self.mock_rohde_device
+        self.mock_sgs_device = MagicMock()
+        self.mock_rohde_schwarz_sgs.return_value = self.mock_sgs_device
 
         self.mock_sc5511a_device = MagicMock()
         self.mock_signalcore_sc5511a.return_value = self.mock_sc5511a_device
@@ -40,7 +40,7 @@ class TestExperimentIntegration(unittest.TestCase):
 
         self.mock_setup_data = {
             "instruments": {
-                "rohde": {
+                "sgs": {
                     "name": "rohde_lo",
                     "model": "RohdeSchwarzSGS100A",
                     "address": "TCPIP0::1.2.3.4::inst0::INSTR",
@@ -69,38 +69,38 @@ class TestExperimentIntegration(unittest.TestCase):
     def tearDown(self):
         self.logger_patch.stop()
         self.read_yaml_patch.stop()
-        self.rohde_schwarz_patch.stop()
+        self.rohde_schwarz_sgs_patch.stop()
         self.signalcore_sc5511a_patch.stop()
         self.signalcore_sc5521a_patch.stop()
 
     def test_experiment_should_auto_control_oscillators_during_run(self):
         experiment = Experiment(setup_path="test_setup.yaml")
 
-        self.mock_rohde_device.reset_mock()
+        self.mock_sgs_device.reset_mock()
         self.mock_sc5511a_device.reset_mock()
         self.mock_sc5521a_device.reset_mock()
 
         # different kind of mock
         # the event handler expects a LO instance,
         # while the LO constructor expects a low-level instance (with the driver etc)
-        mock_rohde_lo = MagicMock()
-        mock_rohde_lo.name = "rohde_lo"
+        mock_sgs_lo = MagicMock()
+        mock_sgs_lo.name = "rohde_lo"
         mock_sc5511a_lo = MagicMock()
         mock_sc5511a_lo.name = "sc5511a_lo"
         mock_sc5521a_lo = MagicMock()
         mock_sc5521a_lo.name = "sc5521a_lo"
 
-        lo_event_handlers.register_local_oscillator(mock_rohde_lo)
+        lo_event_handlers.register_local_oscillator(mock_sgs_lo)
         lo_event_handlers.register_local_oscillator(mock_sc5511a_lo)
         lo_event_handlers.register_local_oscillator(mock_sc5521a_lo)
 
         experiment.run()
 
-        mock_rohde_lo.on.assert_called_once()
+        mock_sgs_lo.on.assert_called_once()
         mock_sc5511a_lo.on.assert_called_once()
         mock_sc5521a_lo.on.assert_called_once()
 
-        mock_rohde_lo.off.assert_called_once()
+        mock_sgs_lo.off.assert_called_once()
         mock_sc5511a_lo.off.assert_called_once()
         mock_sc5521a_lo.off.assert_called_once()
 
@@ -109,21 +109,21 @@ class TestExperimentIntegration(unittest.TestCase):
 
         LocalOscillator.disable_all_auto_control()
 
-        self.mock_rohde_device.reset_mock()
+        self.mock_sgs_device.reset_mock()
         self.mock_sc5511a_device.reset_mock()
         self.mock_sc5521a_device.reset_mock()
 
         experiment.run()
 
-        self.mock_rohde_device.on.assert_not_called()
-        self.mock_rohde_device.off.assert_not_called()
+        self.mock_sgs_device.on.assert_not_called()
+        self.mock_sgs_device.off.assert_not_called()
         self.mock_sc5511a_device.do_set_output_status.assert_not_called()
         self.mock_sc5521a_device.status.assert_not_called()
 
         LocalOscillator.enable_all_auto_control()
 
     def test_experiment_should_respect_custom_setup(self):
-        def custom_rohde_setup(lo):
+        def custom_sgs_setup(lo):
             lo.frequency(5e9)
             lo.power(-30)
 
@@ -131,13 +131,13 @@ class TestExperimentIntegration(unittest.TestCase):
             lo.setup(frequency=100)
             lo.power(-20)
 
-        setup_registry.register_setup("rohde", custom_rohde_setup)
+        setup_registry.register_setup("sgs", custom_sgs_setup)
         setup_registry.register_setup("sc5511a", custom_sc5511a_setup)
 
         Experiment(setup_path="test_setup.yaml")
 
-        self.mock_rohde_device.frequency.assert_called_with(5e9)
-        self.mock_rohde_device.power.assert_called_with(-30)
+        self.mock_sgs_device.frequency.assert_called_with(5e9)
+        self.mock_sgs_device.power.assert_called_with(-30)
 
         self.mock_sc5511a_device.do_set_ref_out_freq.assert_called_with(100)
         self.mock_sc5511a_device.power.assert_called_with(-20)
@@ -148,16 +148,16 @@ class TestExperimentIntegration(unittest.TestCase):
     def test_experiment_should_handle_mixed_lo_control(self):
         experiment = Experiment(setup_path="test_setup.yaml")
 
-        experiment.instruments.rohde.unregister()
+        experiment.instruments.sgs.unregister()
 
-        self.mock_rohde_device.reset_mock()
+        self.mock_sgs_device.reset_mock()
         self.mock_sc5511a_device.reset_mock()
         self.mock_sc5521a_device.reset_mock()
 
         experiment.run()
 
-        self.mock_rohde_device.on.assert_not_called()
-        self.mock_rohde_device.off.assert_not_called()
+        self.mock_sgs_device.on.assert_not_called()
+        self.mock_sgs_device.off.assert_not_called()
 
         self.mock_sc5511a_device.do_set_output_status.assert_any_call(1)
         self.mock_sc5511a_device.do_set_output_status.assert_any_call(0)
@@ -168,7 +168,7 @@ class TestExperimentIntegration(unittest.TestCase):
     def test_experiment_should_handle_lo_exceptions_gracefully(self):
         experiment = Experiment(setup_path="test_setup.yaml")
 
-        self.mock_rohde_device.on.side_effect = Exception("Cannot turn on")
+        self.mock_sgs_device.on.side_effect = Exception("Cannot turn on")
         self.mock_sc5511a_device.do_set_output_status.side_effect = [
             None,
             Exception("Cannot turn off"),
@@ -189,10 +189,10 @@ class CustomExperiment(Experiment):
         self.step_count = 0
 
         self.step_count += 1
-        self.instruments.rohde.frequency(10e9)
+        self.instruments.sgs.frequency(10e9)
 
         self.step_count += 1
-        self.instruments.rohde.power(-15)
+        self.instruments.sgs.power(-15)
 
         self.step_count += 1
 
@@ -201,20 +201,20 @@ class TestCustomExperiment(unittest.TestCase):
     def setUp(self):
         self.logger_patch = patch("sqil_core.config_log.logger")
         self.read_yaml_patch = patch("sqil_core.experiment._experiment.read_yaml")
-        self.rohde_schwarz_patch = patch(
+        self.rohde_schwarz_sgs_patch = patch(
             "sqil_core.experiment.instruments.local_oscillator.RohdeSchwarzSGS100A"
         )
 
         self.mock_logger = self.logger_patch.start()
         self.mock_read_yaml = self.read_yaml_patch.start()
-        self.mock_rohde_schwarz = self.rohde_schwarz_patch.start()
+        self.mock_rohde_schwarz_sgs = self.rohde_schwarz_sgs_patch.start()
 
-        self.mock_rohde_device = MagicMock()
-        self.mock_rohde_schwarz.return_value = self.mock_rohde_device
+        self.mock_sgs_device = MagicMock()
+        self.mock_rohde_schwarz_sgs.return_value = self.mock_sgs_device
 
         self.mock_setup_data = {
             "instruments": {
-                "rohde": {
+                "sgs": {
                     "name": "rohde_lo",
                     "model": "RohdeSchwarzSGS100A",
                     "address": "TCPIP0::1.2.3.4::inst0::INSTR",
@@ -227,7 +227,7 @@ class TestCustomExperiment(unittest.TestCase):
     def tearDown(self):
         self.logger_patch.stop()
         self.read_yaml_patch.stop()
-        self.rohde_schwarz_patch.stop()
+        self.rohde_schwarz_sgs_patch.stop()
 
     def test_custom_experiment_should_execute_sequence_with_event_handlers(self):
         before_handler = MagicMock()
@@ -242,8 +242,8 @@ class TestCustomExperiment(unittest.TestCase):
 
             self.assertEqual(experiment.step_count, 3)
 
-            self.mock_rohde_device.frequency.assert_called_with(10e9)
-            self.mock_rohde_device.power.assert_called_with(-15)
+            self.mock_sgs_device.frequency.assert_called_with(10e9)
+            self.mock_sgs_device.power.assert_called_with(-15)
 
             before_handler.assert_called_once()
             after_handler.assert_called_once()

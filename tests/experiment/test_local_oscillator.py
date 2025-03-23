@@ -90,7 +90,6 @@ class TestLocalOscillator(unittest.TestCase):
     def test_init_should_raise_value_error_when_missing_name(self):
         config_without_name = self.mock_config.copy()
         del config_without_name["name"]
-
         with self.assertRaises(ValueError) as context:
             LocalOscillator("test_id", config=config_without_name, config_path=None)
         self.assertIn("Missing 'name'", str(context.exception))
@@ -98,7 +97,6 @@ class TestLocalOscillator(unittest.TestCase):
     def test_init_should_raise_value_error_when_missing_model(self):
         config_without_model = self.mock_config.copy()
         del config_without_model["model"]
-
         with self.assertRaises(ValueError) as context:
             LocalOscillator("test_id", config=config_without_model, config_path=None)
         self.assertIn("Missing 'model'", str(context.exception))
@@ -106,12 +104,11 @@ class TestLocalOscillator(unittest.TestCase):
     def test_init_should_raise_value_error_when_missing_address_for_non_sc5521a(self):
         config_without_address = self.mock_config.copy()
         del config_without_address["address"]
-
         with self.assertRaises(ValueError) as context:
             LocalOscillator("test_id", config=config_without_address, config_path=None)
         self.assertIn("Missing 'address'", str(context.exception))
 
-    def test_connect_should_instantiate_correct_driver_for_rohdeschwarz(self):
+    def test_connect_should_instantiate_correct_driver_for_rohdeschwarz_sgs(self):
         lo = LocalOscillator("test_id", config=self.mock_config, config_path=None)
         self.mock_rohde.reset_mock()
         lo.connect()
@@ -129,7 +126,7 @@ class TestLocalOscillator(unittest.TestCase):
         lo.connect()
         self.mock_sc5511a.assert_called_once_with("test_lo", "10003C68")
 
-    def test_connect_should_instantiate_correct_driver_for_sc5521a(self):
+    def test_connect_should_instantiate_correct_driver_for_signalcore_sc5521a(self):
         sc5521a_config = self.mock_config.copy()
         sc5521a_config["model"] = "SC5521A"
         sc5521a_config["address"] = None
