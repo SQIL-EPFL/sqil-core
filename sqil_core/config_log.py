@@ -6,7 +6,7 @@ from colorama import Fore, Style, init
 init(autoreset=True, strip=False, convert=False)
 
 
-class CustomFormatter(logging.Formatter):
+class SqilFormatter(logging.Formatter):
     FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
     COLOR_MAP = {
@@ -23,13 +23,19 @@ class CustomFormatter(logging.Formatter):
         return super().format(record)
 
 
-# Create and configure the logger
+class SqilLogger(logging.Logger):
+    # By default show the stack trace when errors are logged
+    def error(self, msg, *args, exc_info=True, **kwargs):
+        super().error(msg, *args, exc_info=exc_info, **kwargs)
+
+
+logging.setLoggerClass(SqilLogger)
 logger = logging.getLogger("sqil_logger")
 logger.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
-console_handler.setFormatter(CustomFormatter(CustomFormatter.FORMAT))
+console_handler.setFormatter(SqilFormatter(SqilFormatter.FORMAT))
 
 # Avoid adding multiple handlers if the logger is reused
 if not logger.hasHandlers():
