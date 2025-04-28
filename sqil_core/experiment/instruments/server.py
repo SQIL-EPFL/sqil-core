@@ -7,8 +7,14 @@ import Pyro5.errors as pyro_errors
 import sqil_core as sqil
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
-from sqil_core.experiment.instruments._instrument import connect_instruments
+from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
+from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
 from sqil_core.utils._utils import _extract_variables_from_module, _hash_file
+
+_instrument_classes = {
+    "LO": LocalOscillator,
+    "ZI": ZI_Instrument,
+}
 
 
 @pyro.expose
@@ -133,3 +139,34 @@ def start_instrument_server(setup_path: str = ""):
     server.serve()
 
     return server
+
+
+def connect_instruments(
+    instrument_dict: dict | None,
+) -> dict[str, Instrument]:
+    if not instrument_dict:
+        return {}
+
+    instance_dict = {}
+    for instrument_id, config in instrument_dict.items():
+        instrument_type = config.get("type")
+        instrument_factory = _instrument_classes.get(instrument_type)
+
+        if not instrument_factory:
+            logger.warning(
+                f"Unknown instrument type '{instrument_type}' for '{instrument_id}'. "
+                f"Available types: {list(_instrument_classes.keys())}"
+            )
+            continue
+
+        try:
+            instance = instrument_factory(instrument_id, config=config)
+            instance_dict[instrument_id] = instance
+            logger.info(
+                f"Successfully connected to {config.get('name', instrument_id)}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
+            )
+    return instance_dict

@@ -4,11 +4,6 @@ from sqil_core.config_log import logger
 from sqil_core.experiment.helpers._function_override_handler import (
     FunctionOverrideHandler,
 )
-from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
-
-_instrument_classes = {
-    "LO": LocalOscillator,
-}
 
 
 class Instrument(FunctionOverrideHandler, ABC):
@@ -106,34 +101,3 @@ class Instrument(FunctionOverrideHandler, ABC):
     def config(self):
         """Instrument configuration dictionary (read-only)."""
         return self._config
-
-
-def connect_instruments(
-    instrument_dict: dict | None,
-) -> dict[str, Instrument]:
-    if not instrument_dict:
-        return {}
-
-    instance_dict = {}
-    for instrument_id, config in instrument_dict.items():
-        instrument_type = config.get("type")
-        instrument_factory = _instrument_classes.get(instrument_type)
-
-        if not instrument_factory:
-            logger.warning(
-                f"Unknown instrument type '{instrument_type}' for '{instrument_id}'. "
-                f"Available types: {list(_instrument_classes.keys())}"
-            )
-            continue
-
-        try:
-            instance = instrument_factory(instrument_id, config=config)
-            instance_dict[instrument_id] = instance
-            logger.info(
-                f"Successfully connected to {config.get('name', instrument_id)}"
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
-            )
-    return instance_dict
