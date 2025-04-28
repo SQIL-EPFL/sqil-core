@@ -1,4 +1,22 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+from laboneq import workflow
+from laboneq.dsl.quantum import TransmonParameters
+from laboneq.dsl.quantum.qpu import QPU
+from laboneq.dsl.quantum.quantum_element import QuantumElement
+from laboneq.dsl.session import Session
+from laboneq.simple import Experiment as LaboneQExperiment
+from laboneq.workflow.tasks import compile_experiment, run_experiment
+from laboneq_applications.analysis.resonator_spectroscopy import analysis_workflow
+from laboneq_applications.experiments.options import TuneUpWorkflowOptions
+from laboneq_applications.tasks.parameter_updating import (
+    temporary_modify,
+    update_qubits,
+)
+from numpy.typing import ArrayLike
 
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import after_experiment, before_experiment
@@ -18,7 +36,7 @@ class Instruments:
         return iter(self._instruments.values())
 
 
-class Experiment(ABC):
+class ExperimentHandler(ABC):
     instruments: Instruments | None = None
 
     def __init__(
@@ -64,5 +82,43 @@ class Experiment(ABC):
 
     def run(self):
         before_experiment.send()
-        self.sequence()
+
+        seq = self.sequence()
+        is_laboneq_exp = type(seq, LaboneQExperiment)
+        result = None
+
+        if is_laboneq_exp:
+            session = self.instruments.zi
+            compiled_exp = compile_experiment(session, seq)
+            result = run_experiment(session, compiled_exp)
+            pass
+        else:
+            result = seq
+
         after_experiment.send()
+
+        return result
+
+    def laboneq_workflow_runner(
+        session: Session, qpu: QPU, qubit: QuantumElement, name: str | None = None
+    ):
+        @workflow.workflow(name="workflow_runner")
+        def laboneq_workflow_runner(
+            options: TuneUpWorkflowOptions | None = None,
+        ) -> None:
+            qubit = temporary_modify(qubit, temporary_parameters)
+
+            exp = create_experiment(
+                qpu,
+                qubit,
+                frequencies=frequencies,
+            )
+            compiled_exp = compile_experiment(session, exp)
+            result = run_experiment(session, compiled_exp)
+            return result
+            # with workflow.if_(options.do_analysis):
+            #     analysis_results = analysis_workflow(result, qubit, frequencies)
+            #     qubit_parameters = analysis_results.output
+            #     with workflow.if_(options.update):
+            #         update_qubits(qpu, qubit_parameters["new_parameter_values"])
+            # workflow.return_(result)
