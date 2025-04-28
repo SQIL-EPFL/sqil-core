@@ -1,5 +1,5 @@
 from ._events import after_experiment, before_experiment
-from ._experiment import Experiment
+from ._experiment import ExperimentHandler
 from .instruments._instrument import Instrument
 from .instruments.local_oscillator import LocalOscillator
 from .instruments.server import (
