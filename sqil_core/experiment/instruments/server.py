@@ -1,14 +1,15 @@
 import os
+import pickle
 from typing import cast
 
 import Pyro5.api as pyro
 import Pyro5.errors as pyro_errors
 
-import sqil_core as sqil
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
+from sqil_core.utils._read import read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module, _hash_file
 
 _instrument_classes = {
@@ -56,7 +57,7 @@ class InstrumentServer:
 
     def _expose(self) -> None:
         classes = {instrument.__class__ for _, instrument in self._instruments.items()}
-        # classes |= {Instrument}
+        # classes |= {Session}
         for cls in classes:
             pyro.expose(cls)
             logger.info(f"Exposed class {cls} to Pyro5.")
@@ -123,7 +124,7 @@ def start_instrument_server(setup_path: str = ""):
     If the path to the setup file is not provided it will be guessedby readig ./config.yaml.
     """
     if not setup_path:
-        config = sqil.read_yaml("config.yaml")
+        config = read_yaml("config.yaml")
         setup_path = config.get("setup_path", "setup.py")
     setup = _extract_variables_from_module("setup", setup_path)
 
