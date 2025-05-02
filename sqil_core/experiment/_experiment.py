@@ -7,6 +7,7 @@ from laboneq.dsl.quantum import TransmonParameters
 from laboneq.dsl.quantum.qpu import QPU
 from laboneq.dsl.quantum.quantum_element import QuantumElement
 from laboneq.dsl.session import Session
+from laboneq.simple import DeviceSetup
 from laboneq.simple import Experiment as LaboneQExperiment
 from laboneq.workflow.tasks import compile_experiment, run_experiment
 from laboneq_applications.analysis.resonator_spectroscopy import analysis_workflow
@@ -22,6 +23,8 @@ from sqil_core.experiment._events import after_experiment, before_experiment
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.server import link_instrument_server
 from sqil_core.experiment.setup_registry import setup_registry
+from sqil_core.utils._read import read_yaml
+from sqil_core.utils._utils import _extract_variables_from_module
 
 
 class Instruments:
@@ -37,12 +40,22 @@ class Instruments:
 
 class ExperimentHandler(ABC):
     instruments: Instruments | None = None
+    zi_setup: DeviceSetup
+    zi_session: Session
 
     def __init__(
         self, params: dict = {}, param_dict_path: str = "", setup_path: str = ""
     ):
         # Get instruments from the server
         server, instrument_instances = link_instrument_server()
+
+        # Create Zurich Instruments session
+        zi = instrument_instances.get("zi", None)
+        if zi is not None:
+            self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
+            self.zi_session = Session(self.zi_setup)
+            self.zi_session.connect()
+
         self.instruments = Instruments(instrument_instances)
 
     # TODO: move to server
@@ -83,13 +96,13 @@ class ExperimentHandler(ABC):
         before_experiment.send()
 
         seq = self.sequence()
-        is_laboneq_exp = type(seq, LaboneQExperiment)
+        is_laboneq_exp = type(seq) == LaboneQExperiment
         result = None
 
         if is_laboneq_exp:
-            session = self.instruments.zi
-            compiled_exp = compile_experiment(session, seq)
-            result = run_experiment(session, compiled_exp)
+            compiled_exp = compile_experiment(self.zi_session, seq)
+            print("Experiment compiled")
+            result = run_experiment(self.zi_session, compiled_exp)
             pass
         else:
             result = seq

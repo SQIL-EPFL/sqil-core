@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 
+import Pyro5.server
+
 from sqil_core.config_log import logger
 from sqil_core.experiment.helpers._function_override_handler import (
     FunctionOverrideHandler,
 )
 
 
+@Pyro5.server.expose
 class Instrument(FunctionOverrideHandler, ABC):
     """
     Base class for instruments with configurable behavior.
@@ -29,6 +32,7 @@ class Instrument(FunctionOverrideHandler, ABC):
         self._name = config.get("name", "")
         self._address = config.get("address", "")
         self._config = config
+        self._device = None
 
         self._default_functions = {
             "connect": self._default_connect,
@@ -43,7 +47,7 @@ class Instrument(FunctionOverrideHandler, ABC):
                 self.override_function(method_name, method)
 
         self._default_functions = self._functions.copy()
-        self.connect()  # Auto-connect on instantiation
+        self._device = self.connect()  # Auto-connect on instantiation
 
     def connect(self, *args, **kwargs):
         """Calls the overridden or default `connect` method."""
@@ -71,6 +75,16 @@ class Instrument(FunctionOverrideHandler, ABC):
     def _default_disconnect(self, *args, **kwargs):
         """Default `disconnect` implementation (must be overridden)."""
         pass
+
+    def __getattr__(self, name):
+        """
+        Dynamically expose all attributes to Pyro server.
+        """
+        if name in self.__dict__:
+            return self.__dict__[name]
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{name}'"
+        )
 
     @property
     def id(self):
@@ -101,3 +115,8 @@ class Instrument(FunctionOverrideHandler, ABC):
     def config(self):
         """Instrument configuration dictionary (read-only)."""
         return self._config
+
+    @property
+    def device(self):
+        """Raw instrument instance (read-only)."""
+        return self._device
