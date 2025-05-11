@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 from typing import cast
 
 import Pyro5.api as pyro
@@ -170,4 +171,5 @@ def connect_instruments(
             logger.error(
                 f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
             )
+            sys.exit(-1)
     return instance_dict
