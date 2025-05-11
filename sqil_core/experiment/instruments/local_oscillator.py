@@ -1,144 +1,171 @@
+from abc import ABC, abstractmethod
+
 import yaml
 from qcodes.instrument_drivers.rohde_schwarz import RohdeSchwarzSGS100A
 from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
 from sqil_core.config_log import logger
+from sqil_core.experiment.instruments import Instrument
 from sqil_core.experiment.lo_event_handler import lo_event_handlers
 
 from .drivers.SignalCore_SC5511A import SignalCore_SC5511A
 
 
-class LocalOscillator:
-    def __init__(self, instrument_id, config=None, config_path="setup.yaml"):
-        """
-        Initialize a local oscillator by ID from configuration.
+class LocalOscillatorBase(Instrument, ABC):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        Args:
-            instrument_id: ID of the instrument in the config file
-            config: Configuration dictionary containing instrument settings.
-                   Takes precedence over config_path.
-            config_path: Path to the YAML configuration file
-        """
-        if config is None and config_path is not None:
-            # Load configuration from file
-            with open(config_path, "r") as file:
-                file_config = yaml.safe_load(file)
+    @abstractmethod
+    def set_frequency(self, value) -> None:
+        """Set the frequency of the local oscillator."""
+        pass
 
-            if (
-                "instruments" not in file_config
-                or instrument_id not in file_config["instruments"]
-            ):
-                raise ValueError(
-                    f"Instrument '{instrument_id}' not found in config file"
-                )
+    @abstractmethod
+    def set_power(self, value) -> None:
+        """Set the power of the local oscillator."""
+        pass
 
-            config = file_config["instruments"][instrument_id]
-        elif config is None:
-            raise ValueError("Either config or config_path must be provided")
+    @abstractmethod
+    def turn_on(self) -> None:
+        """Turn the local oscillator on."""
+        pass
 
-        self.id = instrument_id
-        self.config = config
+    @abstractmethod
+    def turn_off(self) -> None:
+        """Turn the local oscillator off."""
+        pass
 
-        if "name" not in config:
-            raise ValueError(f"Missing 'name' for instrument '{instrument_id}'")
-        self.name = config["name"]
 
-        if "model" not in config:
-            raise ValueError(f"Missing 'model' for instrument '{instrument_id}'")
-        self.model = config["model"]
+class SqilRohdeSchwarzSGS100A(LocalOscillatorBase):
+    def _default_connect(self, *args, **kwargs):
+        logger.info(f"Connecting to {self.name} ({self.model})")
+        return RohdeSchwarzSGS100A(self.name, self.address)
 
-        if self.model != "SC5521A" and "address" not in config:
-            raise ValueError(f"Missing 'address' for instrument '{instrument_id}'")
+    def _default_disconnect(self, *args, **kwargs):
+        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        self.turn_off()
 
-        self.address = config.get("address")  # May be None for SC5521A
-        self.type = config.get("type")
-        self.device = None
-
-        # Connect automatically
-        self.connect()
-
-        lo_event_handlers.register_local_oscillator(self)
-
-    def connect(self):
-        logger.info(f"Connecting to {self.name} at {self.address}")
-        if self.model == "RohdeSchwarzSGS100A":
-            self.device = RohdeSchwarzSGS100A(self.name, self.address)
-
-        elif self.model == "SignalCore_SC5511A":
-            self.device = SignalCore_SC5511A(self.name, self.address)
-
-        elif self.model == "SC5521A":
-            self.device = SC5521A(self.name)
-
-        else:
-            raise ValueError(f"Unsupported instrument type: {self.model}")
-        logger.info(f"Successfully connected to {self.name}")
-        logger.debug("-> done")
-
-    def setup(self, frequency=10):
-        """
-        Apply instrument-specific setup
-        """
+    def _default_setup(self, *args, **kwargs):
         logger.info(f"Setting up {self.name}")
-        if self.model == "RohdeSchwarzSGS100A":
-            self.device.status(False)
-            self.device.power(-60)  # for safety
+        self.turn_off()
+        self.set_power(-60)
 
-        elif self.model == "SignalCore_SC5511A":
-            self.device.power(-40)  # for safety
-            self.device.do_set_output_status(0)
-            self.device.do_set_ref_out_freq(frequency)
-            self.device.do_set_reference_source(1)  # to enable phase locking
-            self.device.do_set_standby(True)  # update PLL locking
-            self.device.do_set_standby(False)
-
-        elif self.model == "SC5521A":
-            self.device.status("off")
-            self.device.power(-10)  # for safety
-            self.device.clock_frequency(frequency)
-        logger.debug("-> done")
-
-    def power(self, value):
-        logger.info(f"Changing {self.name} power to {value}")
-        self.device.power(value)
-        logger.debug("-> done")
-
-    def frequency(self, value):
-        logger.info(f"Changing {self.name} frequency to {value}")
+    def set_frequency(self, value) -> None:
+        logger.info(f"Setting frequency to {value} for {self.name}")
         self.device.frequency(value)
-        logger.debug("-> done")
 
-    def on(self):
-        logger.info(f"Turning {self.name} on")
-        if self.model == "RohdeSchwarzSGS100A":
-            self.device.on()
-        elif self.model == "SignalCore_SC5511A":
-            self.device.do_set_output_status(1)
-        elif self.model == "SC5521A":
-            self.device.status("on")
-        logger.debug("-> done")
+    def set_power(self, value) -> None:
+        logger.info(f"Setting power to {value} for {self.name}")
+        self.device.power(value)
 
-    def off(self):
-        logger.info(f"Turning {self.name} off")
-        if self.model == "RohdeSchwarzSGS100A":
-            self.device.off()
-        elif self.model == "SignalCore_SC5511A":
-            self.device.do_set_output_status(0)
-        elif self.model == "SC5521A":
-            self.device.status("off")
-        logger.debug("-> done")
+    def turn_on(self) -> None:
+        logger.info(f"Turning on {self.name}")
+        self.device.on()
 
-    # these methods are for readability on call
-    def unregister(self):
-        lo_event_handlers.unregister_local_oscillator(self)
+    def turn_off(self) -> None:
+        logger.info(f"Turning off {self.name}")
+        self.device.off()
 
-    def register(self):
-        lo_event_handlers.register_local_oscillator(self)
 
-    @classmethod
-    def disable_all_auto_control(cls):
-        lo_event_handlers.disable_auto_control()
+class SqilSignalCoreSC5511A(LocalOscillatorBase):
 
-    @classmethod
-    def enable_all_auto_control(cls):
-        lo_event_handlers.enable_auto_control()
+    def _default_connect(self, *args, **kwargs):
+        logger.info(f"Connecting to {self.name} ({self.model})")
+        return SignalCore_SC5511A(self.name, self.address)
+
+    def _default_disconnect(self, *args, **kwargs):
+        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        self.turn_off()
+
+    def _default_setup(self, *args, **kwargs):
+        logger.info(f"Setting up {self.name}")
+        self.turn_off()
+        self.set_power(-40)
+        self.device.do_set_reference_source(1)  # to enable phase locking
+        self.device.do_set_standby(True)  # update PLL locking
+        self.device.do_set_standby(False)
+
+    def set_frequency(self, value) -> None:
+        logger.info(f"Setting frequency to {value} for {self.name}")
+        self.device.do_set_ref_out_freq(value)
+
+    def set_power(self, value) -> None:
+        logger.info(f"Setting power to {value} for {self.name}")
+        self.device.power(value)
+
+    def turn_on(self) -> None:
+        logger.info(f"Turning on {self.name}")
+        self.device.do_set_output_status(1)
+
+    def turn_off(self) -> None:
+        logger.info(f"Turning off {self.name}")
+        self.device.do_set_output_status(0)
+
+
+class SqilSignalCoreSC5521A(LocalOscillatorBase):
+    def _default_connect(self, *args, **kwargs):
+        logger.info(f"Connecting to {self.name} ({self.model})")
+        return SC5521A(self.name)
+
+    def _default_disconnect(self, *args, **kwargs):
+        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        self.turn_off()
+
+    def _default_setup(self, *args, **kwargs):
+        logger.info(f"Setting up {self.name}")
+        self.turn_off()
+        self.set_power(-40)
+
+    def set_frequency(self, value) -> None:
+        logger.info(f"Setting frequency to {value} for {self.name}")
+        self.device.clock_frequency(value)
+
+    def set_power(self, value) -> None:
+        logger.info(f"Setting power to {value} for {self.name}")
+        self.device.power(value)
+
+    def turn_on(self) -> None:
+        logger.info(f"Turning on {self.name}")
+        self.device.status("on")
+
+    def turn_off(self) -> None:
+        logger.info(f"Turning off {self.name}")
+        self.device.status("off")
+
+
+class LocalOscillator(LocalOscillatorBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        model = kwargs.get("config", {}).get("model", "")
+        if model == "RohdeSchwarzSGS100A":
+            self._device_class = SqilRohdeSchwarzSGS100A
+        elif model == "SignalCore_SC5511A":
+            self._device_class = SqilSignalCoreSC5511A
+        elif model == "SC5521A":
+            self._device_class = SqilSignalCoreSC5521A
+        else:
+            raise ValueError(f"Unsupported model: {model}")
+
+        self.instrument = self._device_class(self.id, self.config)
+
+    def _default_connect(self, *args, **kwargs):
+        pass
+
+    def _default_disconnect(self, *args, **kwargs):
+        pass
+
+    def _default_setup(self, *args, **kwargs):
+        pass
+
+    def set_frequency(self, value) -> None:
+        self.instrument.set_frequency(value)
+
+    def set_power(self, value) -> None:
+        self.instrument.set_power(value)
+
+    def turn_on(self) -> None:
+        self.instrument.turn_on()
+
+    def turn_off(self) -> None:
+        self.instrument.turn_off()
