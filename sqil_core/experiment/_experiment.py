@@ -21,7 +21,10 @@ from numpy.typing import ArrayLike
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import after_experiment, before_experiment
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
-from sqil_core.experiment.instruments.server import link_instrument_server
+from sqil_core.experiment.instruments.server import (
+    connect_instruments,
+    link_instrument_server,
+)
 from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module
@@ -42,12 +45,30 @@ class ExperimentHandler(ABC):
     instruments: Instruments | None = None
     zi_setup: DeviceSetup
     zi_session: Session
+    qpu: QPU
 
     def __init__(
-        self, params: dict = {}, param_dict_path: str = "", setup_path: str = ""
+        self,
+        params: dict = {},
+        param_dict_path: str = "",
+        setup_path: str = "",
+        server=False,
     ):
-        # Get instruments from the server
-        server, instrument_instances = link_instrument_server()
+        if server:
+            server, instrument_instances = link_instrument_server()
+        else:
+            if not setup_path:
+                config = read_yaml("config.yaml")
+                setup_path = config.get("setup_path", "setup.py")
+            setup = _extract_variables_from_module("setup", setup_path)
+
+            instrument_dict = setup.get("instruments", None)
+            if not instrument_dict:
+                logger.warning(
+                    f"Unable to find any instruments in {setup_path}"
+                    + "Do you have an `instruments` entry in your setup file?"
+                )
+            instrument_instances = connect_instruments(instrument_dict)
 
         # Create Zurich Instruments session
         zi = instrument_instances.get("zi", None)
@@ -55,6 +76,8 @@ class ExperimentHandler(ABC):
             self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect()
+            if zi.get_qpu is not None:
+                self.qpu = zi.get_qpu(self.zi_setup)
 
         self.instruments = Instruments(instrument_instances)
 
@@ -88,26 +111,30 @@ class ExperimentHandler(ABC):
                 )
 
     @abstractmethod
-    def sequence(self):
+    def sequence(self, *params, **kwargs):
         """Experimental sequence defined by the user"""
         pass
 
-    def run(self):
+    @abstractmethod
+    def analyze(self, raw_data, *params, **kwargs):
+        pass
+
+    def run(self, *params, **kwargs):
         before_experiment.send()
 
-        seq = self.sequence()
+        seq = self.sequence(*params, **kwargs)
         is_laboneq_exp = type(seq) == LaboneQExperiment
         result = None
 
         if is_laboneq_exp:
             compiled_exp = compile_experiment(self.zi_session, seq)
-            print("Experiment compiled")
             result = run_experiment(self.zi_session, compiled_exp)
-            pass
         else:
             result = seq
 
         after_experiment.send()
+
+        self.analyze(result, *params, **kwargs)
 
         return result
 
