@@ -17,6 +17,7 @@ from laboneq_applications.tasks.parameter_updating import (
     update_qubits,
 )
 from numpy.typing import ArrayLike
+from qcodes import Instrument as QCodesInstrument
 
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import after_experiment, before_experiment
@@ -133,6 +134,8 @@ class ExperimentHandler(ABC):
             result = seq
 
         after_experiment.send()
+
+        QCodesInstrument.close_all()
 
         self.analyze(result, *params, **kwargs)
 
