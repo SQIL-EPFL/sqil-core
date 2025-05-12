@@ -161,12 +161,13 @@ class ExperimentHandler(ABC):
     def run_with_plottr(self, *params, **kwargs):
         before_experiment.send()
 
-        sweep = kwargs.get("sweep", None)
-        if sweep is not None:
+        sweeps = kwargs.get("sweeps", None)
+        if sweeps is not None:
             # TODO: dynamically add unit
-            self.db_schema.update(
-                **{"sweep": {"type": "axis", "name": sweep.keys()[0]}}
-            )
+            sweep_schema = {}
+            for i, key in enumerate(list(sweeps.keys())):
+                sweep_schema[f"sweep{i}"] = {"type": "axis", "name": key}
+            self.db_schema.update(**sweep_schema)
 
         params_map, _ = map_inputs(self.sequence)
         datadict = build_plottr_dict(self.db_schema)
@@ -174,39 +175,61 @@ class ExperimentHandler(ABC):
         db_path_local = self.setup["storage"]["db_path_local"]
 
         # TODO: dynamically assign self.exp_name to class name if not provided
-        data_to_save = {}
         with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
             filepath_parent = writer.filepath.parent
             path = str(filepath_parent)
             last_two_parts = path.split(os.sep)[-2:]
             new_path = os.path.join(db_path, *last_two_parts)
+            new_path_local = os.path.join(db_path_local, *last_two_parts)
             writer.save_text("directry_path.md", new_path)
 
-            seq = self.sequence(*params, **kwargs)
-            is_laboneq_exp = type(seq) == LaboneQExperiment
-            result = None
+            sweep_idx = -1
+            for sweep_key, sweep_values in (sweeps or {"": None}).items():
+                sweep_idx += 1
+                if sweep_values is None:
+                    sweep_values = [0]
+                for sweep_value in sweep_values:
+                    data_to_save = {}
 
-            if is_laboneq_exp:
-                compiled_exp = compile_experiment(self.zi_session, seq)
-                result = run_experiment(self.zi_session, compiled_exp)
-                qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
-                raw_data = result[qu_idx_by_uid[params[0]]].result.data
-                data_to_save["data"] = raw_data
-            else:
-                result = seq
-                data_to_save["data"] = result
+                    seq = self.sequence(*params, **kwargs)
+                    is_laboneq_exp = type(seq) == LaboneQExperiment
+                    result = None
 
-            # Add parameters to saved data
-            datadict_keys = datadict.keys()
-            for key, value in params_map.items():
-                if key in datadict_keys:
-                    data_to_save[key] = params[value]
-            # Save data using plottr
-            writer.add_data(**data_to_save)
+                    if is_laboneq_exp:
+                        for qubit in self.qpu.qubits:
+                            # TODO: save and re-apply old qubit params
+                            # Reset to the first value of every sweep,
+                            # then override current sweep value for all qubits
+                            tmp = {}
+                            if sweep_key:
+                                tmp = {key: value[0] for key, value in sweeps.items()}
+                                qubit.update(**{**tmp, sweep_key: sweep_value})
 
-            # Add sweep to datadict
-            if sweep is not None:
-                writer.add_data(**{"sweep": sweep})
+                        # Required to update params
+                        seq = self.sequence(*params, **kwargs)
+                        compiled_exp = compile_experiment(self.zi_session, seq)
+                        result = run_experiment(self.zi_session, compiled_exp)
+                        qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
+                        raw_data = result[qu_idx_by_uid[params[0]]].result.data
+                        data_to_save["data"] = raw_data
+                        result = raw_data
+                    else:
+                        result = seq
+                        data_to_save["data"] = result
+
+                    # Add parameters to saved data
+                    datadict_keys = datadict.keys()
+                    for key, value in params_map.items():
+                        if key in datadict_keys:
+                            data_to_save[key] = params[value]
+                    # Add sweep to datadict
+                    if sweeps is not None:
+                        for i, key in enumerate(list(sweeps.keys())):
+                            data_to_save[f"sweep{sweep_idx}"] = sweeps[key][0]
+                        data_to_save[f"sweep{sweep_idx}"] = sweep_value
+
+                    # Save data using plottr
+                    writer.add_data(**data_to_save)
 
             after_experiment.send()
 
@@ -216,7 +239,7 @@ class ExperimentHandler(ABC):
             del instrument
 
         # Run analysis script
-        self.analyze(result, *params, **kwargs)
+        self.analyze(result, new_path_local, *params, **kwargs)
 
         return result
 
