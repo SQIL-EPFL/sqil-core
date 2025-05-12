@@ -135,8 +135,12 @@ class ExperimentHandler(ABC):
 
         after_experiment.send()
 
+        # Close and delete QCodes instances to avoid connection issues in following experiments
         QCodesInstrument.close_all()
+        for instrument in self.instruments:
+            del instrument
 
+        # Run analysis script
         self.analyze(result, *params, **kwargs)
 
         return result
