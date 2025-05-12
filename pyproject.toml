@@ -25,6 +25,7 @@ qcodes-contrib-drivers = "^0.23.0"
 blinker = "^1.9.0"
 laboneq = "^2.50.0"
 laboneq-applications = "^2.4.0"
+plottr = "^0.14.0"
 
 
 [tool.poetry.group.dev.dependencies]

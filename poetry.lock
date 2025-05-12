@@ -747,6 +747,7 @@ click = ">=8.1"
 cloudpickle = ">=3.0.0"
 fsspec = ">=2021.09.0"
 importlib_metadata = {version = ">=4.13.0", markers = "python_version < \"3.12\""}
+numpy = {version = ">=1.24", optional = true, markers = "extra == \"array\""}
 packaging = ">=20.0"
 partd = ">=1.4.0"
 pyyaml = ">=5.3.1"
@@ -2957,6 +2958,41 @@ test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=8.3.2)", "pytest-
 type = ["mypy (>=1.11.2)"]
 
 [[package]]
+name = "plottr"
+version = "0.14.0"
+description = "A tool for live plotting and processing data"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "plottr-0.14.0-py3-none-any.whl", hash = "sha256:d931ec9c04f9fcf66b60f4fe393c89a5bb54a0879e0c76729590d45181a1c7ad"},
+    {file = "plottr-0.14.0.tar.gz", hash = "sha256:0e5358aff37c2e8de1ed70dcada99f000f85853804e0ea4c6f079b0de8fe9061"},
+]
+
+[package.dependencies]
+h5py = ">=2.10.0"
+lmfit = ">=1.0"
+matplotlib = ">=3.0.0"
+numpy = ">=1.12.0"
+packaging = ">=20.0"
+pandas = ">=0.22"
+psutil = "*"
+pyqtgraph = ">=0.12.1"
+pyzmq = "*"
+qtpy = ">=1.9.0"
+typing-extensions = ">=3.7.4.3"
+versioningit = ">=1.1.0"
+watchdog = "*"
+xarray = "*"
+xhistogram = ">=0.3.0"
+
+[package.extras]
+pyqt5 = ["PyQt5"]
+pyqt6 = ["PyQt6"]
+pyside2 = ["PySide2 (>=5.12)"]
+qcodes = ["qcodes"]
+
+[[package]]
 name = "pluggy"
 version = "1.5.0"
 description = "plugin and hook calling mechanisms for python"
@@ -3490,6 +3526,21 @@ files = [
 
 [package.extras]
 diagrams = ["jinja2", "railroad-diagrams"]
+
+[[package]]
+name = "pyqtgraph"
+version = "0.13.7"
+description = "Scientific Graphics and GUI Library for Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pyqtgraph-0.13.7-py3-none-any.whl", hash = "sha256:7754edbefb6c367fa0dfb176e2d0610da3ada20aa7a5318516c74af5fb72bf7a"},
+    {file = "pyqtgraph-0.13.7.tar.gz", hash = "sha256:64f84f1935c6996d0e09b1ee66fe478a7771e3ca6f3aaa05f00f6e068321d9e3"},
+]
+
+[package.dependencies]
+numpy = ">=1.22.0"
 
 [[package]]
 name = "pyro5"
@@ -4064,6 +4115,24 @@ dev = ["qiskit-ibm-runtime[common]", "qiskit-ibm-runtime[documentation]", "qiski
 documentation = ["Sphinx (>=6)", "jupyter-sphinx", "nbsphinx", "packaging", "sphinx-autodoc-typehints (<=1.19.2)", "sphinx-automodapi", "sphinxcontrib-katex (==0.9.9)"]
 test = ["ddt (>=1.2.0,!=1.4.0,!=1.4.3)"]
 visualization = ["plotly (>=5.23.0)"]
+
+[[package]]
+name = "qtpy"
+version = "2.4.3"
+description = "Provides an abstraction layer on top of the various Qt bindings (PyQt5/6 and PySide2/6)."
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "QtPy-2.4.3-py3-none-any.whl", hash = "sha256:72095afe13673e017946cc258b8d5da43314197b741ed2890e563cf384b51aa1"},
+    {file = "qtpy-2.4.3.tar.gz", hash = "sha256:db744f7832e6d3da90568ba6ccbca3ee2b3b4a890c3d6fbbc63142f6e4cdf5bb"},
+]
+
+[package.dependencies]
+packaging = "*"
+
+[package.extras]
+test = ["pytest (>=6,!=7.0.0,!=7.0.1)", "pytest-cov (>=3.0.0)", "pytest-qt"]
 
 [[package]]
 name = "referencing"
@@ -5099,7 +5168,7 @@ version = "6.0.0"
 description = "Filesystem events monitoring"
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "watchdog-6.0.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d1cdb490583ebd691c012b3d6dae011000fe42edb7a82ece80965b42abd61f26"},
     {file = "watchdog-6.0.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:bc64ab3bdb6a04d69d4023b29422170b74681784ffb9463ed4870cf2f3e66112"},
@@ -5402,6 +5471,23 @@ parallel = ["dask[complete]"]
 viz = ["cartopy", "matplotlib", "nc-time-axis", "seaborn"]
 
 [[package]]
+name = "xhistogram"
+version = "0.3.2"
+description = "Fast, flexible, label-aware histograms for numpy and xarray"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "xhistogram-0.3.2-py3-none-any.whl", hash = "sha256:ad55330d55296d273b3370678223fde0f50085e04cb744c7b3b0bb7702a2c6bf"},
+    {file = "xhistogram-0.3.2.tar.gz", hash = "sha256:56b0751e1469eaed81710f644c8ba5c574b51883baa2feee26a95f2f708f91a1"},
+]
+
+[package.dependencies]
+dask = {version = ">=2.3.0", extras = ["array"]}
+numpy = ">=1.17"
+xarray = ">=0.12.0"
+
+[[package]]
 name = "zhinst-comms"
 version = "3.0.1.64929"
 description = "ZI internal python bindings for Capnp"
@@ -5576,4 +5662,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "2877218062224f9f1d80ca2e1ece55bcf4b10631298fdd3d5bd8755b2bfa5db8"
+content-hash = "e58039f652e8f423345ce692e2e3fd48fb4b1f89de21da1ec777bb74440b5e1c"

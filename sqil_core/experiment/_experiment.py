@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 
+import numpy as np
 from laboneq import workflow
 from laboneq.dsl.quantum import TransmonParameters
 from laboneq.dsl.quantum.qpu import QPU
@@ -21,6 +23,7 @@ from qcodes import Instrument as QCodesInstrument
 
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import after_experiment, before_experiment
+from sqil_core.experiment.data.plottr import DataDict, DDH5Writer
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.server import (
     connect_instruments,
@@ -43,10 +46,14 @@ class Instruments:
 
 
 class ExperimentHandler(ABC):
+    setup: dict
     instruments: Instruments | None = None
+
     zi_setup: DeviceSetup
     zi_session: Session
     qpu: QPU
+
+    db_schema: dict = None
 
     def __init__(
         self,
@@ -55,21 +62,23 @@ class ExperimentHandler(ABC):
         setup_path: str = "",
         server=False,
     ):
+        # Read setup file
+        if not setup_path:
+            config = read_yaml("config.yaml")
+            setup_path = config.get("setup_path", "setup.py")
+        self.setup = _extract_variables_from_module("setup", setup_path)
+
+        # Get instruments through the server or connect locally
         if server:
             server, instrument_instances = link_instrument_server()
         else:
-            if not setup_path:
-                config = read_yaml("config.yaml")
-                setup_path = config.get("setup_path", "setup.py")
-            setup = _extract_variables_from_module("setup", setup_path)
-
-            instrument_dict = setup.get("instruments", None)
+            instrument_dict = self.setup.get("instruments", None)
             if not instrument_dict:
                 logger.warning(
                     f"Unable to find any instruments in {setup_path}"
                     + "Do you have an `instruments` entry in your setup file?"
                 )
-            instrument_instances = connect_instruments(instrument_dict)
+        instrument_instances = connect_instruments(instrument_dict)
 
         # Create Zurich Instruments session
         zi = instrument_instances.get("zi", None)
@@ -121,6 +130,10 @@ class ExperimentHandler(ABC):
         pass
 
     def run(self, *params, **kwargs):
+        db_type = self.setup.get("storage", {}).get("db_type", "")
+        if db_type == "plottr":
+            return self.run_with_plottr(*params, **kwargs)
+
         before_experiment.send()
 
         seq = self.sequence(*params, **kwargs)
@@ -145,26 +158,108 @@ class ExperimentHandler(ABC):
 
         return result
 
-    def laboneq_workflow_runner(
-        session: Session, qpu: QPU, qubit: QuantumElement, name: str | None = None
-    ):
-        @workflow.workflow(name="workflow_runner")
-        def laboneq_workflow_runner(
-            options: TuneUpWorkflowOptions | None = None,
-        ) -> None:
-            qubit = temporary_modify(qubit, temporary_parameters)
+    def run_with_plottr(self, *params, **kwargs):
+        before_experiment.send()
 
-            exp = create_experiment(
-                qpu,
-                qubit,
-                frequencies=frequencies,
+        sweep = kwargs.get("sweep", None)
+        if sweep is not None:
+            # TODO: dynamically add unit
+            self.db_schema.update(
+                **{"sweep": {"type": "axis", "name": sweep.keys()[0]}}
             )
-            compiled_exp = compile_experiment(session, exp)
-            result = run_experiment(session, compiled_exp)
-            return result
-            # with workflow.if_(options.do_analysis):
-            #     analysis_results = analysis_workflow(result, qubit, frequencies)
-            #     qubit_parameters = analysis_results.output
-            #     with workflow.if_(options.update):
-            #         update_qubits(qpu, qubit_parameters["new_parameter_values"])
-            # workflow.return_(result)
+
+        params_map, _ = map_inputs(self.sequence)
+        datadict = build_plottr_dict(self.db_schema)
+        db_path = self.setup["storage"]["db_path"]
+        db_path_local = self.setup["storage"]["db_path_local"]
+
+        # TODO: dynamically assign self.exp_name to class name if not provided
+        data_to_save = {}
+        with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
+            filepath_parent = writer.filepath.parent
+            path = str(filepath_parent)
+            last_two_parts = path.split(os.sep)[-2:]
+            new_path = os.path.join(db_path, *last_two_parts)
+            writer.save_text("directry_path.md", new_path)
+
+            seq = self.sequence(*params, **kwargs)
+            is_laboneq_exp = type(seq) == LaboneQExperiment
+            result = None
+
+            if is_laboneq_exp:
+                compiled_exp = compile_experiment(self.zi_session, seq)
+                result = run_experiment(self.zi_session, compiled_exp)
+                qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
+                raw_data = result[qu_idx_by_uid[params[0]]].result.data
+                data_to_save["data"] = raw_data
+            else:
+                result = seq
+                data_to_save["data"] = result
+
+            # Add parameters to saved data
+            datadict_keys = datadict.keys()
+            for key, value in params_map.items():
+                if key in datadict_keys:
+                    data_to_save[key] = params[value]
+            # Save data using plottr
+            writer.add_data(**data_to_save)
+
+            # Add sweep to datadict
+            if sweep is not None:
+                writer.add_data(**{"sweep": sweep})
+
+            after_experiment.send()
+
+        # Close and delete QCodes instances to avoid connection issues in following experiments
+        QCodesInstrument.close_all()
+        for instrument in self.instruments:
+            del instrument
+
+        # Run analysis script
+        self.analyze(result, *params, **kwargs)
+
+        return result
+
+
+def build_plottr_dict(db_schema):
+    """Create a DataDict object from the given schema."""
+    axes = []
+    db = {}
+
+    data_key = "data"
+    data_unit = ""
+
+    for key, value in db_schema.items():
+        if value.get("type") == "axis":
+            unit = value.get("unit", "")
+            db[key] = dict(unit=unit)
+            axes.append(key)
+        elif value.get("type") == "data":
+            data_key = key
+            data_unit = value.get("unit", "")
+    db[data_key] = dict(axes=axes, unit=data_unit)
+
+    datadict = DataDict(**db)
+    datadict.add_meta("schema", db_schema)
+
+    return datadict
+
+
+import inspect
+
+
+def map_inputs(func):
+    """Extracts parameter names and keyword arguments from a function signature."""
+    sig = inspect.signature(func)
+    params = {}
+    kwargs = []
+
+    for index, (name, param) in enumerate(sig.parameters.items()):
+        if param.default == inspect.Parameter.empty:
+            # Positional or required argument
+            params[name] = index
+        else:
+            # Keyword argument
+            kwargs.append(name)
+
+    return params, kwargs
