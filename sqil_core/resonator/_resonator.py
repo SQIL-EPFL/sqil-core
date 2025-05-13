@@ -1,3 +1,5 @@
+from typing import Literal
+
 import matplotlib.pyplot as plt
 import numpy as np
 from lmfit import Model
@@ -188,7 +190,7 @@ def fit_phase_vs_freq(freq, phase, theta0, Q_tot, fr):
     p_final = leastsq(
         lambda a, b, c: residuals_3(a, b, c, theta0, Q_tot), p0, args=(freq, phase)
     )
-    fr = float(p_final[0])
+    fr = float(p_final[0].item())
 
     # Step 4: Optimize Q_tot alone
     def residuals_4(p, x, y, theta0, fr):
@@ -200,7 +202,7 @@ def fit_phase_vs_freq(freq, phase, theta0, Q_tot, fr):
     p_final = leastsq(
         lambda a, b, c: residuals_4(a, b, c, theta0, fr), p0, args=(freq, phase)
     )
-    Q_tot = float(p_final[0])
+    Q_tot = float(p_final[0].item())
 
     # Step 5: Joint optimization of θ₀, Q_tot, and fr
     def residuals_5(p, x, y):
@@ -440,7 +442,7 @@ def S11_reflection_mesh(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi):
 def quick_fit(
     freq: np.ndarray,
     data: np.ndarray,
-    measurement: str,
+    measurement: Literal["reflection", "hanger"],
     tau: float | None = None,
     Q_tot: float | None = None,
     fr: float | None = None,
@@ -490,11 +492,11 @@ def quick_fit(
         A tuple containing:
         - a (float): Amplitude scaling factor from the off-resonant point.
         - alpha (float): Phase offset from the off-resonant point (in radians).
+        - tau (float): Estimated cable delay (in radians).
         - Q_tot (float): Total quality factor.
         - Q_ext (complex): External quality factor, accounting for impedance mismatch.
         - fr (float): Resonance frequency.
         - phi0 (float): Phase shift due to impedance mismatch (in radians).
-        - theta0 (float): Refined phase offset at resonance.
 
     Notes
     -----
@@ -654,7 +656,7 @@ def quick_fit(
         fig.tight_layout()
         plt.show()
 
-    return a, alpha, Q_tot, Q_ext, fr, phi0, theta0
+    return a, alpha, tau, Q_tot, Q_ext, fr, phi0
 
 
 @fit_output

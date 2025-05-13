@@ -13,4 +13,5 @@ from ._fit import (
     fit_lorentzian,
     fit_qubit_relaxation_qp,
     fit_skewed_lorentzian,
+    transform_data,
 )

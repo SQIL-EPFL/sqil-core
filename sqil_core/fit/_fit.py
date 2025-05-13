@@ -4,6 +4,7 @@ import numpy as np
 from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
 
 import sqil_core.fit._models as _models
+from sqil_core.utils._utils import fill_gaps, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
 
@@ -384,7 +385,11 @@ def fit_qubit_relaxation_qp(
 
 @fit_output
 def fit_decaying_oscillations(
-    x_data: np.ndarray, y_data: np.ndarray, num_init: int = 10
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    guess: list[float] | None = None,
+    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
+    num_init: int = 10,
 ) -> FitResult:
     r"""
     Fits a decaying oscillation model to data. The function estimates key features
@@ -416,18 +421,28 @@ def fit_decaying_oscillations(
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the pi_time and its standard error.
     """
-    # Extract key features from the data
-    min_y, max_y = np.min(y_data), np.max(y_data)
-    period_guess = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
-    time_span = np.max(x_data) - np.min(x_data)
+    # Fill empty guesses
+    if not guess:
+        guess = [None] * 5
+    if np.any(np.array(guess) == None):
+        A = y_data[0] - y_data[-1]
+        tau = np.max(x_data) - np.min(x_data)
+        T = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
+        y0 = [y_data[-1], np.mean(y_data)]
+        phi = np.linspace(0.0, np.pi * T, num_init)
+        guess = fill_gaps(guess, [A, tau, y0, phi, T])
+
+    A, tau, y0, phi, T = guess
+    phi = make_iterable(phi)
+    y0 = make_iterable(y0)
 
     best_fit = None
     best_popt = None
 
     # Try multiple initializations
-    for phi_guess in np.linspace(0.0, np.pi * period_guess, num_init):
-        for factor in [y_data[-1], np.mean(y_data)]:
-            p0 = [y_data[0] - y_data[-1], time_span, factor, phi_guess, period_guess]
+    for phi_guess in phi:
+        for offset in y0:
+            p0 = [A, tau, offset, phi_guess, T]
 
             try:
                 with warnings.catch_warnings():
@@ -437,6 +452,7 @@ def fit_decaying_oscillations(
                         x_data,
                         y_data,
                         p0,
+                        bounds=bounds,
                         full_output=True,
                     )
                 popt = fit_output[0]
@@ -452,6 +468,7 @@ def fit_decaying_oscillations(
                         p0,
                         loss="soft_l1",
                         f_scale=0.1,
+                        bounds=bounds,
                         args=(x_data, y_data),
                     )
                     best_fit, best_popt = result, result.x
