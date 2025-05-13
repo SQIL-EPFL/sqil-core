@@ -163,65 +163,77 @@ class ExperimentHandler(ABC):
     def run_with_plottr(self, *params, **kwargs):
         before_experiment.send()
 
+        # Map input parameters index to their name
+        params_map, _ = map_inputs(self.sequence)
+
+        # Get information on sweeps
         sweeps: dict = kwargs.get("sweeps", None)
         sweep_keys = []
         sweep_grid = []
         sweep_schema = {}
         if sweeps is not None:
+            # Name of the parameters to sweep
             sweep_keys = list(sweeps.keys())
+            # Create a mesh grid of all the sweep parameters
             sweep_grid = list(itertools.product(*sweeps.values()))
-            # TODO: dynamically add unit
+            # Add sweeps to the database schema
             for i, key in enumerate(sweep_keys):
+                # TODO: dynamically add unit
                 sweep_schema[f"sweep{i}"] = {"type": "axis", "name": key}
-            # self.db_schema.update(**sweep_schema)
 
+        # Create the plotter datadict (database) using the inferred schema
         db_schema = {**self.db_schema, **sweep_schema}
-        params_map, _ = map_inputs(self.sequence)
         datadict = build_plottr_dict(db_schema)
+        # Get local and server storage folders
         db_path = self.setup["storage"]["db_path"]
         db_path_local = self.setup["storage"]["db_path_local"]
 
         # TODO: dynamically assign self.exp_name to class name if not provided
         with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
-            filepath_parent = writer.filepath.parent
-            path = str(filepath_parent)
-            last_two_parts = path.split(os.sep)[-2:]
-            new_path = os.path.join(db_path, *last_two_parts)
-            new_path_local = os.path.join(db_path_local, *last_two_parts)
-            writer.save_text("directry_path.md", new_path)
+            # Get the path to the folder where the data will be stored
+            storage_path = get_plottr_path(writer, db_path)
+            storage_path_local = get_plottr_path(writer, db_path_local)
+            # Save helper files
+            writer.save_text("directry_path.md", storage_path)
 
             for sweep_values in sweep_grid or [None]:
                 data_to_save = {}
 
+                # Run/create the experiment. Creates it for laboneq, runs it otherwise
                 seq = self.sequence(*params, **kwargs)
+                # Detect if the sequence created a laboneq experiment
                 is_laboneq_exp = type(seq) == LaboneQExperiment
-                result = None
 
                 if is_laboneq_exp:
+                    qu_indices = kwargs.get("qu_idx", [0])
+                    if type(qu_indices) == int:
+                        qu_indices = [qu_indices]
+                    used_qubits = [self.qpu.qubits[i] for i in qu_indices]
+                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
                     # TODO: save and re-apply old qubit params
                     # Reset to the first value of every sweep,
                     # then override current sweep value for all qubits
-                    for qubit in self.qpu.qubits:
+                    for qubit in used_qubits:
                         tmp = dict(zip(sweep_keys, sweep_values or []))
                         qubit.update(**tmp)
-                    # Required to update params
+                    # Create the experiment (required to update params)
                     seq = self.sequence(*params, **kwargs)
                     compiled_exp = compile_experiment(self.zi_session, seq)
                     result = run_experiment(self.zi_session, compiled_exp)
-                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
-                    raw_data = result[qu_idx_by_uid[params[0]]].result.data
+                    # TODO: handle multiple qubits. Maybe different datadicts?
+                    raw_data = result[qu_idx_by_uid[qu_indices[0]]].result.data
                     data_to_save["data"] = raw_data
                     result = raw_data
                 else:
-                    result = seq
-                    data_to_save["data"] = result
+                    # TODO: handle results for different instrumets
+                    data_to_save["data"] = seq
 
-                # Add parameters to saved data
+                # Add parameters to the data to save
                 datadict_keys = datadict.keys()
                 for key, value in params_map.items():
                     if key in datadict_keys:
                         data_to_save[key] = params[value]
-                # Add sweep to datadict
+                # Add sweeps to the data to save
                 if sweeps is not None:
                     for i, key in enumerate(sweep_keys):
                         data_to_save[f"sweep{i}"] = sweep_values[i]
@@ -237,9 +249,7 @@ class ExperimentHandler(ABC):
             del instrument
 
         # Run analysis script
-        self.analyze(result, new_path_local, *params, **kwargs)
-
-        return result
+        self.analyze(result, storage_path_local, *params, **kwargs)
 
 
 def build_plottr_dict(db_schema):
@@ -284,3 +294,10 @@ def map_inputs(func):
             kwargs.append(name)
 
     return params, kwargs
+
+
+def get_plottr_path(writer: DDH5Writer, root_path):
+    filepath_parent = writer.filepath.parent
+    path = str(filepath_parent)
+    last_two_parts = path.split(os.sep)[-2:]
+    return os.path.join(root_path, *last_two_parts)
