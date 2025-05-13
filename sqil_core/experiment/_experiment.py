@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import itertools
+import json
 import os
 from abc import ABC, abstractmethod
 
@@ -161,16 +163,21 @@ class ExperimentHandler(ABC):
     def run_with_plottr(self, *params, **kwargs):
         before_experiment.send()
 
-        sweeps = kwargs.get("sweeps", None)
+        sweeps: dict = kwargs.get("sweeps", None)
+        sweep_keys = []
+        sweep_grid = []
+        sweep_schema = {}
         if sweeps is not None:
+            sweep_keys = list(sweeps.keys())
+            sweep_grid = list(itertools.product(*sweeps.values()))
             # TODO: dynamically add unit
-            sweep_schema = {}
-            for i, key in enumerate(list(sweeps.keys())):
+            for i, key in enumerate(sweep_keys):
                 sweep_schema[f"sweep{i}"] = {"type": "axis", "name": key}
-            self.db_schema.update(**sweep_schema)
+            # self.db_schema.update(**sweep_schema)
 
+        db_schema = {**self.db_schema, **sweep_schema}
         params_map, _ = map_inputs(self.sequence)
-        datadict = build_plottr_dict(self.db_schema)
+        datadict = build_plottr_dict(db_schema)
         db_path = self.setup["storage"]["db_path"]
         db_path_local = self.setup["storage"]["db_path_local"]
 
@@ -183,53 +190,44 @@ class ExperimentHandler(ABC):
             new_path_local = os.path.join(db_path_local, *last_two_parts)
             writer.save_text("directry_path.md", new_path)
 
-            sweep_idx = -1
-            for sweep_key, sweep_values in (sweeps or {"": None}).items():
-                sweep_idx += 1
-                if sweep_values is None:
-                    sweep_values = [0]
-                for sweep_value in sweep_values:
-                    data_to_save = {}
+            for sweep_values in sweep_grid or [None]:
+                data_to_save = {}
 
+                seq = self.sequence(*params, **kwargs)
+                is_laboneq_exp = type(seq) == LaboneQExperiment
+                result = None
+
+                if is_laboneq_exp:
+                    # TODO: save and re-apply old qubit params
+                    # Reset to the first value of every sweep,
+                    # then override current sweep value for all qubits
+                    for qubit in self.qpu.qubits:
+                        tmp = dict(zip(sweep_keys, sweep_values or []))
+                        qubit.update(**tmp)
+                    # Required to update params
                     seq = self.sequence(*params, **kwargs)
-                    is_laboneq_exp = type(seq) == LaboneQExperiment
-                    result = None
+                    compiled_exp = compile_experiment(self.zi_session, seq)
+                    result = run_experiment(self.zi_session, compiled_exp)
+                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
+                    raw_data = result[qu_idx_by_uid[params[0]]].result.data
+                    data_to_save["data"] = raw_data
+                    result = raw_data
+                else:
+                    result = seq
+                    data_to_save["data"] = result
 
-                    if is_laboneq_exp:
-                        for qubit in self.qpu.qubits:
-                            # TODO: save and re-apply old qubit params
-                            # Reset to the first value of every sweep,
-                            # then override current sweep value for all qubits
-                            tmp = {}
-                            if sweep_key:
-                                tmp = {key: value[0] for key, value in sweeps.items()}
-                                qubit.update(**{**tmp, sweep_key: sweep_value})
+                # Add parameters to saved data
+                datadict_keys = datadict.keys()
+                for key, value in params_map.items():
+                    if key in datadict_keys:
+                        data_to_save[key] = params[value]
+                # Add sweep to datadict
+                if sweeps is not None:
+                    for i, key in enumerate(sweep_keys):
+                        data_to_save[f"sweep{i}"] = sweep_values[i]
 
-                        # Required to update params
-                        seq = self.sequence(*params, **kwargs)
-                        compiled_exp = compile_experiment(self.zi_session, seq)
-                        result = run_experiment(self.zi_session, compiled_exp)
-                        qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
-                        raw_data = result[qu_idx_by_uid[params[0]]].result.data
-                        data_to_save["data"] = raw_data
-                        result = raw_data
-                    else:
-                        result = seq
-                        data_to_save["data"] = result
-
-                    # Add parameters to saved data
-                    datadict_keys = datadict.keys()
-                    for key, value in params_map.items():
-                        if key in datadict_keys:
-                            data_to_save[key] = params[value]
-                    # Add sweep to datadict
-                    if sweeps is not None:
-                        for i, key in enumerate(list(sweeps.keys())):
-                            data_to_save[f"sweep{sweep_idx}"] = sweeps[key][0]
-                        data_to_save[f"sweep{sweep_idx}"] = sweep_value
-
-                    # Save data using plottr
-                    writer.add_data(**data_to_save)
+                # Save data using plottr
+                writer.add_data(**data_to_save)
 
             after_experiment.send()
 
@@ -261,8 +259,8 @@ def build_plottr_dict(db_schema):
             data_key = key
             data_unit = value.get("unit", "")
     db[data_key] = dict(axes=axes, unit=data_unit)
-
     datadict = DataDict(**db)
+
     datadict.add_meta("schema", db_schema)
 
     return datadict
