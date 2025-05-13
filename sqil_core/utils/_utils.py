@@ -1,8 +1,8 @@
 import hashlib
 import importlib.util
 import inspect
-from collections.abc import Iterable
 import sys
+from collections.abc import Iterable
 
 from sqil_core.config_log import logger
 
