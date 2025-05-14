@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 import h5py
 import numpy as np
@@ -192,3 +193,21 @@ def get_sweep_param(path: str, exp_id: str):
 
 def get_measurement_id(path):
     return os.path.basename(path)[0:5]
+
+
+def copy_folder(src: str, dst: str):
+    # Ensure destination exists
+    os.makedirs(dst, exist_ok=True)
+
+    # Copy files recursively
+    for root, dirs, files in os.walk(src):
+        for dir_name in dirs:
+            os.makedirs(
+                os.path.join(dst, os.path.relpath(os.path.join(root, dir_name), src)),
+                exist_ok=True,
+            )
+        for file_name in files:
+            shutil.copy2(
+                os.path.join(root, file_name),
+                os.path.join(dst, os.path.relpath(os.path.join(root, file_name), src)),
+            )

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import copy
 import itertools
 import json
 import os
 from abc import ABC, abstractmethod
 
+import matplotlib.pyplot as plt
 import numpy as np
-from laboneq import workflow
+from laboneq import serializers, workflow
 from laboneq.dsl.quantum import TransmonParameters
 from laboneq.dsl.quantum.qpu import QPU
 from laboneq.dsl.quantum.quantum_element import QuantumElement
@@ -32,7 +34,7 @@ from sqil_core.experiment.instruments.server import (
     link_instrument_server,
 )
 from sqil_core.experiment.setup_registry import setup_registry
-from sqil_core.utils._read import read_yaml
+from sqil_core.utils._read import copy_folder, read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module
 
 
@@ -88,8 +90,31 @@ class ExperimentHandler(ABC):
             self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect()
-            if zi.get_qpu is not None:
+
+            qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
+            db_path_local = self.setup["storage"]["db_path_local"]
+            try:
+                self.qpu = serializers.load(os.path.join(db_path_local, qpu_filename))
+            except FileNotFoundError:
+                logger.warning(
+                    f"Cannot find QPU file name {qpu_filename} in {db_path_local}"
+                )
+                logger.warning(f" -> Creating a new QPU file")
+                if zi.get_qpu is None:
+                    logger.error(
+                        "No `get_qpu` function is specified in your setup file. You have two options:\n"
+                        + "- Add one to instruments['zi']['get_qpu']"
+                        + f"- Copy an old QPU file in your `db_path` and name it {qpu_filename}"
+                    )
+                    raise NotImplementedError(
+                        "No `get_qpu` function is specified in your setup file."
+                    )
                 self.qpu = zi.get_qpu(self.zi_setup)
+                os.makedirs(db_path_local, exist_ok=True)
+                serializers.save(
+                    self.qpu,
+                    os.path.join(db_path_local, qpu_filename),
+                )
 
         self.instruments = Instruments(instrument_instances)
 
@@ -195,6 +220,9 @@ class ExperimentHandler(ABC):
             storage_path_local = get_plottr_path(writer, db_path_local)
             # Save helper files
             writer.save_text("directry_path.md", storage_path)
+            # Save backup qpu
+            old_qubits = self.qpu.copy_qubits()
+            serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
 
             for sweep_values in sweep_grid or [None]:
                 data_to_save = {}
@@ -243,13 +271,27 @@ class ExperimentHandler(ABC):
 
             after_experiment.send()
 
+        # Reset the qpu to its previous state
+        self.qpu.quantum_operations.detach_qpu()
+        self.qpu = QPU(old_qubits, self.qpu.quantum_operations)
+
         # Close and delete QCodes instances to avoid connection issues in following experiments
         QCodesInstrument.close_all()
         for instrument in self.instruments:
             del instrument
 
         # Run analysis script
-        self.analyze(result, storage_path_local, *params, **kwargs)
+        try:
+            self.analyze(result, storage_path_local, *params, **kwargs)
+            plt.show()
+        except Exception as e:
+            logger.error(f"Error while analyzing the data {e}")
+
+        # TODO: update qpu
+        serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_new.json"))
+
+        # Copy the local folder to the server
+        copy_folder(storage_path_local, storage_path)
 
 
 def build_plottr_dict(db_schema):
