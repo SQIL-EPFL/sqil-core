@@ -1,4 +1,5 @@
 import warnings
+from typing import Callable
 
 import numpy as np
 from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
@@ -808,7 +809,11 @@ def transform_data(
     deg: bool = True,
     inv_transform: bool = False,
     full_output: bool = False,
-) -> np.ndarray | tuple[np.ndarray, list, np.ndarray]:
+) -> (
+    np.ndarray
+    | tuple[np.ndarray, Callable]
+    | tuple[np.ndarray, Callable, list, np.ndarray]
+):
     """
     Transforms complex-valued data using various transformation methods, including
     optimization-based alignment, real/imaginary extraction, amplitude, and phase.
