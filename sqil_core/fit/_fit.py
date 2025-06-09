@@ -403,13 +403,15 @@ def fit_decaying_oscillations(
     Parameters
     ----------
     x_data : np.ndarray
-        The independent variable (e.g., time) of the data.
-
+        Independent variable array (e.g., time or frequency).
     y_data : np.ndarray
-        The dependent variable (e.g., signal) of the data.
-
-    num_init : int, optional, default=10
-        The number of initial guesses for the phase to use in the fitting process.
+        Dependent variable array representing the measured signal.
+    guess : list[float] or None, optional
+        Initial parameter estimates [A, tau, y0, phi, T]. Missing values are automatically filled.
+    bounds : list[tuple[float]] or tuple, optional
+        Lower and upper bounds for parameters during fitting, by default no bounds.
+    num_init : int, optional
+        Number of phase values to try when guessing, by default 10.
 
     Returns
     -------
@@ -425,7 +427,7 @@ def fit_decaying_oscillations(
     if not guess:
         guess = [None] * 5
     if np.any(np.array(guess) == None):
-        A = y_data[0] - y_data[-1]
+        A = np.max(y_data) - np.min(y_data)
         tau = np.max(x_data) - np.min(x_data)
         T = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
         y0 = [y_data[-1], np.mean(y_data)]
@@ -804,6 +806,7 @@ def transform_data(
     transform_type: str = "optm",
     params: list = None,
     deg: bool = True,
+    inv_transform: bool = False,
     full_output: bool = False,
 ) -> np.ndarray | tuple[np.ndarray, list, np.ndarray]:
     """
@@ -831,8 +834,12 @@ def transform_data(
     deg : bool, optional
         If True, phase transformations return values in degrees (default: True).
 
+    inv_transform : bool, optional
+        If true returns transformed data and the function to perform the inverse transform.
+
     full_output : bool, optional
-        If True, returns transformed data, transformation parameters, and residuals.
+        If True, returns transformed data, the function to perform the inverse transform,
+        transformation parameters, and residuals.
 
     Returns
     -------
@@ -857,6 +864,9 @@ def transform_data(
 
     def transform(data, x0, y0, phi):
         return (data - x0 - 1.0j * y0) * np.exp(1.0j * phi)
+
+    def _inv_transform(data, x0, y0, phi):
+        return data * np.exp(-1.0j * phi) + x0 + 1.0j * y0
 
     def opt_transform(data):
         """Finds optimal transformation parameters."""
@@ -921,6 +931,10 @@ def transform_data(
         if deg:
             transformed_data = np.degrees(transformed_data)
 
+    inv_transform_fun = lambda data: _inv_transform(data, *params)
+
     if full_output:
-        return np.array(transformed_data), params, residual
+        return np.array(transformed_data), inv_transform_fun, params, residual
+    if inv_transform:
+        return np.array(transformed_data), inv_transform_fun
     return np.array(transformed_data)
