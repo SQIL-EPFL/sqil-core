@@ -441,6 +441,18 @@ def fit_decaying_oscillations(
 
     best_fit = None
     best_popt = None
+    best_chi2 = np.inf
+
+    @fit_output
+    def _curve_fit_osc(x_data, y_data, p0, bounds):
+        return curve_fit(
+            _models.decaying_oscillations,
+            x_data,
+            y_data,
+            p0,
+            bounds=bounds,
+            full_output=True,
+        )
 
     # Try multiple initializations
     for phi_guess in phi:
@@ -450,16 +462,10 @@ def fit_decaying_oscillations(
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    fit_output = curve_fit(
-                        _models.decaying_oscillations,
-                        x_data,
-                        y_data,
-                        p0,
-                        bounds=bounds,
-                        full_output=True,
-                    )
-                popt = fit_output[0]
-                best_fit, best_popt = fit_output, popt
+                    fit_res = _curve_fit_osc(x_data, y_data, p0, bounds)
+                if fit_res.metrics["red_chi2"] < best_chi2:
+                    best_fit, best_popt = fit_res.output, fit_res.params
+                    best_chi2 = fit_res.metrics["red_chi2"]
             except:
                 if best_fit is None:
 
