@@ -435,6 +435,17 @@ def fit_decaying_oscillations(
         phi = np.linspace(0.0, np.pi * T, num_init)
         guess = fill_gaps(guess, [A, tau, y0, phi, T])
 
+    # Default bounds
+    if bounds == (-np.inf, np.inf):
+        bounds = np.array([(-np.inf, np.inf)] * 5)
+        # Positive times
+        bounds[1] = (0, np.inf)
+        bounds[4] = (0, np.inf)
+        # Offset within y_min and y_max
+        bounds[3] = (np.min(y_data), np.max(y_data))
+        # Split into lower and upper bounds
+        bounds = [bounds[:, 0], bounds[:, 1]]
+
     A, tau, y0, phi, T = guess
     phi = make_iterable(phi)
     y0 = make_iterable(y0)
