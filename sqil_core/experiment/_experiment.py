@@ -5,6 +5,7 @@ import itertools
 import json
 import os
 from abc import ABC, abstractmethod
+from typing import Callable, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,6 +34,7 @@ from sqil_core.experiment.instruments.server import (
     connect_instruments,
     link_instrument_server,
 )
+from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
 from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import copy_folder, read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module
@@ -85,40 +87,34 @@ class ExperimentHandler(ABC):
         instrument_instances = connect_instruments(instrument_dict)
 
         # Create Zurich Instruments session
-        zi = instrument_instances.get("zi", None)
+        zi = cast(ZI_Instrument, instrument_instances.get("zi", None))
         if zi is not None:
-            self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
+            self.zi_setup = zi.generate_setup()
+            # self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect()
-
-            qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
-            db_path_local = self.setup["storage"]["db_path_local"]
-            try:
-                self.qpu = serializers.load(os.path.join(db_path_local, qpu_filename))
-            except FileNotFoundError:
-                logger.warning(
-                    f"Cannot find QPU file name {qpu_filename} in {db_path_local}"
-                )
-                logger.warning(f" -> Creating a new QPU file")
-                if zi.get_qpu is None:
-                    logger.error(
-                        "No `get_qpu` function is specified in your setup file. You have two options:\n"
-                        + "- Add one to instruments['zi']['get_qpu']"
-                        + f"- Copy an old QPU file in your `db_path` and name it {qpu_filename}"
-                    )
-                    raise NotImplementedError(
-                        "No `get_qpu` function is specified in your setup file."
-                    )
-                self.qpu = zi.get_qpu(self.zi_setup)
-                os.makedirs(db_path_local, exist_ok=True)
-                serializers.save(
-                    self.qpu,
-                    os.path.join(db_path_local, qpu_filename),
-                )
+            self._load_qpu(zi.generate_qpu)
 
         self.instruments = Instruments(instrument_instances)
 
-    # TODO: move to server
+    def _load_qpu(self, generate_qpu: Callable):
+        qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
+        db_path_local = self.setup["storage"]["db_path_local"]
+        try:
+            self.qpu = serializers.load(os.path.join(db_path_local, qpu_filename))
+        except FileNotFoundError:
+            logger.warning(
+                f"Cannot find QPU file name {qpu_filename} in {db_path_local}"
+            )
+            logger.warning(f" -> Creating a new QPU file")
+            self.qpu = generate_qpu(self.zi_setup)
+            os.makedirs(db_path_local, exist_ok=True)
+            serializers.save(
+                self.qpu,
+                os.path.join(db_path_local, qpu_filename),
+            )
+
+    # Move to server
     def _setup_instruments(self):
         """Default setup for all instruments with support for custom setups"""
         logger.info("Setting up instruments")
@@ -439,3 +435,31 @@ def pulse_sheet(device_setup, compiled_exp, name):
     plt.ylabel("Amplitude")
     plt.title(name)
     plt.show()
+
+
+def load_qpu(path, setup, zi):
+    qpu_filename = setup["storage"].get("qpu_filename", "qpu.json")
+    db_path_local = setup["storage"]["db_path_local"]
+    folder, filename = os.path.split(path)
+    try:
+        qpu = serializers.load(path)
+    except FileNotFoundError:
+        logger.warning(f"Cannot find QPU file name {qpu_filename} in {db_path_local}")
+        logger.warning(f" -> Creating a new QPU file")
+        if zi.get_qpu is None:
+            logger.error(
+                "No `get_qpu` function is specified in your setup file. You have two options:\n"
+                + "- Add one to instruments['zi']['get_qpu']"
+                + f"- Copy an old QPU file in your `db_path` and name it {qpu_filename}"
+            )
+            raise NotImplementedError(
+                "No `get_qpu` function is specified in your setup file."
+            )
+        qpu = zi.get_qpu(self.zi_setup)
+        os.makedirs(db_path_local, exist_ok=True)
+        serializers.save(
+            qpu,
+            os.path.join(db_path_local, qpu_filename),
+        )
+
+        return qpu
