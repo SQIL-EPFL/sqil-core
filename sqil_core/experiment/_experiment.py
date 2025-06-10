@@ -284,7 +284,8 @@ class ExperimentHandler(ABC):
 
         # Run analysis script
         try:
-            self.analyze(result, storage_path_local, *params, **kwargs)
+            anal_res = self.analyze(result, storage_path_local, *params, **kwargs)
+            writer.save_text("analysis.md", anal_res)
             plt.show()
         except Exception as e:
             logger.error(f"Error while analyzing the data {e}")
