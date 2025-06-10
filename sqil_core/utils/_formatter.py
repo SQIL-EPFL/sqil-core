@@ -94,7 +94,7 @@ def get_name_and_unit(param_id: str) -> str:
     return f"{meta['name']} [{_EXP_UNIT_MAP[exponent]}{meta['unit']}]"
 
 
-def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
+def format_fit_params(param_names, params, std_errs=None, perc_errs=None):
     matrix = [param_names, params]
 
     headers = ["Param", "Fitted value"]
@@ -111,10 +111,10 @@ def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
     data = [matrix[:, i] for i in range(len(params))]
 
     table = tabulate(data, headers=headers, tablefmt="github")
-    print(table + "\n")
+    return table + "\n"
 
 
-def print_fit_metrics(fit_quality, keys: list[str] | None = None):
+def format_fit_metrics(fit_quality, keys: list[str] | None = None):
     if keys is None:
         keys = fit_quality.keys() if fit_quality else []
 
@@ -161,8 +161,8 @@ def print_fit_metrics(fit_quality, keys: list[str] | None = None):
             else:
                 quality = "BAD"
 
-        # Print result
-        print(f"{key}\t{value:.3e}\t{quality}")
+        # Don't use \t to avoid compatibility issues
+        return f"{key}    {value:.3e}    {quality}"
 
 
 def _sigma_for_confidence(confidence_level: float) -> float:

@@ -6,8 +6,7 @@ import numpy as np
 import scipy.optimize as spopt
 from lmfit.model import ModelResult
 
-from sqil_core.utils import print_fit_metrics as _print_fit_metrics
-from sqil_core.utils import print_fit_params as _print_fit_params
+from sqil_core.utils import format_fit_metrics, format_fit_params
 from sqil_core.utils._utils import _count_function_parameters
 
 
@@ -72,15 +71,18 @@ class FitResult:
             f"  metrics={self.metrics}\n)"
         )
 
-    def summary(self):
+    def summary(self, no_print=False):
         """Prints a detailed summary of the fit results."""
-        _print_fit_metrics(self.metrics)
-        _print_fit_params(
+        s = format_fit_metrics(self.metrics) + "\n"
+        s += format_fit_params(
             self.param_names,
             self.params,
             self.std_err,
             self.std_err / self.params * 100,
         )
+        if not no_print:
+            print(s)
+        return s
 
     def _no_prediction(self):
         raise Exception("No predition function available")
