@@ -5,9 +5,10 @@ import numpy as np
 from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
 
 import sqil_core.fit._models as _models
-from sqil_core.utils._utils import fill_gaps, make_iterable
+from sqil_core.utils._utils import fill_gaps, has_at_least_one, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
+from ._guess import gaussian_bounds, gaussian_guess, lorentzian_bounds, lorentzian_guess
 
 
 @fit_input
@@ -60,49 +61,15 @@ def fit_lorentzian(
     x, y = x_data, y_data
 
     # Default intial guess if not provided
-    if guess is None:
-        y_median = np.median(y)
-        y_max, y_min = np.max(y), np.min(y)
-
-        # Determine if it's a peak or dip
-        if y_max - y_median > y_median - y_min:
-            idx = np.argmax(y)
-            is_peak = True
-            y0 = y_min
-            peak_height = y_max - y0
-        else:
-            idx = np.argmin(y)
-            is_peak = False
-            y0 = y_max
-            peak_height = y0 - y_min
-
-        x0 = x[idx]
-
-        # Estimate FWHM using half-max crossings
-        half_max = y0 + (peak_height / 2.0 if is_peak else -peak_height / 2.0)
-        crossings = np.where(np.diff(np.sign(y - half_max)))[0]
-        if len(crossings) >= 2:
-            fwhm = np.abs(x[crossings[-1]] - x[crossings[0]])
-        else:
-            fwhm = (x[-1] - x[0]) / 10.0
-
-        # Compute A from peak height = 2A / FWHM
-        A = (peak_height * fwhm) / 2.0
-        if not is_peak:
-            A = -A
-
-        guess = [A, x0, fwhm, y0]
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, lorentzian_guess(x_data, y_data))
 
     # Default bounds if not provided
-    if bounds is None:
-        x_span = np.max(x) - np.min(x)
-        A_abs = np.abs(A) if A != 0 else 1.0
-        fwhm_min = (x[1] - x[0]) if len(x) > 1 else x_span / 100
-
-        bounds = (
-            [-10 * A_abs, np.min(x) - 0.1 * x_span, fwhm_min, np.min(y) - 0.5 * A_abs],
-            [+10 * A_abs, np.min(x) + 0.1 * x_span, fwhm_min, np.min(y) + 0.5 * A_abs],
-        )
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess, upper_guess = lorentzian_bounds(x_data, y_data, guess)
+        fill_gaps(lower, lower_guess)
+        fill_gaps(upper, upper_guess)
 
     res = curve_fit(_models.lorentzian, x, y, p0=guess, bounds=bounds, full_output=True)
 
@@ -163,50 +130,14 @@ def fit_gaussian(
     x, y = x_data, y_data
 
     # Default initial guess if not provided
-    if guess is None:
-        y_median = np.median(y)
-        y_max, y_min = np.max(y), np.min(y)
-
-        # Determine if peak or dip
-        if y_max - y_median >= y_median - y_min:
-            idx = np.argmax(y)
-            is_peak = True
-            y0 = y_min
-            peak_height = y_max - y0
-        else:
-            idx = np.argmin(y)
-            is_peak = False
-            y0 = y_max
-            peak_height = y0 - y_min
-
-        x0 = x[idx]
-
-        # Estimate FWHM via half-height crossings
-        half_max = y0 + (peak_height / 2.0 if is_peak else -peak_height / 2.0)
-        crossings = np.where(np.diff(np.sign(y - half_max)))[0]
-        if len(crossings) >= 2:
-            fwhm = np.abs(x[crossings[-1]] - x[crossings[0]])
-        else:
-            fwhm = (x[-1] - x[0]) / 10.0
-
-        sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))  # Convert FWHM to σ
-
-        A = peak_height * sigma * np.sqrt(2 * np.pi)
-        if not is_peak:
-            A = -A
-
-        guess = [A, x0, sigma, y0]
-
-    if bounds is None:
-        x_span = np.max(x) - np.min(x)
-        sigma_min = (x[1] - x[0]) / 10 if len(x) > 1 else x_span / 100
-        sigma_max = x_span
-        A_abs = np.abs(guess[0])
-
-        bounds = (
-            [-10 * A_abs, np.min(x) - 0.1 * x_span, sigma_min, np.min(y) - 0.5 * A_abs],
-            [10 * A_abs, np.max(x) + 0.1 * x_span, sigma_max, np.max(y) + 0.5 * A_abs],
-        )
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, gaussian_guess(x_data, y_data))
+    # Default bounds
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess, upper_guess = gaussian_bounds(x_data, y_data, guess)
+        fill_gaps(lower, lower_guess)
+        fill_gaps(upper, upper_guess)
 
     res = curve_fit(_models.gaussian, x, y, p0=guess, bounds=bounds, full_output=True)
 
