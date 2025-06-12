@@ -149,7 +149,7 @@ class ExperimentHandler(ABC):
         pass
 
     @abstractmethod
-    def analyze(self, raw_data, *params, **kwargs):
+    def analyze(self, path, *params, **kwargs):
         pass
 
     def run(self, *params, **kwargs):
@@ -177,6 +177,7 @@ class ExperimentHandler(ABC):
             del instrument
 
         # Run analysis script
+        # FIXME: now path
         self.analyze(result, *params, **kwargs)
 
         return result
@@ -280,7 +281,7 @@ class ExperimentHandler(ABC):
 
         # Run analysis script
         try:
-            anal_res = self.analyze(result, storage_path_local, *params, **kwargs)
+            anal_res = self.analyze(storage_path_local, *params, **kwargs)
             # writer.save_text("analysis.md", anal_res)
             plt.show()
         except Exception as e:
