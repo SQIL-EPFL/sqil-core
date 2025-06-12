@@ -306,6 +306,7 @@ def fit_input(fit_func):
         bounds=None,
         fixed_params=None,
         fixed_bound_factor=1e-6,
+        sigma=None,
         **kwargs,
     ):
         # Inspect function to check if it requires guess and bounds

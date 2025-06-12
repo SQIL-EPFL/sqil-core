@@ -164,34 +164,48 @@ def fit_gaussian(
 
     # Default initial guess if not provided
     if guess is None:
-        median_y = np.median(y)
-        max_x, min_x = np.max(x), np.min(x)
-        max_y, min_y = np.max(y), np.min(y)
+        y_median = np.median(y)
+        y_max, y_min = np.max(y), np.min(y)
 
-        # Determine A, x0, y0 based on peak prominence
-        if max_y - median_y >= median_y - min_y:
-            y0 = min_y
+        # Determine if peak or dip
+        if y_max - y_median >= y_median - y_min:
             idx = np.argmax(y)
-            A = max_y - median_y
+            is_peak = True
+            y0 = y_min
+            peak_height = y_max - y0
         else:
-            y0 = max_y
             idx = np.argmin(y)
-            A = min_y - median_y
+            is_peak = False
+            y0 = y_max
+            peak_height = y0 - y_min
 
         x0 = x[idx]
-        half = y0 + A / 2.0
-        dx = np.abs(np.diff(x[np.argsort(np.abs(y - half))]))
-        dx_min = np.abs(np.diff(x))
-        dx = dx[dx >= 2.0 * dx_min]
 
-        sigma = dx[0] / 2.0 if dx.size else dx_min
+        # Estimate FWHM via half-height crossings
+        half_max = y0 + (peak_height / 2.0 if is_peak else -peak_height / 2.0)
+        crossings = np.where(np.diff(np.sign(y - half_max)))[0]
+        if len(crossings) >= 2:
+            fwhm = np.abs(x[crossings[-1]] - x[crossings[0]])
+        else:
+            fwhm = (x[-1] - x[0]) / 10.0
+
+        sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))  # Convert FWHM to σ
+
+        A = peak_height * sigma * np.sqrt(2 * np.pi)
+        if not is_peak:
+            A = -A
+
         guess = [A, x0, sigma, y0]
 
-    # Default bounds if not provided
     if bounds is None:
+        x_span = np.max(x) - np.min(x)
+        sigma_min = (x[1] - x[0]) / 10 if len(x) > 1 else x_span / 100
+        sigma_max = x_span
+        A_abs = np.abs(guess[0])
+
         bounds = (
-            [-5.0 * np.abs(guess[0]), np.min(x), guess[2] / 100.0, np.min(y)],
-            [5.0 * np.abs(guess[0]), np.max(x), 10.0 * guess[2], np.max(y)],
+            [-10 * A_abs, np.min(x) - 0.1 * x_span, sigma_min, np.min(y) - 0.5 * A_abs],
+            [10 * A_abs, np.max(x) + 0.1 * x_span, sigma_max, np.max(y) + 0.5 * A_abs],
         )
 
     res = curve_fit(_models.gaussian, x, y, p0=guess, bounds=bounds, full_output=True)
