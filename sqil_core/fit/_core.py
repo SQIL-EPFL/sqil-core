@@ -78,7 +78,7 @@ class FitResult:
             self.param_names,
             self.params,
             self.std_err,
-            self.rel_err * 100,
+            np.array(self.std_err) / self.params * 100,
         )
         if not no_print:
             print(s)
@@ -554,7 +554,7 @@ def compute_chi2(residuals, n_params=None, cov_rescaled=True, sigma: np.ndarray 
         )
         red_chi2 = np.nan
     else:
-        red_chi2 = np.sum(residuals**2) / dof
+        red_chi2 = chi2 / dof
 
     return chi2, red_chi2
 

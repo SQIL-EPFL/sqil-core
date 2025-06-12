@@ -115,6 +115,8 @@ def format_fit_params(param_names, params, std_errs=None, perc_errs=None):
 
 
 def format_fit_metrics(fit_quality, keys: list[str] | None = None):
+    table_data = []
+
     if keys is None:
         keys = fit_quality.keys() if fit_quality else []
 
@@ -151,18 +153,22 @@ def format_fit_metrics(fit_quality, keys: list[str] | None = None):
                 quality = "MEDIUM"
             else:
                 quality = "BAD"
+        # Normalized root mean square error NRMSE
         # Normalized mean absolute error NMAE and
-        # normalized root mean square error NRMSE
-        elif (key == "nmae") or (key == "nrmse"):
-            if value < 0.1:
+        elif (key == "nrmse") or (key == "nmae"):
+            if value < 0.01:
                 quality = "GREAT"
-            elif value < 0.2:
+            elif value < 0.03:
                 quality = "GOOD"
+            elif value < 0.1:
+                quality = "MEDIUM"
             else:
                 quality = "BAD"
+        else:
+            continue
 
-        # Don't use \t to avoid compatibility issues
-        return f"{key}    {value:.3e}    {quality}"
+        table_data.append([key, f"{value:.3e}", quality])
+    return tabulate(table_data, tablefmt="plain")
 
 
 def _sigma_for_confidence(confidence_level: float) -> float:
