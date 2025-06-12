@@ -95,9 +95,8 @@ def fit_lorentzian(
 
     # Default bounds if not provided
     if bounds is None:
-        A_guess, x0_guess, fwhm_guess, y0_guess = guess
         x_span = np.max(x) - np.min(x)
-        A_abs = np.abs(A_guess) if A_guess != 0 else 1.0
+        A_abs = np.abs(A) if A != 0 else 1.0
         fwhm_min = (x[1] - x[0]) if len(x) > 1 else x_span / 100
 
         bounds = (
