@@ -97,7 +97,7 @@ def lorentzian_bounds(x_data, y_data, guess):
 
     bounds = (
         [-10 * A_abs, np.min(x) - 0.1 * x_span, fwhm_min, np.min(y) - 0.5 * A_abs],
-        [+10 * A_abs, np.min(x) + 0.1 * x_span, fwhm_min, np.min(y) + 0.5 * A_abs],
+        [+10 * A_abs, np.max(x) + 0.1 * x_span, x_span, np.max(y) + 0.5 * A_abs],
     )
     return bounds
 

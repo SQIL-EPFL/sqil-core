@@ -175,6 +175,13 @@ def fit_output(fit_func):
             raw_fit_output = fit_result
         sqil_dict["output"] = raw_fit_output
 
+        # Check if there are variables to override in metadata before continuing
+        if "fit_output_vars" in metadata:
+            overrides = metadata["fit_output_vars"]
+            x_data = overrides.get("x_data", x_data)
+            y_data = overrides.get("y_data", y_data)
+            del metadata["fit_output_vars"]
+
         # Format the raw_fit_output into a standardized dict
         # Scipy tuple (curve_fit, leastsq)
         if _is_scipy_tuple(raw_fit_output):
@@ -190,7 +197,7 @@ def fit_output(fit_func):
         elif _is_scipy_minimize(raw_fit_output):
             residuals = None
             predict = metadata.get("predict", None)
-            if predict and callable(predict):
+            if (x_data is not None) and (predict is not None) and callable(predict):
                 residuals = y_data - metadata["predict"](x_data, *raw_fit_output.x)
             formatted = _format_scipy_minimize(
                 raw_fit_output, residuals=residuals, y_data=y_data, has_sigma=has_sigma
@@ -300,8 +307,7 @@ def fit_input(fit_func):
 
     @wraps(fit_func)
     def wrapper(
-        x_data,
-        y_data,
+        *params,
         guess=None,
         bounds=None,
         fixed_params=None,
@@ -313,15 +319,15 @@ def fit_input(fit_func):
         func_params = inspect.signature(fit_func).parameters
 
         # Check if the user passed parameters that are not supported by the fit fun
-        if guess and ("guess" not in func_params):
+        if (guess is not None) and ("guess" not in func_params):
             warnings.warn("The fit function doesn't allow any initial guess.")
-        if bounds and ("bounds" not in func_params):
+        if (bounds is not None) and ("bounds" not in func_params):
             warnings.warn("The fit function doesn't allow any bounds.")
-        if fixed_params and (not guess):
+        if (fixed_params is not None) and (guess is None):
             raise ValueError("Using fixed_params requires an initial guess.")
 
         # Process bounds if the function accepts it
-        if bounds and ("bounds" in func_params):
+        if (bounds is not None) and ("bounds" in func_params):
             processed_bounds = np.array(
                 [(-np.inf, np.inf) if b is None else b for b in bounds],
                 dtype=np.float64,
@@ -348,7 +354,7 @@ def fit_input(fit_func):
                 upper_bounds[idx] = guess[idx] + tolerance
 
         # Prepare arguments dynamically
-        fit_args = {"x_data": x_data, "y_data": y_data, **kwargs}
+        fit_args = {**kwargs}
 
         if guess is not None and "guess" in func_params:
             fit_args["guess"] = guess
@@ -359,7 +365,7 @@ def fit_input(fit_func):
 
         # Call the wrapped function with preprocessed inputs
         fit_args = {**kwargs, **fit_args}
-        return fit_func(**fit_args)
+        return fit_func(*params, **fit_args)
 
     return wrapper
 

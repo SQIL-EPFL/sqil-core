@@ -10,6 +10,17 @@ def lorentzian(x, A, x0, fwhm, y0):
     return A * (np.abs(fwhm) / 2.0) / ((x - x0) ** 2.0 + fwhm**2.0 / 4.0) + y0
 
 
+def two_lorentzians_shared_x0(x_data_1, x_data_2, A1, fwhm1, y01, A2, fwhm2, y02, x0):
+    r"""
+    Concatenates two lorentzians
+    L_1(x) = A_1 * (|FWHM_1| / 2) / ((x - x0)^2 + (FWHM_1^2 / 4)) + y0_1
+    L_2(x) = A_2 * (|FWHM_2| / 2) / ((x - x0)^2 + (FWHM_2^2 / 4)) + y0_2
+    """
+    y1 = lorentzian(x_data_1, A1, x0, fwhm1, y01)
+    y2 = lorentzian(x_data_2, A2, x0, fwhm2, y02)
+    return np.concatenate([y1, y2])
+
+
 def gaussian(x, A, x0, sigma, y0):
     r"""
     G(x) = A / (|σ| * sqrt(2π)) * exp(- (x - x0)^2 / (2σ^2)) + y0

@@ -35,13 +35,13 @@ def fill_gaps(primary_list: list, fallback_list: list) -> list:
     >>> fill_gaps(primary_list, fallback_list)
     [1, 20, 3, 40, 5]
     """
-    if not fallback_list:
+    if (fallback_list is None) or (len(fallback_list) == 0):
         return primary_list
 
     if primary_list is None:
         return fallback_list
 
-    if not primary_list:
+    if len(primary_list) == 0:
         primary_list = []
 
     result = primary_list

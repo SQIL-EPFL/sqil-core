@@ -13,5 +13,13 @@ from ._fit import (
     fit_lorentzian,
     fit_qubit_relaxation_qp,
     fit_skewed_lorentzian,
+    fit_two_lorentzians_shared_x0,
     transform_data,
+)
+from ._guess import (
+    estimate_peak,
+    gaussian_bounds,
+    gaussian_guess,
+    lorentzian_bounds,
+    lorentzian_guess,
 )
