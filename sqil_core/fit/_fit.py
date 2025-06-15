@@ -147,7 +147,6 @@ def fit_two_lorentzians_shared_x0(
     }
 
 
-# TODO: check is using bounds
 @fit_input
 @fit_output
 def fit_gaussian(
@@ -201,12 +200,13 @@ def fit_gaussian(
     # Default initial guess if not provided
     if has_at_least_one(guess, None):
         guess = fill_gaps(guess, gaussian_guess(x_data, y_data))
-    # Default bounds
+    # Default bounds if not provided
+    if bounds is None:
+        bounds = ([None] * len(guess), [None] * len(guess))
     if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
         lower, upper = bounds
         lower_guess, upper_guess = gaussian_bounds(x_data, y_data, guess)
-        fill_gaps(lower, lower_guess)
-        fill_gaps(upper, upper_guess)
+        bounds = (fill_gaps(lower, lower_guess), fill_gaps(upper, upper_guess))
 
     res = curve_fit(_models.gaussian, x, y, p0=guess, bounds=bounds, full_output=True)
 
@@ -218,6 +218,73 @@ def fit_gaussian(
         "param_names": ["A", "x0", "sigma", "y0"],
         "predict": _models.gaussian,
         "fwhm": fwhm,
+    }
+
+
+@fit_input
+@fit_output
+def fit_two_gaussians_shared_x0(
+    x_data_1,
+    y_data_1,
+    x_data_2,
+    y_data_2,
+    guess: list = None,
+    bounds: list[tuple[float]] | tuple = None,
+):
+    y_all = np.concatenate([y_data_1, y_data_2])
+
+    if has_at_least_one(guess, None):
+        guess_1 = gaussian_guess(x_data_1, y_data_1)
+        guess_2 = gaussian_guess(x_data_2, y_data_2)
+        x01, x02 = guess_1[1], guess_2[1]
+        x0 = np.mean([x01, x02])
+        guess = fill_gaps(
+            guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
+        )
+
+    if bounds == None:
+        bounds = [[None] * len(guess), [None] * len(guess)]
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess_1, upper_guess_1 = gaussian_bounds(x_data_1, y_data_1, guess_1)
+        lower_guess_2, upper_guess_2 = gaussian_bounds(x_data_2, y_data_2, guess_2)
+        # Combine bounds for 1 and 2
+        lower_guess = np.concatenate(
+            [
+                np.delete(lower_guess_1, 1),
+                np.delete(lower_guess_2, 1),
+                [np.min([lower_guess_1, lower_guess_2])],
+            ]
+        )
+        upper_guess = np.concatenate(
+            [
+                np.delete(upper_guess_1, 1),
+                np.delete(upper_guess_2, 1),
+                [np.max([upper_guess_1, upper_guess_2])],
+            ]
+        )
+        lower = fill_gaps(lower, lower_guess)
+        upper = fill_gaps(upper, upper_guess)
+        bounds = (lower, upper)
+
+    res = curve_fit(
+        lambda _, A1, fwhm1, y01, A2, fwhm2, y02, x0: _models.two_gaussians_shared_x0(
+            x_data_1, x_data_2, A1, fwhm1, y01, A2, fwhm2, y02, x0
+        ),
+        xdata=np.zeros_like(y_all),  # dummy x, since x1 and x2 are fixed via closure
+        ydata=y_all,
+        p0=guess,
+        # bounds=bounds,
+        full_output=True,
+    )
+
+    return res, {
+        "param_names": ["A1", "fwhm1", "y01", "A2", "fwhm2", "y02", "x0"],
+        "predict": _models.two_gaussians_shared_x0,
+        "fit_output_vars": {
+            "x_data": np.concatenate([x_data_1, x_data_2]),
+            "y_data": y_all,
+        },
     }
 
 
