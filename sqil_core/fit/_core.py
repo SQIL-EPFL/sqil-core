@@ -53,6 +53,7 @@ class FitResult:
         metrics={},
         predict=None,
         param_names=None,
+        model_name=None,
         metadata={},
     ):
         self.params = params
@@ -61,7 +62,10 @@ class FitResult:
         self.metrics = metrics
         self.predict = predict or self._no_prediction
         self.param_names = param_names or list(range(len(params)))
+        self.model_name = model_name
         self.metadata = metadata
+
+        self.params_by_name = dict(zip(self.param_names, self.params))
 
     def __repr__(self):
         return (
@@ -230,7 +234,9 @@ def fit_output(fit_func):
         filtered_metadata = {k: v for k, v in metadata.items() if k not in sqil_keys}
 
         # Assign the optimized parameters to the prediction function
+        model_name = None
         if sqil_dict["predict"] is not None:
+            model_name = sqil_dict["predict"].__name__
             params = sqil_dict["params"]
             predict = sqil_dict["predict"]
             n_inputs = _count_function_parameters(predict)
@@ -244,6 +250,7 @@ def fit_output(fit_func):
             metrics=sqil_dict.get("metrics", {}),
             predict=sqil_dict.get("predict", None),
             param_names=sqil_dict.get("param_names", None),
+            model_name=model_name,
             metadata=filtered_metadata,
         )
 

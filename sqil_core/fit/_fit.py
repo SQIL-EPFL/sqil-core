@@ -153,7 +153,7 @@ def fit_gaussian(
     x_data: np.ndarray,
     y_data: np.ndarray,
     guess: list = None,
-    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
+    bounds: list[tuple[float]] | tuple = None,
 ) -> FitResult:
     r"""
     Fits a Gaussian function to the provided data. The function estimates the

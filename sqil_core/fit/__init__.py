@@ -13,6 +13,7 @@ from ._fit import (
     fit_lorentzian,
     fit_qubit_relaxation_qp,
     fit_skewed_lorentzian,
+    fit_two_gaussians_shared_x0,
     fit_two_lorentzians_shared_x0,
     transform_data,
 )
