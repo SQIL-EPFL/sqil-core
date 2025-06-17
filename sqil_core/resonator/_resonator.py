@@ -4,9 +4,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lmfit import Model
 from scipy.optimize import leastsq, minimize
+from tabulate import tabulate
 
-from sqil_core.fit import fit_circle_algebraic, fit_output, fit_skewed_lorentzian
-from sqil_core.utils import estimate_linear_background
+from sqil_core.fit import (
+    fit_circle_algebraic,
+    fit_lorentzian,
+    fit_output,
+    fit_skewed_lorentzian,
+)
+from sqil_core.utils import estimate_linear_background, format_number
 
 
 @fit_output
@@ -228,8 +234,8 @@ def S11_reflection(
     alpha: float,
     tau: float,
     Q_tot: float,
-    Q_ext: float,
     fr: float,
+    Q_ext: float,
     phi: float,
     mag_bg: np.ndarray | None = None,
 ) -> np.ndarray:
@@ -262,10 +268,10 @@ def S11_reflection(
         Time delay (in seconds) representing the signal path delay.
     Q_tot : float
         Total quality factor of the resonator (includes internal and external losses).
-    Q_ext : float
-        External quality factor, representing coupling losses to external circuitry.
     fr : float
         Resonant frequency of the resonator (in Hz).
+    Q_ext : float
+        External quality factor, representing coupling losses to external circuitry.
     phi : float
         Additional phase shift (in radians) in the resonator response.
     mag_bg : np.ndarray or None, optional
@@ -286,7 +292,7 @@ def S11_reflection(
     >>> freq = np.linspace(4.9e9, 5.1e9, 500)  # Frequency sweep around 5 GHz
     >>> mag_bg = freq**2 + 3 * freq  # Example magnitude background
     >>> S11 = S11_reflection(freq, a=1.0, alpha=0.0, tau=1e-9,
-    ...                      Q_tot=5000, Q_ext=10000, fr=5e9, phi=0.0, mag_bg=mag_bg)
+    ...                      Q_tot=5000, fr=5e9, Q_ext=10000, phi=0.0, mag_bg=mag_bg)
     >>> import matplotlib.pyplot as plt
     >>> plt.plot(freq, 20 * np.log10(np.abs(S11)))  # Plot magnitude in dB
     >>> plt.xlabel("Frequency (Hz)")
@@ -312,8 +318,8 @@ def S21_hanger(
     alpha: float,
     tau: float,
     Q_tot: float,
-    Q_ext: float,
     fr: float,
+    Q_ext: float,
     phi: float,
     mag_bg: np.ndarray | None = None,
 ) -> np.ndarray:
@@ -346,10 +352,10 @@ def S21_hanger(
         Time delay (in seconds) representing the signal path delay.
     Q_tot : float
         Total quality factor of the resonator (includes internal and external losses).
-    Q_ext : float
-        External quality factor, representing coupling losses to external circuitry.
     fr : float
         Resonant frequency of the resonator (in Hz).
+    Q_ext : float
+        External quality factor, representing coupling losses to external circuitry.
     phi : float
         Additional phase shift (in radians) in the resonator response.
     mag_bg : np.ndarray or None, optional
@@ -370,7 +376,7 @@ def S21_hanger(
     >>> freq = np.linspace(4.9e9, 5.1e9, 500)  # Frequency sweep around 5 GHz
     >>> mag_bg = freq**2 + 3 * freq  # Example magnitude background
     >>> S21 = S21_hanger(freq, a=1.0, alpha=0.0, tau=1e-9,
-    ...                  Q_tot=5000, Q_ext=10000, fr=5e9, phi=0.0, mag_bg=mag_bg)
+    ...                  Q_tot=5000, fr=5e9, Q_ext=10000, phi=0.0, mag_bg=mag_bg)
     >>> import matplotlib.pyplot as plt
     >>> plt.plot(freq, 20 * np.log10(np.abs(S21)))  # Plot magnitude in dB
     >>> plt.xlabel("Frequency (Hz)")
@@ -387,6 +393,54 @@ def S21_hanger(
     resonator = 1 - (Q_tot / np.abs(Q_ext)) * np.exp(1j * phi) / (
         1 + 2j * Q_tot * (freq / fr - 1)
     )
+    return env * resonator
+
+
+def S21_transmission(
+    freq: np.ndarray,
+    a: float,
+    alpha: float,
+    tau: float,
+    Q_tot: float,
+    fr: float,
+    mag_bg: float | None = None,
+) -> np.ndarray:
+    """
+    Computes the complex S21 transmission for a single-pole resonator model.
+
+    This model describes the transmission response of a resonator. The total response
+    includes both the resonator and a complex background envelope with a possible linear phase delay.
+
+    Parameters
+    ----------
+    freq : np.ndarray
+        Frequency array (in Hz) over which the S21 transmission is evaluated.
+    a : float
+        Amplitude scaling factor of the background envelope.
+    alpha : float
+        Phase offset of the background envelope (in radians).
+    tau : float
+        Time delay in the background response (in seconds).
+    Q_tot : float
+        Total quality factor of the resonator.
+    fr : float
+        Resonant frequency of the resonator (in Hz).
+    mag_bg : float or None, optional
+        Optional background magnitude scaling. If `None` or `NaN`, it defaults to 1.
+
+    Returns
+    -------
+    np.ndarray
+        Complex-valued S21 transmission array over the specified frequency range.
+    """
+
+    if mag_bg is None:
+        mag_bg = 1
+    elif np.isscalar(mag_bg) and np.isnan(mag_bg):
+        mag_bg = 1
+
+    env = a * np.exp(1j * alpha) * np.exp(2j * np.pi * (freq - freq[0]) * tau)
+    resonator = 1 / (1 + 2j * Q_tot * (freq / fr - 1))
     return env * resonator
 
 
@@ -442,7 +496,7 @@ def S11_reflection_mesh(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi):
 def quick_fit(
     freq: np.ndarray,
     data: np.ndarray,
-    measurement: Literal["reflection", "hanger"],
+    measurement: Literal["reflection", "hanger", "transmission"],
     tau: float | None = None,
     Q_tot: float | None = None,
     fr: float | None = None,
@@ -457,7 +511,8 @@ def quick_fit(
 
     This function analyzes complex-valued resonator data by fitting a circle in the complex plane and
     refining key resonator parameters. It estimates or refines the total quality factor (Q_tot),
-    resonance frequency (fr), and external quality factor (Q_ext), while correcting for impedance mismatch.
+    resonance frequency (fr). For reflection and hanger it also estimates the external quality
+    factor (Q_ext), while correcting for impedance mismatch.
 
     Parameters
     ----------
@@ -494,8 +549,8 @@ def quick_fit(
         - alpha (float): Phase offset from the off-resonant point (in radians).
         - tau (float): Estimated cable delay (in radians).
         - Q_tot (float): Total quality factor.
-        - Q_ext (complex): External quality factor, accounting for impedance mismatch.
         - fr (float): Resonance frequency.
+        - Q_ext (complex): External quality factor, accounting for impedance mismatch.
         - phi0 (float): Phase shift due to impedance mismatch (in radians).
 
     Notes
@@ -512,9 +567,13 @@ def quick_fit(
     >>> print(f"Resonance Frequency: {fr} Hz, Q_tot: {Q_tot}, Q_ext: {Q_ext}")
     """
     # Sanitize inputs
-    if measurement != "reflection" and measurement != "hanger":
+    if (
+        measurement != "reflection"
+        and measurement != "hanger"
+        and measurement != "transmission"
+    ):
         raise Exception(
-            f"Invalid measurement type {measurement}. Must be either 'reflection' or 'hanger'"
+            f"Invalid measurement type {measurement}. Must be either 'reflection', 'hanger' or 'transmission'"
         )
     if mag_bg is None:
         mag_bg = np.nan
@@ -523,18 +582,27 @@ def quick_fit(
     linmag = np.abs(data)
     phase = np.unwrap(np.angle(data))
 
-    # Inital estimate for Q_tot and fr by fitting a skewed lorentzian on
+    # Inital estimate for Q_tot and fr by fitting a lorentzian on
     # the squared manitude data
     if (Q_tot is None) or (fr is None):
         if verbose:
-            print("* Skewed lorentzian estimation of fr and Q_tot")
+            print("* Lorentzian estimation of fr and Q_tot")
         norm_linmag = linmag / np.max(linmag)
-        fit_res = fit_skewed_lorentzian(freq, norm_linmag**2)
-        (A1, A2, A3, A4, efr, eQ_tot) = fit_res.params
+        fit_res = fit_lorentzian(freq, norm_linmag**2)
+        _, efr, fwhm, _ = fit_res.params
+        eQ_tot = efr / fwhm
+        # If the lorentzian fit is bad, try a skewed lorentzian
+        if fit_res.metrics["nrmse"] > 0.5:
+            fit_res_skewed = fit_skewed_lorentzian(freq, norm_linmag**2)
+            (A1, A2, A3, A4, efr, eQ_tot) = fit_res.params
+            delta_aic = fit_res["aic"] - fit_res_skewed["aic"]
+            fit_res = fit_res_skewed if delta_aic >= 0 else fit_res
+
         # Assign only parameters for which no initial guess was provided
         Q_tot = Q_tot or eQ_tot
         fr = fr or efr
         if verbose:
+            print(fit_res.model_name)
             fit_res.summary()
             if fr != efr:
                 print(f" -> Still considering fr = {fr}\n")
@@ -597,31 +665,39 @@ def quick_fit(
     phase5 = phase1 - alpha
     data5 = linmag5 * np.exp(1j * phase5)
 
-    # Find impedence mismatch
-    if bias_toward_fr:
-        fr_idx = np.abs(freq - fr).argmin()
-        re, im = np.real(data5), np.imag(data5)
-        fit_res = fit_circle_algebraic(
-            re[fr_idx - idx_range : fr_idx + idx_range],
-            im[fr_idx - idx_range : fr_idx + idx_range],
-        )
-    else:
-        fit_res = fit_circle_algebraic(np.real(data5), np.imag(data5))
-    (xc6, yc6, r06) = fit_res.params
-    phi0 = -np.arcsin(yc6 / r06)
+    Q_ext = None
+    phi0 = None
+    if measurement == "reflection" or measurement == "hanger":
+        # Find impedence mismatch
+        if bias_toward_fr:
+            fr_idx = np.abs(freq - fr).argmin()
+            re, im = np.real(data5), np.imag(data5)
+            fit_res = fit_circle_algebraic(
+                re[fr_idx - idx_range : fr_idx + idx_range],
+                im[fr_idx - idx_range : fr_idx + idx_range],
+            )
+        else:
+            fit_res = fit_circle_algebraic(np.real(data5), np.imag(data5))
+        (xc6, yc6, r06) = fit_res.params
+        phi0 = -np.arcsin(yc6 / r06)
 
-    # Q_ext and Q_int
-    if measurement == "reflection":
-        Q_ext = Q_tot / (r06 * np.exp(-1j * phi0))
-    elif measurement == "hanger":
-        Q_ext = Q_tot / (2 * r06 * np.exp(-1j * phi0))
+        # Q_ext and Q_int
+        if measurement == "reflection":
+            Q_ext = Q_tot / (r06 * np.exp(-1j * phi0))
+        elif measurement == "hanger":
+            Q_ext = Q_tot / (2 * r06 * np.exp(-1j * phi0))
 
-    # Refine theta0
+    # Refine phase offset and amplitude scaling
     if measurement == "reflection":
         res6 = S11_reflection(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi0, mag_bg / a)
     elif measurement == "hanger":
         res6 = S21_hanger(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi0, mag_bg / a)
-    theta0 = phase[0] - np.unwrap(np.angle(res6))[0]
+    elif measurement == "transmission":
+        res6 = S21_transmission(freq, a, alpha, tau, Q_tot, fr)
+        a *= (np.max(linmag) - np.min(linmag)) / (
+            np.max(np.abs(res6)) - np.min(np.abs(res6))
+        )
+    alpha += phase[0] - np.unwrap(np.angle(res6))[0]
 
     # Plot small summary
     if do_plot:
@@ -656,12 +732,12 @@ def quick_fit(
         fig.tight_layout()
         plt.show()
 
-    return a, alpha, tau, Q_tot, Q_ext, fr, phi0
+    return a, alpha, tau, Q_tot, fr, Q_ext, phi0
 
 
 @fit_output
 def full_fit(
-    freq, data, measurement, a, alpha, tau, Q_tot, Q_ext, fr, phi0, mag_bg=None
+    freq, data, measurement, a, alpha, tau, Q_tot, fr, Q_ext=1, phi0=0, mag_bg=None
 ):
     """
     Performs a full fit of the measured resonator data using a selected model
@@ -696,14 +772,15 @@ def full_fit(
     Q_tot : float
         Total quality factor of the resonator.
 
-    Q_ext : float
-        External quality factor (coupling quality factor).
-
     fr : float
         Resonant frequency.
 
+    Q_ext : float
+        External quality factor (coupling quality factor).
+        Only for reflection and hanger.
+
     phi0 : float
-        Phase offset at resonance.
+        Phase offset at resonance. Only for relfection and hanger.
 
     mag_bg : np.ndarray, optional
         A 1D array representing the magnitude background response, if available.
@@ -726,26 +803,43 @@ def full_fit(
     >>> fit_result.summary()
     """
 
-    def S11_reflection_fixed(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi):
-        return S11_reflection(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi, mag_bg)
-
-    def S21_hanger_fixed(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi):
-        return S21_hanger(freq, a, alpha, tau, Q_tot, Q_ext_mag, f_r, phi, mag_bg)
-
     if measurement == "reflection":
+
+        def S11_reflection_fixed(freq, a, alpha, tau, Q_tot, fr, Q_ext_mag, phi):
+            return S11_reflection(
+                freq, a, alpha, tau, Q_tot, fr, Q_ext_mag, phi, mag_bg
+            )
+
         model = Model(S11_reflection_fixed)
+        params = model.make_params(
+            a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, fr=fr, Q_ext_mag=Q_ext, phi=phi0
+        )
+
     elif measurement == "hanger":
+
+        def S21_hanger_fixed(freq, a, alpha, tau, Q_tot, fr, Q_ext_mag, phi):
+            return S21_hanger(freq, a, alpha, tau, Q_tot, fr, Q_ext_mag, phi, mag_bg)
+
         model = Model(S21_hanger_fixed)
+        params = model.make_params(
+            a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, fr=fr, Q_ext_mag=Q_ext, phi=phi0
+        )
 
-    params = model.make_params(
-        a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, Q_ext_mag=Q_ext, f_r=fr, phi=phi0
-    )
+    elif measurement == "transmission":
+
+        def S21_transmission_fixed(freq, a, alpha, tau, Q_tot, fr):
+            return S21_transmission(freq, a, alpha, tau, Q_tot, fr, mag_bg)
+
+        model = Model(S21_transmission_fixed)
+        params = model.make_params(a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, fr=fr)
+
     res = model.fit(data, params, freq=freq)
-
     return res
 
 
-def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title=""):
+def plot_resonator(
+    freq, data, x_fit=None, y_fit=None, mag_bg: np.ndarray | None = None, title=""
+):
     """
     Plots the resonator response in three different representations:
     - Complex plane (Re vs. Im)
@@ -776,7 +870,7 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
     # Subplot on the left (full height, first column)
     ax1 = fig.add_subplot(gs[:, 0])  # Left side spans both rows
     ax1.scatter(np.real(data), np.imag(data), color="tab:blue", s=20)
-    ax1.plot(np.real(fit), np.imag(fit), color="tab:orange")
+    ax1.plot(np.real(y_fit), np.imag(y_fit), color="tab:orange")
     ax1.set_aspect("equal")
     ax1.set_xlabel("Re")
     ax1.set_ylabel("Im")
@@ -785,7 +879,7 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
     # Subplot on the top-right (first row, second column)
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.scatter(freq, np.abs(data), color="tab:blue", s=5)
-    ax2.plot(freq, np.abs(fit), color="tab:orange")
+    ax2.plot(x_fit, np.abs(y_fit), color="tab:orange")
     if (mag_bg is not None) and (not np.isnan(mag_bg).any()):
         ax2.plot(freq, mag_bg, "-.", color="tab:green")
     ax2.set_ylabel("Amplitude")
@@ -794,7 +888,7 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
     # Subplot on the bottom-right (second row, second column)
     ax3 = fig.add_subplot(gs[1, 1])
     ax3.scatter(freq, np.unwrap(np.angle(data)), color="tab:blue", s=5)
-    ax3.plot(freq, np.unwrap(np.angle(fit)), color="tab:orange")
+    ax3.plot(x_fit, np.unwrap(np.angle(y_fit)), color="tab:orange")
     ax3.set_ylabel("Phase")
     ax3.set_xlabel("Frequency [Hz]")
     ax3.grid(True)
@@ -802,6 +896,43 @@ def plot_resonator(freq, data, fit=None, mag_bg: np.ndarray | None = None, title
     fig.suptitle(title)
     fig.tight_layout()
     plt.show()
+
+
+def print_resonator_params(fit_params, measurement):
+    table_data = []
+
+    if measurement == "reflection" or measurement == "hanger":
+        a, alpha, tau, Q_tot, fr, Q_ext_mag, phi0 = fit_params
+        Q_ext = Q_ext_mag * np.exp(1j * phi0)
+        Q_int = compute_Q_int(Q_tot, Q_ext_mag, phi0)
+        kappa_ext = fr / np.real(Q_ext)
+        kappa_int = fr / Q_int
+        kappa_tot = fr / Q_tot
+
+        table_data.append(["fr", f"{format_number(fr, 6, unit="Hz", latex=False)}"])
+        table_data.append(["Re[Q_ext]", f"{np.real(Q_ext):.0f}"])
+        table_data.append(["Q_int", f"{Q_int:.0f}"])
+        table_data.append(["Q_tot", f"{Q_tot:.0f}"])
+
+        table_data.append(
+            ["kappa_ext", format_number(kappa_ext, 4, unit="Hz", latex=False)]
+        )
+        table_data.append(
+            ["kappa_int", format_number(kappa_int, 4, unit="Hz", latex=False)]
+        )
+        table_data.append(
+            ["kappa_tot", format_number(kappa_tot, 4, unit="Hz", latex=False)]
+        )
+    elif measurement == "transmission":
+        a, alpha, tau, Q_tot, fr = fit_params
+        kappa_tot = fr / Q_tot
+        table_data.append(["fr", f"{format_number(fr, 6, unit="Hz", latex=False)}"])
+        table_data.append(["Q_tot", f"{Q_tot:.0f}"])
+        table_data.append(
+            ["kappa_tot", format_number(kappa_tot, 4, unit="Hz", latex=False)]
+        )
+
+    print(tabulate(table_data, headers=["Param", "Value"], tablefmt="github"))
 
 
 def compute_Q_int(Q_tot, Q_ext_mag, Q_ext_phase):
