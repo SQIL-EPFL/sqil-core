@@ -27,7 +27,11 @@ from numpy.typing import ArrayLike
 from qcodes import Instrument as QCodesInstrument
 
 from sqil_core.config_log import logger
-from sqil_core.experiment._events import after_experiment, before_experiment
+from sqil_core.experiment._events import (
+    after_experiment,
+    before_experiment,
+    clear_signal,
+)
 from sqil_core.experiment.data.plottr import DataDict, DDH5Writer
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.server import (
@@ -35,7 +39,8 @@ from sqil_core.experiment.instruments.server import (
     link_instrument_server,
 )
 from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
-from sqil_core.experiment.setup_registry import setup_registry
+
+# from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import copy_folder, read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module
 
@@ -84,6 +89,9 @@ class ExperimentHandler(ABC):
                     f"Unable to find any instruments in {setup_path}"
                     + "Do you have an `instruments` entry in your setup file?"
                 )
+            # Reset event listeners
+            clear_signal(before_experiment)
+            clear_signal(after_experiment)
         instrument_instances = connect_instruments(instrument_dict)
 
         # Create Zurich Instruments session
@@ -96,6 +104,7 @@ class ExperimentHandler(ABC):
             self._load_qpu(zi.generate_qpu)
 
         self.instruments = Instruments(instrument_instances)
+        self._setup_instruments()
 
     def _load_qpu(self, generate_qpu: Callable):
         qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
@@ -126,22 +135,22 @@ class ExperimentHandler(ABC):
             # for robustness against future modifications
             if not hasattr(instrument, "setup"):
                 continue
+            # TODO: call setup here
+        # try:
+        #     instrument_name = getattr(instrument, "name", instrument.id)
 
-            try:
-                instrument_name = getattr(instrument, "name", instrument.id)
-
-                if setup_registry.has_custom_setup(instrument.id):
-                    logger.info(
-                        f"Applying registered custom setup to {instrument_name}"
-                    )
-                    setup_registry.apply_setup(instrument.id, instrument)
-                else:
-                    logger.info(f"Running default setup to {instrument_name}")
-                    instrument.setup()
-            except Exception as e:
-                logger.error(
-                    f"Error during setup of {getattr(instrument, 'name', instrument.id)}: {str(e)}"
-                )
+        #     if setup_registry.has_custom_setup(instrument.id):
+        #         logger.info(
+        #             f"Applying registered custom setup to {instrument_name}"
+        #         )
+        #         setup_registry.apply_setup(instrument.id, instrument)
+        #     else:
+        #         logger.info(f"Running default setup to {instrument_name}")
+        #         instrument.setup()
+        # except Exception as e:
+        #     logger.error(
+        #         f"Error during setup of {getattr(instrument, 'name', instrument.id)}: {str(e)}"
+        #     )
 
     @abstractmethod
     def sequence(self, *params, **kwargs):
@@ -183,7 +192,9 @@ class ExperimentHandler(ABC):
         return result
 
     def run_with_plottr(self, *params, **kwargs):
-        before_experiment.send()
+        logger.info("Before exp")
+        print(before_experiment.receivers)
+        before_experiment.send(sender=self)
 
         # Map input parameters index to their name
         params_map, _ = map_inputs(self.sequence)
@@ -278,6 +289,7 @@ class ExperimentHandler(ABC):
         QCodesInstrument.close_all()
         for instrument in self.instruments:
             del instrument
+        # TODO: cleanup connections
 
         # Run analysis script
         try:

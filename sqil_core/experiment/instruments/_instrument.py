@@ -1,8 +1,16 @@
 from abc import ABC, abstractmethod
 
 import Pyro5.server
+from blinker import NamedSignal
 
 from sqil_core.config_log import logger
+from sqil_core.experiment._events import (
+    after_experiment,
+    before_experiment,
+    before_sequence,
+    after_sequence,
+    one_time_listener,
+)
 from sqil_core.experiment.helpers._function_override_handler import (
     FunctionOverrideHandler,
 )
@@ -38,6 +46,10 @@ class Instrument(FunctionOverrideHandler, ABC):
             "connect": self._default_connect,
             "setup": self._default_setup,
             "disconnect": self._default_disconnect,
+            "on_before_experiment": self._default_on_before_experiment,
+            "on_after_experiment": self._default_on_after_experiment,
+            "on_before_sequence": self._default_on_before_sequence,
+            "on_after_sequence": self._default_on_after_sequence,
         }
         self._functions = self._default_functions.copy()
 
@@ -48,6 +60,23 @@ class Instrument(FunctionOverrideHandler, ABC):
 
         self._default_functions = self._functions.copy()
         self._device = self.connect()  # Auto-connect on instantiation
+
+        # Subscribe to events
+        self._subscribe_to_events()
+
+    def _subscribe_to_events(self):
+        before_experiment.connect(
+            lambda *a, **kw: self.call("on_before_experiment", *a, **kw), weak=False
+        )
+        before_sequence.connect(
+            lambda *a, **kw: self.call("on_before_sequence", *a, **kw), weak=False
+        )
+        after_sequence.connect(
+            lambda *a, **kw: self.call("on_after_sequence", *a, **kw), weak=False
+        )
+        after_experiment.connect(
+            lambda *a, **kw: self.call("on_after_experiment", *a, **kw), weak=False
+        )
 
     def connect(self, *args, **kwargs):
         """Calls the overridden or default `connect` method."""
@@ -73,7 +102,34 @@ class Instrument(FunctionOverrideHandler, ABC):
 
     @abstractmethod
     def _default_disconnect(self, *args, **kwargs):
-        """Default `disconnect` implementation (must be overridden)."""
+        pass
+
+    def on_before_experiment(self, *args, **kwargs):
+        """Calls the overridden or default `on_before_experiment` method."""
+        return self.call("on_before_experiment", *args, **kwargs)
+
+    def _default_on_before_experiment(self, *args, **kwargs):
+        pass
+
+    def on_before_sequence(self, *args, **kwargs):
+        """Calls the overridden or default `on_before_sequence` method."""
+        return self.call("on_before_sequence", *args, **kwargs)
+
+    def _default_on_before_sequence(self, *args, **kwargs):
+        pass
+
+    def on_after_experiment(self, *args, **kwargs):
+        """Calls the overridden or default `on_after_experiment` method."""
+        return self.call("on_after_experiment", *args, **kwargs)
+
+    def _default_on_after_experiment(self, *args, **kwargs):
+        pass
+
+    def on_after_sequence(self, *args, **kwargs):
+        """Calls the overridden or default `on_after_sequence` method."""
+        return self.call("on_after_sequence", *args, **kwargs)
+
+    def _default_on_after_sequence(self, *args, **kwargs):
         pass
 
     def __getattr__(self, name):

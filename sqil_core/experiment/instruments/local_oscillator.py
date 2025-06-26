@@ -6,9 +6,10 @@ from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
-from sqil_core.experiment.lo_event_handler import lo_event_handlers
 
 from .drivers.SignalCore_SC5511A import SignalCore_SC5511A
+
+# from sqil_core.experiment.lo_event_handler import lo_event_handlers
 
 
 class LocalOscillatorBase(Instrument, ABC):
@@ -157,6 +158,16 @@ class LocalOscillator(LocalOscillatorBase):
 
     def _default_setup(self, *args, **kwargs):
         pass
+
+    def _default_on_before_experiment(self, *args, sender=None, **kwargs):
+        self.turn_on()
+
+    def _default_on_before_sequence(self, *args, sender=None, **kwargs):
+        # self.set_frequency(sender.qpu)
+        pass
+
+    def _default_on_after_experiment(self, *args, sender=None, **kwargs):
+        self.turn_off()
 
     def set_frequency(self, value) -> None:
         self.instrument.set_frequency(value)
