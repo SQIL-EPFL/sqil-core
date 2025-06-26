@@ -93,6 +93,8 @@ class ExperimentHandler(ABC):
                 )
             # Reset event listeners
             clear_signal(before_experiment)
+            clear_signal(before_sequence)
+            clear_signal(after_sequence)
             clear_signal(after_experiment)
         instrument_instances = connect_instruments(instrument_dict)
 
