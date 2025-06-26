@@ -1762,27 +1762,28 @@ files = [
 
 [[package]]
 name = "laboneq"
-version = "2.51.0"
+version = "2.54.0"
 description = "Zurich Instruments LabOne Q software framework for quantum computing control"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "laboneq-2.51.0-cp39-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:c9dbbc46c8b2d7d75a070d0e9b36c89c147fece7438bb85eed0c8964c14677af"},
-    {file = "laboneq-2.51.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c195ef40713571d133713be23f82c6097858e3d2e8404592305dd360e160162a"},
-    {file = "laboneq-2.51.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d357d1e98897cd2c65f4e2bc74eb8e6a91838118154076427984823021526b10"},
-    {file = "laboneq-2.51.0-cp39-abi3-win_amd64.whl", hash = "sha256:ab18d655bde467f95ffc16b1897bd3a5afd155683cf5fa6e663eea0fe455216f"},
+    {file = "laboneq-2.54.0-cp39-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:5aceefe79cdacc4f50d84c8324d7d5b6cc76fb78a1d9e77d9458987857ce2912"},
+    {file = "laboneq-2.54.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:948a13a4d0517dfa5862506f23d98648bd4d8b377360ffafa87d5414168edd2c"},
+    {file = "laboneq-2.54.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d0726699dd17d5b9546ef721303e024d4a0131bb8cd2209f05b34f189c1a41c1"},
+    {file = "laboneq-2.54.0-cp39-abi3-win_amd64.whl", hash = "sha256:d732a440497f1a8e70765298f0ff981c0d50d567885e8d71c249bc587fc800e7"},
 ]
 
 [package.dependencies]
 attrs = ">=24.3.0"
-cattrs = ">=24.1.2"
+cattrs = ">=24.1.2,<24.2.0"
 cycler = ">=0.12.1"
 engineering-notation = ">=0.10.0"
 flask = ">=3.0.2"
 jsonschema = ">=4.21.1"
 lagom = ">=2.6.0"
 matplotlib = ">=3.8.3"
+networkx = ">=3.4.2"
 numpy = ">=1.26"
 openpulse = ">=1.0.1,<1.1.0"
 openqasm3 = ">=1.0.0,<1.1.0"
@@ -1800,7 +1801,7 @@ sortedcontainers = ">=2.4.0"
 sqlitedict = ">=2.1.0"
 typing-extensions = ">=4.10.0"
 zhinst-comms-schemas = "0.0.1"
-zhinst-core = ">=25.4.0,<25.5.0"
+zhinst-core = ">=25.4.1,<25.5.0"
 zhinst-timing-models = ">=25.4.0,<25.5.0"
 zhinst-toolkit = "0.7.1"
 zhinst-utils = "0.7.0"
@@ -1810,18 +1811,18 @@ xarray = ["xarray (>=2024)"]
 
 [[package]]
 name = "laboneq-applications"
-version = "2.5.0"
+version = "2.8.0"
 description = "Library of LabOne Q experiments, analysis functions, and more."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "laboneq_applications-2.5.0-py3-none-any.whl", hash = "sha256:b6be4854852f5ea20ce3e7e1388b3ffd92e55d668cb4f8ea28f409ff2eb99ac7"},
-    {file = "laboneq_applications-2.5.0.tar.gz", hash = "sha256:c4869f25c400eece4e6b3c2261861d5047c2b3c6ee4ddd327164c21f2f9ee274"},
+    {file = "laboneq_applications-2.8.0-py3-none-any.whl", hash = "sha256:af7dd45f261f8b544ecdfba54080ffa03d0fc2ff08e1feafcec9caf120076ff6"},
+    {file = "laboneq_applications-2.8.0.tar.gz", hash = "sha256:fa367075b44c08c6d16d59a19f40d596064d4b4c92f6621fb3d1a6e7e2c19afa"},
 ]
 
 [package.dependencies]
-laboneq = ">=2.51.0,<2.52.0"
+laboneq = ">=2.54.0,<2.55.0"
 lmfit = "*"
 matplotlib = "*"
 numpy = ">=1.26"
@@ -2445,6 +2446,49 @@ files = [
     {file = "nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c"},
     {file = "nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe"},
 ]
+
+[[package]]
+name = "networkx"
+version = "3.4.2"
+description = "Python package for creating and manipulating graphs and networks"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+markers = "python_version == \"3.10\""
+files = [
+    {file = "networkx-3.4.2-py3-none-any.whl", hash = "sha256:df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f"},
+    {file = "networkx-3.4.2.tar.gz", hash = "sha256:307c3669428c5362aab27c8a1260aa8f47c4e91d3891f48be0141738d8d053e1"},
+]
+
+[package.extras]
+default = ["matplotlib (>=3.7)", "numpy (>=1.24)", "pandas (>=2.0)", "scipy (>=1.10,!=1.11.0,!=1.11.1)"]
+developer = ["changelist (==0.5)", "mypy (>=1.1)", "pre-commit (>=3.2)", "rtoml"]
+doc = ["intersphinx-registry", "myst-nb (>=1.1)", "numpydoc (>=1.8.0)", "pillow (>=9.4)", "pydata-sphinx-theme (>=0.15)", "sphinx (>=7.3)", "sphinx-gallery (>=0.16)", "texext (>=0.6.7)"]
+example = ["cairocffi (>=1.7)", "contextily (>=1.6)", "igraph (>=0.11)", "momepy (>=0.7.2)", "osmnx (>=1.9)", "scikit-learn (>=1.5)", "seaborn (>=0.13)"]
+extra = ["lxml (>=4.6)", "pydot (>=3.0.1)", "pygraphviz (>=1.14)", "sympy (>=1.10)"]
+test = ["pytest (>=7.2)", "pytest-cov (>=4.0)"]
+
+[[package]]
+name = "networkx"
+version = "3.5"
+description = "Python package for creating and manipulating graphs and networks"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+markers = "python_version >= \"3.11\""
+files = [
+    {file = "networkx-3.5-py3-none-any.whl", hash = "sha256:0030d386a9a06dee3565298b4a734b68589749a544acbb6c412dc9e2489ec6ec"},
+    {file = "networkx-3.5.tar.gz", hash = "sha256:d4c6f9cf81f52d69230866796b82afbccdec3db7ae4fbd1b65ea750feed50037"},
+]
+
+[package.extras]
+default = ["matplotlib (>=3.8)", "numpy (>=1.25)", "pandas (>=2.0)", "scipy (>=1.11.2)"]
+developer = ["mypy (>=1.15)", "pre-commit (>=4.1)"]
+doc = ["intersphinx-registry", "myst-nb (>=1.1)", "numpydoc (>=1.8.0)", "pillow (>=10)", "pydata-sphinx-theme (>=0.16)", "sphinx (>=8.0)", "sphinx-gallery (>=0.18)", "texext (>=0.6.7)"]
+example = ["cairocffi (>=1.7)", "contextily (>=1.6)", "igraph (>=0.11)", "momepy (>=0.7.2)", "osmnx (>=2.0.0)", "scikit-learn (>=1.5)", "seaborn (>=0.13)"]
+extra = ["lxml (>=4.6)", "pydot (>=3.0.1)", "pygraphviz (>=1.14)", "sympy (>=1.10)"]
+test = ["pytest (>=7.2)", "pytest-cov (>=4.0)", "pytest-xdist (>=3.0)"]
+test-extras = ["pytest-mpl", "pytest-randomly"]
 
 [[package]]
 name = "nodeenv"
@@ -5484,37 +5528,37 @@ zhinst-comms = ">=3.0,<4.0"
 
 [[package]]
 name = "zhinst-core"
-version = "25.4.0.628"
+version = "25.4.1.17"
 description = "Python API for Zurich Instruments Devices"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "zhinst_core-25.4.0.628-cp310-cp310-macosx_10_11_x86_64.whl", hash = "sha256:feada8bcd4adeefa5259571b019623b3ac3d7ae3ace0d164bd3a08474eef1c23"},
-    {file = "zhinst_core-25.4.0.628-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:bfb1bdd92a5be6832598fac9c966148dbcafff9969b6cebe2400a9955bb6f18b"},
-    {file = "zhinst_core-25.4.0.628-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:6986ef4545c2d680f9c46bdc5ec12b5cbe76877e75d288d069b066e3b4fae1c8"},
-    {file = "zhinst_core-25.4.0.628-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:76dc21459be3c6a2c0a2daaec8914a0ccf766450a8daf7b389f8911f3fcda962"},
-    {file = "zhinst_core-25.4.0.628-cp310-cp310-win_amd64.whl", hash = "sha256:f215c811c8b4aa42fb913576a5360b905ac4f18f7fba97fcbcf06379b7d35b22"},
-    {file = "zhinst_core-25.4.0.628-cp311-cp311-macosx_10_11_x86_64.whl", hash = "sha256:c51d2934890293a83ea646777586bda585b5becbaaf6a6ba8948307b0c00c834"},
-    {file = "zhinst_core-25.4.0.628-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:abc63aaaa020b6310e734ac848c82997eca25ff2cf4d2a91a8eb7d680850d4d4"},
-    {file = "zhinst_core-25.4.0.628-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:1019b463084c0a2f6a6cdc0ce8f56c9b7cba599285a8980b169578f12d9b2af3"},
-    {file = "zhinst_core-25.4.0.628-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:ae66c89230d34c7c986c678a29c02e30d3bce0efe1ebfac3f6ab958c22106ba9"},
-    {file = "zhinst_core-25.4.0.628-cp311-cp311-win_amd64.whl", hash = "sha256:27cfd313efb289f22b4130676e5372dab20a7308d8e1305a0840f41b7e6e0d89"},
-    {file = "zhinst_core-25.4.0.628-cp312-cp312-macosx_10_11_x86_64.whl", hash = "sha256:2a2e1fc21b6e0bbca9c3400d2fa0c21e3301aec9421e52c3df0f46616da6a959"},
-    {file = "zhinst_core-25.4.0.628-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:1837b98c1a0d9d11100537866c4297b48e529a02e7ee29534c08fffa215f9b34"},
-    {file = "zhinst_core-25.4.0.628-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:f633aa4fc6dd7c10987ed996334d603a2d82e6754212e6f0e785ca1c14983baf"},
-    {file = "zhinst_core-25.4.0.628-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:7b71b9dd87adec047c13a2078bfeb8ac68e8563a921bcff9a4aec64b68d824ac"},
-    {file = "zhinst_core-25.4.0.628-cp312-cp312-win_amd64.whl", hash = "sha256:f340d0c56cd440c23271310983b8e0a5c3c5c581d4a9d50c52129cd4a7ec50d7"},
-    {file = "zhinst_core-25.4.0.628-cp313-cp313-macosx_10_11_x86_64.whl", hash = "sha256:6ffdd0e52b79a866d441dfee28772d99c534ead40a910a59573b7719ebc2d3c2"},
-    {file = "zhinst_core-25.4.0.628-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:6340f58b1d19e9a58494093bba3b0b430c137417bf6d3a83fad00e1d835c0c2f"},
-    {file = "zhinst_core-25.4.0.628-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:153c8d7d53259d2e5136ebfd7fed4fd3e8b93264a70c10906b869fba2c7df406"},
-    {file = "zhinst_core-25.4.0.628-cp313-cp313-manylinux2014_aarch64.whl", hash = "sha256:03d9fbb221cdce0855f8e856c65933434e3d3dc110f672ccd51156be50db975e"},
-    {file = "zhinst_core-25.4.0.628-cp313-cp313-win_amd64.whl", hash = "sha256:9db15a54f8f18351f2f43f33e371eb1e2d873622a421ad4f92d4e3b1a2977701"},
-    {file = "zhinst_core-25.4.0.628-cp39-cp39-macosx_10_11_x86_64.whl", hash = "sha256:c8e5e0df4bb225136bf2eebcdd6e6e038851f50a92ddf51e4c8adf3a098de4be"},
-    {file = "zhinst_core-25.4.0.628-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:c8b763cd427b594e1f09d7daed51c39ce9df730d6bbd7e55b2911509ae8f57c8"},
-    {file = "zhinst_core-25.4.0.628-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:24b1d5c266be16b29be4e654bda17b42b72af2711152a451c38c3b182cd82068"},
-    {file = "zhinst_core-25.4.0.628-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:36ef04f25c75c077bb4f13cfe1999f70d86f163315419343b6d3bb5dd573b019"},
-    {file = "zhinst_core-25.4.0.628-cp39-cp39-win_amd64.whl", hash = "sha256:67ec14546c05a57f4d8c997c22b800a8325aba0e2f2ae78ed92f70a454b53820"},
+    {file = "zhinst_core-25.4.1.17-cp310-cp310-macosx_10_11_x86_64.whl", hash = "sha256:1557381f62129e33fda6550521428dcd3ee27875896b5cafca56ac113edfe693"},
+    {file = "zhinst_core-25.4.1.17-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:1d74667942d3692698cc322dc850229bc99367c9325b85936f5822ebf2843224"},
+    {file = "zhinst_core-25.4.1.17-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:c06d130606e6dff1ac711ef53d01159feb53dcdd89815b201b6be53b765d9690"},
+    {file = "zhinst_core-25.4.1.17-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:f3fd667c2c75aab26132727338430bf7aab919aad45777a87722e75a84081162"},
+    {file = "zhinst_core-25.4.1.17-cp310-cp310-win_amd64.whl", hash = "sha256:ef19c56ab87d917848295334a3cef89dd4243576d8bae93fb42b02067fea8a2c"},
+    {file = "zhinst_core-25.4.1.17-cp311-cp311-macosx_10_11_x86_64.whl", hash = "sha256:4096af95e89bbafa7c0ae4f952c135eed55f915e2a18f6b051798d773a298354"},
+    {file = "zhinst_core-25.4.1.17-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:5f1d105b1ed4951e5134a6c66f49d1eaaaea002eaaba7f40370c53ebdd90edd9"},
+    {file = "zhinst_core-25.4.1.17-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:8639b322bcba7e71eae53b86403fbaf404c8f9ef88dde1d7caa1602e0684051a"},
+    {file = "zhinst_core-25.4.1.17-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:59b3c4cd3310c8816568d1d3c58b875d65ce923e46b6a15ac318f861812c79a8"},
+    {file = "zhinst_core-25.4.1.17-cp311-cp311-win_amd64.whl", hash = "sha256:ad8e95e0820f897552fef21878a9ee5cc3d9e3148ce14f06a779d168b3262200"},
+    {file = "zhinst_core-25.4.1.17-cp312-cp312-macosx_10_11_x86_64.whl", hash = "sha256:10743c31116627decaacccc69facd424296521d5ffc69d11a6c4415c9e967b72"},
+    {file = "zhinst_core-25.4.1.17-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e4caae6d02b8c65f9e1a63542c3554c0f6bdd9c8667bc51e6d89622ecd8d4701"},
+    {file = "zhinst_core-25.4.1.17-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:dcb09716dea6ad38e49d9f15ebe507f4b8a77213b28f87f2014881aaa62dc8af"},
+    {file = "zhinst_core-25.4.1.17-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:2a939b20d3bc9047a81dc9e0cd99964b0dc3546af715068e6d4bbee929756598"},
+    {file = "zhinst_core-25.4.1.17-cp312-cp312-win_amd64.whl", hash = "sha256:563bd8120a3f86c62fae63fb7ce7dae9a0818249e8c309730a7cc8d6e761ff99"},
+    {file = "zhinst_core-25.4.1.17-cp313-cp313-macosx_10_11_x86_64.whl", hash = "sha256:eadc59cdfe0790610bf9205f0d68827161b1232bda96d2786f70677e83b5b069"},
+    {file = "zhinst_core-25.4.1.17-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:4382da2b61879f2394699ac7a8262044d2c78e8b5d2adb8d0f100a2188a20363"},
+    {file = "zhinst_core-25.4.1.17-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:89b61a3e912c8995817665572a6eef0916824269e735c9a003feee857488c68a"},
+    {file = "zhinst_core-25.4.1.17-cp313-cp313-manylinux2014_aarch64.whl", hash = "sha256:a1e0aa7af3786b31c43ac65c554edfdbf528ddd58a5793b56b33c7fef2f689ac"},
+    {file = "zhinst_core-25.4.1.17-cp313-cp313-win_amd64.whl", hash = "sha256:63d73e7f13a6379a0c431edcd6a797f4ad8b3f619eb57511dde7c818c37b2e7f"},
+    {file = "zhinst_core-25.4.1.17-cp39-cp39-macosx_10_11_x86_64.whl", hash = "sha256:dfe97ac71334c16914d9f7ed9ab4941a9cbb28dd38f2db32e4d53e1e52f8d9a2"},
+    {file = "zhinst_core-25.4.1.17-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:0448582a61ceacfa4eab2c0e828d7f931e090ac376265531f6cc1a9c3fa41885"},
+    {file = "zhinst_core-25.4.1.17-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:f025b61d66bae2f0cff34e43e9c4802ba2c23ff7025df2823b8a7f51007fda4e"},
+    {file = "zhinst_core-25.4.1.17-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:75792bb0b22a58c59ceb3db5d7f3029af9c59814514731dac0956e1ae93b3343"},
+    {file = "zhinst_core-25.4.1.17-cp39-cp39-win_amd64.whl", hash = "sha256:7ccf6ca3b196a1ff9ed6e54da60b1c64a71b4cfe65a8f996bf09d83ddb4d87ac"},
 ]
 
 [package.dependencies]
@@ -5596,4 +5640,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "e58039f652e8f423345ce692e2e3fd48fb4b1f89de21da1ec777bb74440b5e1c"
+content-hash = "09be2abdfc1b10e496fb5ea7efd87689e03c2ba9a5d9ddb252a976520ecc1bb2"

@@ -29,7 +29,9 @@ from qcodes import Instrument as QCodesInstrument
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import (
     after_experiment,
+    after_sequence,
     before_experiment,
+    before_sequence,
     clear_signal,
 )
 from sqil_core.experiment.data.plottr import DataDict, DDH5Writer
@@ -229,7 +231,7 @@ class ExperimentHandler(ABC):
             # Save helper files
             writer.save_text("directry_path.md", storage_path)
             # Save backup qpu
-            old_qubits = self.qpu.copy_qubits()
+            old_qubits = self.qpu.copy_quantum_elements()
             serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
 
             # TODO: for index sweep don't recompile laboneq
@@ -245,8 +247,8 @@ class ExperimentHandler(ABC):
                     qu_indices = kwargs.get("qu_idx", [0])
                     if type(qu_indices) == int:
                         qu_indices = [qu_indices]
-                    used_qubits = [self.qpu.qubits[i] for i in qu_indices]
-                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
+                    used_qubits = [self.qpu.quantum_elements[i] for i in qu_indices]
+                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.quantum_elements]
                     # TODO: save and re-apply old qubit params
                     # Reset to the first value of every sweep,
                     # then override current sweep value for all qubits
@@ -257,7 +259,9 @@ class ExperimentHandler(ABC):
                     seq = self.sequence(*params, **kwargs)
                     compiled_exp = compile_experiment(self.zi_session, seq)
                     # pulse_sheet(self.zi_setup, compiled_exp, self.exp_name)
+                    before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
+                    after_sequence.send(sender=self)
                     # TODO: handle multiple qubits. Maybe different datadicts?
                     raw_data = result[qu_idx_by_uid[qu_indices[0]]].result.data
                     data_to_save["data"] = raw_data
@@ -448,31 +452,3 @@ def pulse_sheet(device_setup, compiled_exp, name):
     plt.ylabel("Amplitude")
     plt.title(name)
     plt.show()
-
-
-def load_qpu(path, setup, zi):
-    qpu_filename = setup["storage"].get("qpu_filename", "qpu.json")
-    db_path_local = setup["storage"]["db_path_local"]
-    folder, filename = os.path.split(path)
-    try:
-        qpu = serializers.load(path)
-    except FileNotFoundError:
-        logger.warning(f"Cannot find QPU file name {qpu_filename} in {db_path_local}")
-        logger.warning(f" -> Creating a new QPU file")
-        if zi.get_qpu is None:
-            logger.error(
-                "No `get_qpu` function is specified in your setup file. You have two options:\n"
-                + "- Add one to instruments['zi']['get_qpu']"
-                + f"- Copy an old QPU file in your `db_path` and name it {qpu_filename}"
-            )
-            raise NotImplementedError(
-                "No `get_qpu` function is specified in your setup file."
-            )
-        qpu = zi.get_qpu(self.zi_setup)
-        os.makedirs(db_path_local, exist_ok=True)
-        serializers.save(
-            qpu,
-            os.path.join(db_path_local, qpu_filename),
-        )
-
-        return qpu

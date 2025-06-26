@@ -6,9 +6,9 @@ from blinker import NamedSignal
 from sqil_core.config_log import logger
 from sqil_core.experiment._events import (
     after_experiment,
+    after_sequence,
     before_experiment,
     before_sequence,
-    after_sequence,
     one_time_listener,
 )
 from sqil_core.experiment.helpers._function_override_handler import (
@@ -39,6 +39,7 @@ class Instrument(FunctionOverrideHandler, ABC):
         self._model = config.get("model", "")
         self._name = config.get("name", "")
         self._address = config.get("address", "")
+        self._variables = config.get("variables", {})
         self._config = config
         self._device = None
 
@@ -142,6 +143,12 @@ class Instrument(FunctionOverrideHandler, ABC):
             f"'{self.__class__.__name__}' object has no attribute '{name}'"
         )
 
+    def get_variable(self, key, *args, **kwargs):
+        var = self._variables.get(key, None)
+        if callable(var):
+            var = var(*args, **kwargs)
+        return var
+
     @property
     def id(self):
         """Instrument ID (read-only)."""
@@ -166,6 +173,11 @@ class Instrument(FunctionOverrideHandler, ABC):
     def address(self):
         """Instrument address (read-only)."""
         return self._address
+
+    @property
+    def variables(self):
+        """Instrument variables (read-only)."""
+        return self._variables
 
     @property
     def config(self):

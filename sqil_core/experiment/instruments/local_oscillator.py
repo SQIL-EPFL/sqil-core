@@ -163,8 +163,12 @@ class LocalOscillator(LocalOscillatorBase):
         self.turn_on()
 
     def _default_on_before_sequence(self, *args, sender=None, **kwargs):
-        # self.set_frequency(sender.qpu)
-        pass
+        freq = self.get_variable("frequency", sender)
+        power = self.get_variable("power", sender)
+        if freq:
+            self.set_frequency(freq)
+        if power:
+            self.set_power(power)
 
     def _default_on_after_experiment(self, *args, sender=None, **kwargs):
         self.turn_off()
