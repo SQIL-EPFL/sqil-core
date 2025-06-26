@@ -6,10 +6,9 @@ from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
+from sqil_core.utils._formatter import format_number
 
 from .drivers.SignalCore_SC5511A import SignalCore_SC5511A
-
-# from sqil_core.experiment.lo_event_handler import lo_event_handlers
 
 
 class LocalOscillatorBase(Instrument, ABC):
@@ -38,6 +37,13 @@ class LocalOscillatorBase(Instrument, ABC):
 
 
 class SqilRohdeSchwarzSGS100A(LocalOscillatorBase):
+    """
+    Frequency:
+        [1 MHz, 20 GHz], resolution 0.001 Hz
+    Power:
+        [-120 dB, 25 dB], resolution 0.01 dB
+    """
+
     def _default_connect(self, *args, **kwargs):
         logger.info(f"Connecting to {self.name} ({self.model})")
         return RohdeSchwarzSGS100A(self.name, self.address)
@@ -52,23 +58,27 @@ class SqilRohdeSchwarzSGS100A(LocalOscillatorBase):
         self.set_power(-60)
 
     def set_frequency(self, value) -> None:
-        logger.info(f"Setting frequency to {value} for {self.name}")
         self.device.frequency(value)
 
     def set_power(self, value) -> None:
-        logger.info(f"Setting power to {value} for {self.name}")
         self.device.power(value)
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
         self.device.on()
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
         self.device.off()
 
 
 class SqilSignalCoreSC5511A(LocalOscillatorBase):
+    """
+    PORT 1 specifications
+    Frequency:
+        [100 MHz, 20 GHz], resolution 1 Hz
+    Power:
+        @ freq < 18 GHz: [-20 dBm, 15 dBm], resolution 0.01 dBm
+        @ freq > 18 GHz: [-20 dBm, 10 dBm], resolution 0.01 dBm
+    """
 
     def _default_connect(self, *args, **kwargs):
         logger.info(f"Connecting to {self.name} ({self.model})")
@@ -87,23 +97,28 @@ class SqilSignalCoreSC5511A(LocalOscillatorBase):
         self.device.do_set_standby(False)
 
     def set_frequency(self, value) -> None:
-        logger.info(f"Setting frequency to {value} for {self.name}")
         self.device.do_set_ref_out_freq(value)
 
     def set_power(self, value) -> None:
-        logger.info(f"Setting power to {value} for {self.name}")
         self.device.power(value)
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
         self.device.do_set_output_status(1)
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
         self.device.do_set_output_status(0)
 
 
 class SqilSignalCoreSC5521A(LocalOscillatorBase):
+    """
+    Frequency:
+        [160 MHz, 40 GHz], resolution 1 Hz
+    Power:
+        @ freq < 30 GHz: [-10 dBm, 15 dBm], resolution 0.1 dBm
+        @ freq < 35 GHz: [-10 dBm, 10 dBm], resolution 0.1 dBm
+        @ freq > 35 GHz: [-10 dBm, 3 dBm], resolution 0.1 dBm
+    """
+
     def _default_connect(self, *args, **kwargs):
         logger.info(f"Connecting to {self.name} ({self.model})")
         return SC5521A(self.name)
@@ -118,19 +133,15 @@ class SqilSignalCoreSC5521A(LocalOscillatorBase):
         self.set_power(-40)
 
     def set_frequency(self, value) -> None:
-        logger.info(f"Setting frequency to {value} for {self.name}")
         self.device.clock_frequency(value)
 
     def set_power(self, value) -> None:
-        logger.info(f"Setting power to {value} for {self.name}")
         self.device.power(value)
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
         self.device.status("on")
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
         self.device.status("off")
 
 
@@ -174,13 +185,21 @@ class LocalOscillator(LocalOscillatorBase):
         self.turn_off()
 
     def set_frequency(self, value) -> None:
+        logger.info(
+            f"Setting frequency to {format_number(value, 5, unit="Hz", latex=False)} for {self.name}"
+        )
         self.instrument.set_frequency(value)
 
     def set_power(self, value) -> None:
+        logger.info(
+            f"Setting power to {format_number(value, 4, unit="dB", latex=False)} for {self.name}"
+        )
         self.instrument.set_power(value)
 
     def turn_on(self) -> None:
+        logger.info(f"Turning on {self.name}")
         self.instrument.turn_on()
 
     def turn_off(self) -> None:
+        logger.info(f"Turning off {self.name}")
         self.instrument.turn_off()
