@@ -136,68 +136,36 @@ class ExperimentHandler(ABC):
             return
 
         for instrument in self.instruments:
-            # for robustness against future modifications
             if not hasattr(instrument, "setup"):
                 continue
-            # TODO: call setup here
-        # try:
-        #     instrument_name = getattr(instrument, "name", instrument.id)
-
-        #     if setup_registry.has_custom_setup(instrument.id):
-        #         logger.info(
-        #             f"Applying registered custom setup to {instrument_name}"
-        #         )
-        #         setup_registry.apply_setup(instrument.id, instrument)
-        #     else:
-        #         logger.info(f"Running default setup to {instrument_name}")
-        #         instrument.setup()
-        # except Exception as e:
-        #     logger.error(
-        #         f"Error during setup of {getattr(instrument, 'name', instrument.id)}: {str(e)}"
-        #     )
+            instrument.setup()
 
     @abstractmethod
-    def sequence(self, *params, **kwargs):
+    def sequence(self, *args, **kwargs):
         """Experimental sequence defined by the user"""
         pass
 
     @abstractmethod
-    def analyze(self, path, *params, **kwargs):
+    def analyze(self, path, *args, **kwargs):
         pass
 
-    def run(self, *params, **kwargs):
-        db_type = self.setup.get("storage", {}).get("db_type", "")
-        if db_type == "plottr":
-            return self.run_with_plottr(*params, **kwargs)
+    def run(self, *args, **kwargs):
+        try:
+            db_type = self.setup.get("storage", {}).get("db_type", "")
 
-        before_experiment.send()
+            if db_type == "plottr":
+                return self.run_with_plottr(*args, **kwargs)
+            else:
+                return self.run_raw(*args, **kwargs)
 
-        seq = self.sequence(*params, **kwargs)
-        is_laboneq_exp = type(seq) == LaboneQExperiment
-        result = None
+        finally:
+            # Close and delete QCodes instances to avoid connection issues in following experiments
+            QCodesInstrument.close_all()
+            for instrument in self.instruments:
+                del instrument
 
-        if is_laboneq_exp:
-            compiled_exp = compile_experiment(self.zi_session, seq)
-            result = run_experiment(self.zi_session, compiled_exp)
-        else:
-            result = seq
-
-        after_experiment.send()
-
-        # Close and delete QCodes instances to avoid connection issues in following experiments
-        QCodesInstrument.close_all()
-        for instrument in self.instruments:
-            del instrument
-
-        # Run analysis script
-        # FIXME: now path
-        self.analyze(result, *params, **kwargs)
-
-        return result
-
-    def run_with_plottr(self, *params, **kwargs):
+    def run_with_plottr(self, *args, **kwargs):
         logger.info("Before exp")
-        print(before_experiment.receivers)
         before_experiment.send(sender=self)
 
         # Map input parameters index to their name
@@ -241,7 +209,7 @@ class ExperimentHandler(ABC):
                 data_to_save = {}
 
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
-                seq = self.sequence(*params, **kwargs)
+                seq = self.sequence(*args, **kwargs)
                 # Detect if the sequence created a laboneq experiment
                 is_laboneq_exp = type(seq) == LaboneQExperiment
 
@@ -258,7 +226,7 @@ class ExperimentHandler(ABC):
                         tmp = dict(zip(sweep_keys, sweep_values or []))
                         qubit.update(**tmp)
                     # Create the experiment (required to update params)
-                    seq = self.sequence(*params, **kwargs)
+                    seq = self.sequence(*args, **kwargs)
                     compiled_exp = compile_experiment(self.zi_session, seq)
                     # pulse_sheet(self.zi_setup, compiled_exp, self.exp_name)
                     before_sequence.send(sender=self)
@@ -276,7 +244,7 @@ class ExperimentHandler(ABC):
                 datadict_keys = datadict.keys()
                 for key, value in params_map.items():
                     if key in datadict_keys:
-                        data_to_save[key] = params[value]
+                        data_to_save[key] = args[value]
                 # Add sweeps to the data to save
                 if sweeps is not None:
                     for i, key in enumerate(sweep_keys):
@@ -291,15 +259,9 @@ class ExperimentHandler(ABC):
         self.qpu.quantum_operations.detach_qpu()
         self.qpu = QPU(old_qubits, self.qpu.quantum_operations)
 
-        # Close and delete QCodes instances to avoid connection issues in following experiments
-        QCodesInstrument.close_all()
-        for instrument in self.instruments:
-            del instrument
-        # TODO: cleanup connections
-
         # Run analysis script
         try:
-            anal_res = self.analyze(storage_path_local, *params, **kwargs)
+            anal_res = self.analyze(storage_path_local, *args, **kwargs)
             # writer.save_text("analysis.md", anal_res)
             plt.show()
         except Exception as e:
@@ -310,6 +272,23 @@ class ExperimentHandler(ABC):
 
         # Copy the local folder to the server
         copy_folder(storage_path_local, storage_path)
+
+    def run_raw(self, *args, **kwargs):
+        before_experiment.send(sender=self)
+
+        seq = self.sequence(*args, **kwargs)
+        is_laboneq_exp = type(seq) == LaboneQExperiment
+        result = None
+
+        if is_laboneq_exp:
+            compiled_exp = compile_experiment(self.zi_session, seq)
+            result = run_experiment(self.zi_session, compiled_exp)
+        else:
+            result = seq
+
+        after_experiment.send(sender=self)
+
+        return result
 
 
 def build_plottr_dict(db_schema):
