@@ -12,7 +12,7 @@ def set_plot_style(plt):
         "xtick.labelsize": 18,  # X-axis tick labels
         "ytick.labelsize": 18,  # Y-axis tick labels
         "lines.linewidth": 2.5,  # Line width
-        "lines.marker": "o",
+        # "lines.marker": "o",
         "lines.markersize": 7,  # Marker size
         "lines.markeredgewidth": 1.5,  # Marker line width
         "lines.markerfacecolor": "none",
@@ -24,6 +24,7 @@ def set_plot_style(plt):
         "ytick.major.width": 1.5,
         "figure.figsize": (20, 7),
     }
+    reset_plot_style(plt)
     return plt.rcParams.update(style)
 
 

@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 import h5py
 import numpy as np
@@ -8,8 +9,9 @@ import yaml
 from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
 
 
+# TODO: add tests for schema
 def extract_h5_data(
-    path: str, keys: list[str] | None = None
+    path: str, keys: list[str] | None = None, schema=False
 ) -> dict | tuple[np.ndarray, ...]:
     """Extract data at the given keys from an HDF5 file. If no keys are
     given (None) returns the data field of the object.
@@ -43,6 +45,11 @@ def extract_h5_data(
     with h5py.File(path, "r") as h5file:
         data = h5file["data"]
         data_keys = data.keys()
+
+        db_schema = None
+        if schema:
+            db_schema = data.attrs.get("__schema__")
+
         # Extract only the requested keys
         if bool(keys) and (len(keys) > 0):
             res = []
@@ -52,9 +59,9 @@ def extract_h5_data(
                     res.append([])
                     continue
                 res.append(np.array(data[key][:]))
-            return tuple(res)
+            return tuple(res) if not schema else (*tuple(res), db_schema)
         # Extract the whole data dictionary
-        return _h5_to_dict(data)
+        return {**_h5_to_dict(data), "schema": db_schema}
 
 
 def _h5_to_dict(obj) -> dict:
@@ -186,3 +193,21 @@ def get_sweep_param(path: str, exp_id: str):
 
 def get_measurement_id(path):
     return os.path.basename(path)[0:5]
+
+
+def copy_folder(src: str, dst: str):
+    # Ensure destination exists
+    os.makedirs(dst, exist_ok=True)
+
+    # Copy files recursively
+    for root, dirs, files in os.walk(src):
+        for dir_name in dirs:
+            os.makedirs(
+                os.path.join(dst, os.path.relpath(os.path.join(root, dir_name), src)),
+                exist_ok=True,
+            )
+        for file_name in files:
+            shutil.copy2(
+                os.path.join(root, file_name),
+                os.path.join(dst, os.path.relpath(os.path.join(root, file_name), src)),
+            )

@@ -6,8 +6,7 @@ import numpy as np
 import scipy.optimize as spopt
 from lmfit.model import ModelResult
 
-from sqil_core.utils import print_fit_metrics as _print_fit_metrics
-from sqil_core.utils import print_fit_params as _print_fit_params
+from sqil_core.utils import format_fit_metrics, format_fit_params
 from sqil_core.utils._utils import _count_function_parameters
 
 
@@ -51,9 +50,10 @@ class FitResult:
         params,
         std_err,
         fit_output,
-        metrics=None,
+        metrics={},
         predict=None,
         param_names=None,
+        model_name=None,
         metadata={},
     ):
         self.params = params
@@ -62,7 +62,10 @@ class FitResult:
         self.metrics = metrics
         self.predict = predict or self._no_prediction
         self.param_names = param_names or list(range(len(params)))
+        self.model_name = model_name
         self.metadata = metadata
+
+        self.params_by_name = dict(zip(self.param_names, self.params))
 
     def __repr__(self):
         return (
@@ -72,15 +75,18 @@ class FitResult:
             f"  metrics={self.metrics}\n)"
         )
 
-    def summary(self):
+    def summary(self, no_print=False):
         """Prints a detailed summary of the fit results."""
-        _print_fit_metrics(self.metrics)
-        _print_fit_params(
+        s = format_fit_metrics(self.metrics) + "\n"
+        s += format_fit_params(
             self.param_names,
             self.params,
             self.std_err,
-            self.std_err / self.params * 100,
+            np.array(self.std_err) / self.params * 100,
         )
+        if not no_print:
+            print(s)
+        return s
 
     def _no_prediction(self):
         raise Exception("No predition function available")
@@ -173,23 +179,32 @@ def fit_output(fit_func):
             raw_fit_output = fit_result
         sqil_dict["output"] = raw_fit_output
 
+        # Check if there are variables to override in metadata before continuing
+        if "fit_output_vars" in metadata:
+            overrides = metadata["fit_output_vars"]
+            x_data = overrides.get("x_data", x_data)
+            y_data = overrides.get("y_data", y_data)
+            del metadata["fit_output_vars"]
+
         # Format the raw_fit_output into a standardized dict
         # Scipy tuple (curve_fit, leastsq)
         if _is_scipy_tuple(raw_fit_output):
-            formatted = _format_scipy_tuple(raw_fit_output, has_sigma=has_sigma)
+            formatted = _format_scipy_tuple(raw_fit_output, y_data, has_sigma=has_sigma)
 
         # Scipy least squares
         elif _is_scipy_least_squares(raw_fit_output):
-            formatted = _format_scipy_least_squares(raw_fit_output, has_sigma=has_sigma)
+            formatted = _format_scipy_least_squares(
+                raw_fit_output, y_data, has_sigma=has_sigma
+            )
 
         # Scipy minimize
         elif _is_scipy_minimize(raw_fit_output):
             residuals = None
             predict = metadata.get("predict", None)
-            if predict and callable(predict):
+            if (x_data is not None) and (predict is not None) and callable(predict):
                 residuals = y_data - metadata["predict"](x_data, *raw_fit_output.x)
             formatted = _format_scipy_minimize(
-                raw_fit_output, residuals=residuals, has_sigma=has_sigma
+                raw_fit_output, residuals=residuals, y_data=y_data, has_sigma=has_sigma
             )
 
         # lmfit
@@ -219,7 +234,9 @@ def fit_output(fit_func):
         filtered_metadata = {k: v for k, v in metadata.items() if k not in sqil_keys}
 
         # Assign the optimized parameters to the prediction function
+        model_name = None
         if sqil_dict["predict"] is not None:
+            model_name = sqil_dict["predict"].__name__
             params = sqil_dict["params"]
             predict = sqil_dict["predict"]
             n_inputs = _count_function_parameters(predict)
@@ -230,9 +247,10 @@ def fit_output(fit_func):
             params=sqil_dict.get("params", []),
             std_err=sqil_dict.get("std_err", None),
             fit_output=raw_fit_output,
-            metrics=sqil_dict.get("metrics", None),
+            metrics=sqil_dict.get("metrics", {}),
             predict=sqil_dict.get("predict", None),
             param_names=sqil_dict.get("param_names", None),
+            model_name=model_name,
             metadata=filtered_metadata,
         )
 
@@ -296,27 +314,27 @@ def fit_input(fit_func):
 
     @wraps(fit_func)
     def wrapper(
-        x_data,
-        y_data,
+        *params,
         guess=None,
         bounds=None,
         fixed_params=None,
         fixed_bound_factor=1e-6,
+        sigma=None,
         **kwargs,
     ):
         # Inspect function to check if it requires guess and bounds
         func_params = inspect.signature(fit_func).parameters
 
         # Check if the user passed parameters that are not supported by the fit fun
-        if guess and ("guess" not in func_params):
+        if (guess is not None) and ("guess" not in func_params):
             warnings.warn("The fit function doesn't allow any initial guess.")
-        if bounds and ("bounds" not in func_params):
+        if (bounds is not None) and ("bounds" not in func_params):
             warnings.warn("The fit function doesn't allow any bounds.")
-        if fixed_params and (not guess):
+        if (fixed_params is not None) and (guess is None):
             raise ValueError("Using fixed_params requires an initial guess.")
 
         # Process bounds if the function accepts it
-        if bounds and ("bounds" in func_params):
+        if (bounds is not None) and ("bounds" in func_params):
             processed_bounds = np.array(
                 [(-np.inf, np.inf) if b is None else b for b in bounds],
                 dtype=np.float64,
@@ -343,7 +361,7 @@ def fit_input(fit_func):
                 upper_bounds[idx] = guess[idx] + tolerance
 
         # Prepare arguments dynamically
-        fit_args = {"x_data": x_data, "y_data": y_data, **kwargs}
+        fit_args = {**kwargs}
 
         if guess is not None and "guess" in func_params:
             fit_args["guess"] = guess
@@ -353,7 +371,8 @@ def fit_input(fit_func):
             fit_args["bounds"] = (lower_bounds, upper_bounds)
 
         # Call the wrapped function with preprocessed inputs
-        return fit_func(**fit_args)
+        fit_args = {**kwargs, **fit_args}
+        return fit_func(*params, **fit_args)
 
     return wrapper
 
@@ -549,9 +568,69 @@ def compute_chi2(residuals, n_params=None, cov_rescaled=True, sigma: np.ndarray 
         )
         red_chi2 = np.nan
     else:
-        red_chi2 = np.sum(residuals**2) / dof
+        red_chi2 = chi2 / dof
 
     return chi2, red_chi2
+
+
+def compute_aic(residuals: np.ndarray, n_params: int) -> float:
+    """
+    Computes the Akaike Information Criterion (AIC) for a given model fit.
+
+    The AIC is a metric used to compare the relative quality of statistical models
+    for a given dataset. It balances model fit with complexity, penalizing models
+    with more parameters to prevent overfitting.
+
+    Interpretation: The AIC has no maeaning on its own, only the difference between
+    the AIC of model1 and the one of model2.
+    ΔAIC = AIC_1 - AIC_2
+    If ΔAIC > 10 -> model 2 fits much better.
+
+    Parameters
+    ----------
+    residuals : np.ndarray
+        Array of residuals between the observed data and model predictions.
+    n_params : int
+        Number of free parameters in the fitted model.
+
+    Returns
+    -------
+    float
+        The Akaike Information Criterion value.
+    """
+
+    n = len(residuals)
+    rss = np.sum(residuals**2)
+    return 2 * n_params + n * np.log(rss / n)
+
+
+def compute_nrmse(residuals: np.ndarray, y_data: np.ndarray) -> float:
+    """
+    Computes the Normalized Root Mean Squared Error (NRMSE) of a model fit.
+
+    Lower is better.
+
+    The NRMSE is a scale-independent metric that quantifies the average magnitude
+    of residual errors normalized by the range of the observed data. It is useful
+    for comparing the fit quality across different datasets or models.
+
+    Parameters
+    ----------
+    residuals : np.ndarray
+        Array of residuals between the observed data and model predictions.
+    y_data : np.ndarray
+        The original observed data used in the model fitting.
+
+    Returns
+    -------
+    float
+        The normalized root mean squared error (NRMSE).
+    """
+
+    n = len(residuals)
+    y_span = np.max(y_data) - np.min(y_data)
+    rss = np.sum(residuals**2)
+    return np.sqrt(rss / n) / y_span
 
 
 def _is_scipy_tuple(result):
@@ -612,7 +691,7 @@ def _is_lmfit(result):
     return isinstance(result, ModelResult)
 
 
-def _format_scipy_tuple(result, has_sigma=False):
+def _format_scipy_tuple(result, y_data=None, has_sigma=False):
     """
     Formats the output of a SciPy fitting function into a standardized dictionary.
 
@@ -627,6 +706,9 @@ def _format_scipy_tuple(result, has_sigma=False):
         - `result[0]`: `popt` (optimized parameters, NumPy array)
         - `result[1]`: `pcov` (covariance matrix, NumPy array or None)
         - `result[2]`: `infodict` (dictionary containing residuals, required for error computation)
+
+    y_data: bool, optional
+        The y data that has been fit. Used to compute some fit metrics.
 
     has_sigma : bool, optional
         Indicates whether the fitting procedure considered experimental errors (`sigma`).
@@ -643,8 +725,9 @@ def _format_scipy_tuple(result, has_sigma=False):
     if not isinstance(result, tuple):
         raise TypeError("Fit result must be a tuple")
 
-    std_err = None
     popt, pcov, infodict = None, None, None
+    std_err = None
+    metrics = {}
 
     # Extract output parameters
     length = len(result)
@@ -654,18 +737,30 @@ def _format_scipy_tuple(result, has_sigma=False):
 
     if infodict is not None:
         residuals = infodict["fvec"]
+        # Reduced chi squared
         _, red_chi2 = compute_chi2(
             residuals, n_params=len(popt), cov_rescaled=has_sigma
         )
+        # AIC
+        aic = compute_aic(residuals, len(popt))
+        # NRMSE
+        if y_data is not None:
+            nrmse = compute_nrmse(residuals, y_data)
+            metrics.update({"nrmse": nrmse})
+        metrics.update({"red_chi2": red_chi2, "aic": aic})
+        # Standard error
         if pcov is not None:
             std_err = compute_adjusted_standard_errors(
                 pcov, residuals, cov_rescaled=has_sigma, red_chi2=red_chi2
             )
+    return {
+        "params": popt,
+        "std_err": std_err,
+        "metrics": metrics,
+    }
 
-    return {"params": popt, "std_err": std_err, "metrics": {"red_chi2": red_chi2}}
 
-
-def _format_scipy_least_squares(result, has_sigma=False):
+def _format_scipy_least_squares(result, y_data=None, has_sigma=False):
     """
     Formats the output of a SciPy least-squares optimization into a standardized dictionary.
 
@@ -681,6 +776,9 @@ def _format_scipy_least_squares(result, has_sigma=False):
         - `result.fun`: Residuals (array of differences between the observed and fitted data)
         - `result.jac`: Jacobian matrix (used to estimate covariance)
 
+    y_data: bool, optional
+        The y data that has been fit. Used to compute some fit metrics.
+
     has_sigma : bool, optional
         Indicates whether the fitting procedure considered experimental errors (`sigma`).
         If `True`, the covariance matrix does not need rescaling.
@@ -693,18 +791,27 @@ def _format_scipy_least_squares(result, has_sigma=False):
         - `"std_err"`: Standard errors computed from the covariance matrix and residuals.
         - `"metrics"`: A dictionary containing the reduced chi-squared (`red_chi2`).
     """
+    metrics = {}
+
     params = result.x
     residuals = result.fun
     cov = np.linalg.inv(result.jac.T @ result.jac)
+
     _, red_chi2 = compute_chi2(residuals, n_params=len(params), cov_rescaled=has_sigma)
+    aic = compute_aic(residuals, len(params))
+    if y_data is not None:
+        nrmse = compute_nrmse(residuals, y_data)
+        metrics.update({"nrmse": nrmse})
+    metrics.update({"red_chi2": red_chi2, "aic": aic})
+
     std_err = compute_adjusted_standard_errors(
         cov, residuals, cov_rescaled=has_sigma, red_chi2=red_chi2
     )
 
-    return {"params": params, "std_err": std_err, "metrics": {"red_chi2": red_chi2}}
+    return {"params": params, "std_err": std_err, "metrics": metrics}
 
 
-def _format_scipy_minimize(result, residuals=None, has_sigma=False):
+def _format_scipy_minimize(result, residuals=None, y_data=None, has_sigma=False):
     """
     Formats the output of a SciPy minimize optimization into a standardized dictionary.
 
@@ -722,6 +829,9 @@ def _format_scipy_minimize(result, residuals=None, has_sigma=False):
     residuals : array-like, optional
         The residuals (differences between observed data and fitted model).
         If not provided, standard errors will be computed based on the inverse Hessian matrix.
+
+    y_data: bool, optional
+        The y data that has been fit. Used to compute some fit metrics.
 
     has_sigma : bool, optional
         Indicates whether the fitting procedure considered experimental errors (`sigma`).
@@ -745,10 +855,15 @@ def _format_scipy_minimize(result, residuals=None, has_sigma=False):
         std_err = compute_adjusted_standard_errors(
             cov, residuals, cov_rescaled=has_sigma
         )
+
         _, red_chi2 = compute_chi2(
             residuals, n_params=len(params), cov_rescaled=has_sigma
         )
-        metrics = {"red_chi2": red_chi2}
+        aic = compute_aic(residuals, len(params))
+        if y_data is not None:
+            nrmse = compute_nrmse(residuals, y_data)
+            metrics.update({"nrmse": nrmse})
+        metrics.update({"red_chi2": red_chi2, "aic": aic})
 
     return {"params": params, "std_err": std_err, "metrics": metrics}
 
@@ -794,6 +909,11 @@ def _format_lmfit(result: ModelResult):
             for param in result.params.values()
         ]
     )
+
+    aic = compute_aic(result.residual, len(params))
+    nrmse = compute_nrmse(result.residual, result.data)
+    metrics = {"red_chi2": result.redchi, "aic": aic, "nrmse": nrmse}
+
     # Determine the independent variable name used in the fit
     independent_var = result.userkws.keys() & result.model.independent_vars
     independent_var = (
@@ -804,7 +924,7 @@ def _format_lmfit(result: ModelResult):
     return {
         "params": params,
         "std_err": std_err,
-        "metrics": {"red_chi2": result.redchi},
+        "metrics": metrics,
         "predict": fit_function,
         "param_names": param_names,
     }

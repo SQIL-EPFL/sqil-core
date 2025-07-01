@@ -769,7 +769,7 @@ class DDH5Writer(object):
 
     def save_text(self, name: str, text: str) -> None:
         assert self.filepath is not None
-        with open(self.filepath.parent / name, "x") as f:
+        with open(self.filepath.parent / name, "x", encoding="utf-8") as f:
             f.write(text)
 
     def save_dict(self, name: str, d: dict) -> None:

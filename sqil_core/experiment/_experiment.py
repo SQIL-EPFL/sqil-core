@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import copy
+import itertools
+import json
 import os
 from abc import ABC, abstractmethod
+from typing import Callable, cast
 
+import matplotlib.pyplot as plt
 import numpy as np
-from laboneq import workflow
+from laboneq import serializers, workflow
 from laboneq.dsl.quantum import TransmonParameters
 from laboneq.dsl.quantum.qpu import QPU
 from laboneq.dsl.quantum.quantum_element import QuantumElement
@@ -22,15 +27,23 @@ from numpy.typing import ArrayLike
 from qcodes import Instrument as QCodesInstrument
 
 from sqil_core.config_log import logger
-from sqil_core.experiment._events import after_experiment, before_experiment
+from sqil_core.experiment._events import (
+    after_experiment,
+    after_sequence,
+    before_experiment,
+    before_sequence,
+    clear_signal,
+)
 from sqil_core.experiment.data.plottr import DataDict, DDH5Writer
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.server import (
     connect_instruments,
     link_instrument_server,
 )
-from sqil_core.experiment.setup_registry import setup_registry
-from sqil_core.utils._read import read_yaml
+from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
+
+# from sqil_core.experiment.setup_registry import setup_registry
+from sqil_core.utils._read import copy_folder, read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module
 
 
@@ -78,20 +91,43 @@ class ExperimentHandler(ABC):
                     f"Unable to find any instruments in {setup_path}"
                     + "Do you have an `instruments` entry in your setup file?"
                 )
+            # Reset event listeners
+            clear_signal(before_experiment)
+            clear_signal(before_sequence)
+            clear_signal(after_sequence)
+            clear_signal(after_experiment)
         instrument_instances = connect_instruments(instrument_dict)
 
         # Create Zurich Instruments session
-        zi = instrument_instances.get("zi", None)
+        zi = cast(ZI_Instrument, instrument_instances.get("zi", None))
         if zi is not None:
-            self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
+            self.zi_setup = zi.generate_setup()
+            # self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect()
-            if zi.get_qpu is not None:
-                self.qpu = zi.get_qpu(self.zi_setup)
+            self._load_qpu(zi.generate_qpu)
 
         self.instruments = Instruments(instrument_instances)
+        self._setup_instruments()
 
-    # TODO: move to server
+    def _load_qpu(self, generate_qpu: Callable):
+        qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
+        db_path_local = self.setup["storage"]["db_path_local"]
+        try:
+            self.qpu = serializers.load(os.path.join(db_path_local, qpu_filename))
+        except FileNotFoundError:
+            logger.warning(
+                f"Cannot find QPU file name {qpu_filename} in {db_path_local}"
+            )
+            logger.warning(f" -> Creating a new QPU file")
+            self.qpu = generate_qpu(self.zi_setup)
+            os.makedirs(db_path_local, exist_ok=True)
+            serializers.save(
+                self.qpu,
+                os.path.join(db_path_local, qpu_filename),
+            )
+
+    # Move to server
     def _setup_instruments(self):
         """Default setup for all instruments with support for custom setups"""
         logger.info("Setting up instruments")
@@ -100,43 +136,147 @@ class ExperimentHandler(ABC):
             return
 
         for instrument in self.instruments:
-            # for robustness against future modifications
             if not hasattr(instrument, "setup"):
                 continue
-
-            try:
-                instrument_name = getattr(instrument, "name", instrument.id)
-
-                if setup_registry.has_custom_setup(instrument.id):
-                    logger.info(
-                        f"Applying registered custom setup to {instrument_name}"
-                    )
-                    setup_registry.apply_setup(instrument.id, instrument)
-                else:
-                    logger.info(f"Running default setup to {instrument_name}")
-                    instrument.setup()
-            except Exception as e:
-                logger.error(
-                    f"Error during setup of {getattr(instrument, 'name', instrument.id)}: {str(e)}"
-                )
+            instrument.setup()
 
     @abstractmethod
-    def sequence(self, *params, **kwargs):
+    def sequence(self, *args, **kwargs):
         """Experimental sequence defined by the user"""
         pass
 
     @abstractmethod
-    def analyze(self, raw_data, *params, **kwargs):
+    def analyze(self, path, *args, **kwargs):
         pass
 
-    def run(self, *params, **kwargs):
-        db_type = self.setup.get("storage", {}).get("db_type", "")
-        if db_type == "plottr":
-            return self.run_with_plottr(*params, **kwargs)
+    def run(self, *args, **kwargs):
+        try:
+            db_type = self.setup.get("storage", {}).get("db_type", "")
 
-        before_experiment.send()
+            if db_type == "plottr":
+                return self.run_with_plottr(*args, **kwargs)
+            else:
+                return self.run_raw(*args, **kwargs)
 
-        seq = self.sequence(*params, **kwargs)
+        finally:
+            # Close and delete QCodes instances to avoid connection issues in following experiments
+            QCodesInstrument.close_all()
+            for instrument in self.instruments:
+                del instrument
+
+    def run_with_plottr(self, *args, **kwargs):
+        logger.info("Before exp")
+        before_experiment.send(sender=self)
+
+        # Map input parameters index to their name
+        params_map, _ = map_inputs(self.sequence)
+
+        # Get information on sweeps
+        sweeps: dict = kwargs.get("sweeps", None)
+        sweep_keys = []
+        sweep_grid = []
+        sweep_schema = {}
+        if sweeps is not None:
+            # Name of the parameters to sweep
+            sweep_keys = list(sweeps.keys())
+            # Create a mesh grid of all the sweep parameters
+            sweep_grid = list(itertools.product(*sweeps.values()))
+            # Add sweeps to the database schema
+            for i, key in enumerate(sweep_keys):
+                # TODO: dynamically add unit
+                sweep_schema[f"sweep{i}"] = {"type": "axis", "name": key}
+
+        # Create the plotter datadict (database) using the inferred schema
+        db_schema = {**self.db_schema, **sweep_schema}
+        datadict = build_plottr_dict(db_schema)
+        # Get local and server storage folders
+        db_path = self.setup["storage"]["db_path"]
+        db_path_local = self.setup["storage"]["db_path_local"]
+
+        # TODO: dynamically assign self.exp_name to class name if not provided
+        with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
+            # Get the path to the folder where the data will be stored
+            storage_path = get_plottr_path(writer, db_path)
+            storage_path_local = get_plottr_path(writer, db_path_local)
+            # Save helper files
+            writer.save_text("directry_path.md", storage_path)
+            # Save backup qpu
+            old_qubits = self.qpu.copy_quantum_elements()
+            serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
+
+            # TODO: for index sweep don't recompile laboneq
+            for sweep_values in sweep_grid or [None]:
+                data_to_save = {}
+
+                # Run/create the experiment. Creates it for laboneq, runs it otherwise
+                seq = self.sequence(*args, **kwargs)
+                # Detect if the sequence created a laboneq experiment
+                is_laboneq_exp = type(seq) == LaboneQExperiment
+
+                if is_laboneq_exp:
+                    qu_indices = kwargs.get("qu_idx", [0])
+                    if type(qu_indices) == int:
+                        qu_indices = [qu_indices]
+                    used_qubits = [self.qpu.quantum_elements[i] for i in qu_indices]
+                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.quantum_elements]
+                    # TODO: save and re-apply old qubit params
+                    # Reset to the first value of every sweep,
+                    # then override current sweep value for all qubits
+                    for qubit in used_qubits:
+                        tmp = dict(zip(sweep_keys, sweep_values or []))
+                        qubit.update(**tmp)
+                    # Create the experiment (required to update params)
+                    seq = self.sequence(*args, **kwargs)
+                    compiled_exp = compile_experiment(self.zi_session, seq)
+                    # pulse_sheet(self.zi_setup, compiled_exp, self.exp_name)
+                    before_sequence.send(sender=self)
+                    result = run_experiment(self.zi_session, compiled_exp)
+                    after_sequence.send(sender=self)
+                    # TODO: handle multiple qubits. Maybe different datadicts?
+                    raw_data = result[qu_idx_by_uid[qu_indices[0]]].result.data
+                    data_to_save["data"] = raw_data
+                    result = raw_data
+                else:
+                    # TODO: handle results for different instrumets
+                    data_to_save["data"] = seq
+
+                # Add parameters to the data to save
+                datadict_keys = datadict.keys()
+                for key, value in params_map.items():
+                    if key in datadict_keys:
+                        data_to_save[key] = args[value]
+                # Add sweeps to the data to save
+                if sweeps is not None:
+                    for i, key in enumerate(sweep_keys):
+                        data_to_save[f"sweep{i}"] = sweep_values[i]
+
+                # Save data using plottr
+                writer.add_data(**data_to_save)
+
+            after_experiment.send()
+
+        # Reset the qpu to its previous state
+        self.qpu.quantum_operations.detach_qpu()
+        self.qpu = QPU(old_qubits, self.qpu.quantum_operations)
+
+        # Run analysis script
+        try:
+            anal_res = self.analyze(storage_path_local, *args, **kwargs)
+            # writer.save_text("analysis.md", anal_res)
+            plt.show()
+        except Exception as e:
+            logger.error(f"Error while analyzing the data {e}")
+
+        # TODO: update qpu
+        serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_new.json"))
+
+        # Copy the local folder to the server
+        copy_folder(storage_path_local, storage_path)
+
+    def run_raw(self, *args, **kwargs):
+        before_experiment.send(sender=self)
+
+        seq = self.sequence(*args, **kwargs)
         is_laboneq_exp = type(seq) == LaboneQExperiment
         result = None
 
@@ -146,100 +286,7 @@ class ExperimentHandler(ABC):
         else:
             result = seq
 
-        after_experiment.send()
-
-        # Close and delete QCodes instances to avoid connection issues in following experiments
-        QCodesInstrument.close_all()
-        for instrument in self.instruments:
-            del instrument
-
-        # Run analysis script
-        self.analyze(result, *params, **kwargs)
-
-        return result
-
-    def run_with_plottr(self, *params, **kwargs):
-        before_experiment.send()
-
-        sweeps = kwargs.get("sweeps", None)
-        if sweeps is not None:
-            # TODO: dynamically add unit
-            sweep_schema = {}
-            for i, key in enumerate(list(sweeps.keys())):
-                sweep_schema[f"sweep{i}"] = {"type": "axis", "name": key}
-            self.db_schema.update(**sweep_schema)
-
-        params_map, _ = map_inputs(self.sequence)
-        datadict = build_plottr_dict(self.db_schema)
-        db_path = self.setup["storage"]["db_path"]
-        db_path_local = self.setup["storage"]["db_path_local"]
-
-        # TODO: dynamically assign self.exp_name to class name if not provided
-        with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
-            filepath_parent = writer.filepath.parent
-            path = str(filepath_parent)
-            last_two_parts = path.split(os.sep)[-2:]
-            new_path = os.path.join(db_path, *last_two_parts)
-            new_path_local = os.path.join(db_path_local, *last_two_parts)
-            writer.save_text("directry_path.md", new_path)
-
-            sweep_idx = -1
-            for sweep_key, sweep_values in (sweeps or {"": None}).items():
-                sweep_idx += 1
-                if sweep_values is None:
-                    sweep_values = [0]
-                for sweep_value in sweep_values:
-                    data_to_save = {}
-
-                    seq = self.sequence(*params, **kwargs)
-                    is_laboneq_exp = type(seq) == LaboneQExperiment
-                    result = None
-
-                    if is_laboneq_exp:
-                        for qubit in self.qpu.qubits:
-                            # TODO: save and re-apply old qubit params
-                            # Reset to the first value of every sweep,
-                            # then override current sweep value for all qubits
-                            tmp = {}
-                            if sweep_key:
-                                tmp = {key: value[0] for key, value in sweeps.items()}
-                                qubit.update(**{**tmp, sweep_key: sweep_value})
-
-                        # Required to update params
-                        seq = self.sequence(*params, **kwargs)
-                        compiled_exp = compile_experiment(self.zi_session, seq)
-                        result = run_experiment(self.zi_session, compiled_exp)
-                        qu_idx_by_uid = [qubit.uid for qubit in self.qpu.qubits]
-                        raw_data = result[qu_idx_by_uid[params[0]]].result.data
-                        data_to_save["data"] = raw_data
-                        result = raw_data
-                    else:
-                        result = seq
-                        data_to_save["data"] = result
-
-                    # Add parameters to saved data
-                    datadict_keys = datadict.keys()
-                    for key, value in params_map.items():
-                        if key in datadict_keys:
-                            data_to_save[key] = params[value]
-                    # Add sweep to datadict
-                    if sweeps is not None:
-                        for i, key in enumerate(list(sweeps.keys())):
-                            data_to_save[f"sweep{sweep_idx}"] = sweeps[key][0]
-                        data_to_save[f"sweep{sweep_idx}"] = sweep_value
-
-                    # Save data using plottr
-                    writer.add_data(**data_to_save)
-
-            after_experiment.send()
-
-        # Close and delete QCodes instances to avoid connection issues in following experiments
-        QCodesInstrument.close_all()
-        for instrument in self.instruments:
-            del instrument
-
-        # Run analysis script
-        self.analyze(result, new_path_local, *params, **kwargs)
+        after_experiment.send(sender=self)
 
         return result
 
@@ -261,8 +308,8 @@ def build_plottr_dict(db_schema):
             data_key = key
             data_unit = value.get("unit", "")
     db[data_key] = dict(axes=axes, unit=data_unit)
-
     datadict = DataDict(**db)
+
     datadict.add_meta("schema", db_schema)
 
     return datadict
@@ -286,3 +333,103 @@ def map_inputs(func):
             kwargs.append(name)
 
     return params, kwargs
+
+
+def get_plottr_path(writer: DDH5Writer, root_path):
+    filepath_parent = writer.filepath.parent
+    path = str(filepath_parent)
+    last_two_parts = path.split(os.sep)[-2:]
+    return os.path.join(root_path, *last_two_parts)
+
+
+from laboneq.simple import OutputSimulator
+
+
+def pulse_sheet(device_setup, compiled_exp, name):
+    start = 0
+    end = 0.15e-6
+    colors = [
+        "tab:blue",
+        "tab:orange",
+        "tab:green",
+        "tab:red",
+        "tab:purple",
+        "tab:brown",
+    ]
+
+    # Get physical channel references via the logical signals
+    drive_iq_port = device_setup.logical_signal_by_uid("q0/drive").physical_channel
+    measure_iq_port = device_setup.logical_signal_by_uid("q0/measure").physical_channel
+    acquire_port = device_setup.logical_signal_by_uid("q0/acquire").physical_channel
+
+    # Get waveform snippets from the simulation
+    simulation = OutputSimulator(compiled_exp)
+
+    drive_snippet = simulation.get_snippet(
+        drive_iq_port, start=start, output_length=end
+    )
+
+    measure_snippet = simulation.get_snippet(
+        measure_iq_port, start=start, output_length=end
+    )
+
+    acquire_snippet = simulation.get_snippet(
+        acquire_port, start=start, output_length=end
+    )
+
+    fig = plt.figure(figsize=(15, 5))
+    plt.plot(
+        drive_snippet.time * 1e6,
+        drive_snippet.wave.real,
+        color=colors[0],
+        label="Qubit I",
+    )
+    plt.fill_between(
+        drive_snippet.time * 1e6, drive_snippet.wave.real, color=colors[0], alpha=0.6
+    )
+    plt.plot(
+        drive_snippet.time * 1e6,
+        drive_snippet.wave.imag,
+        color=colors[1],
+        label="Qubit Q",
+    )
+    plt.fill_between(
+        drive_snippet.time * 1e6, drive_snippet.wave.imag, color=colors[1], alpha=0.6
+    )
+
+    plt.plot(
+        measure_snippet.time * 1e6,
+        measure_snippet.wave.real,
+        color=colors[2],
+        label="Readout I",
+    )
+    plt.fill_between(
+        measure_snippet.time * 1e6,
+        measure_snippet.wave.real,
+        color=colors[2],
+        alpha=0.6,
+    )
+    plt.plot(
+        measure_snippet.time * 1e6,
+        measure_snippet.wave.imag,
+        color=colors[3],
+        label="Readout Q",
+    )
+    plt.fill_between(
+        measure_snippet.time * 1e6,
+        measure_snippet.wave.imag,
+        color=colors[3],
+        alpha=0.6,
+    )
+    plt.plot(
+        acquire_snippet.time * 1e6,
+        acquire_snippet.wave.real,
+        color=colors[4],
+        label="acquire start",
+    )
+
+    plt.legend()
+    plt.xlabel(r"Time($\mu s$)")
+    plt.ylabel("Amplitude")
+    plt.title(name)
+    plt.show()

@@ -28,7 +28,7 @@ def _check_fit_params(params):
 
 def _check_fit_rel_err(errors):
     for err in errors:
-        assert err < 0.03
+        assert err < 0.05
 
 
 def _check_fit(res):

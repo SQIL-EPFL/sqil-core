@@ -1,8 +1,8 @@
 import hashlib
 import importlib.util
 import inspect
-from collections.abc import Iterable
 import sys
+from collections.abc import Iterable
 
 from sqil_core.config_log import logger
 
@@ -35,10 +35,13 @@ def fill_gaps(primary_list: list, fallback_list: list) -> list:
     >>> fill_gaps(primary_list, fallback_list)
     [1, 20, 3, 40, 5]
     """
-    if not fallback_list:
+    if (fallback_list is None) or (len(fallback_list) == 0):
         return primary_list
 
-    if not primary_list:
+    if primary_list is None:
+        return fallback_list
+
+    if len(primary_list) == 0:
         primary_list = []
 
     result = primary_list
@@ -82,6 +85,33 @@ def make_iterable(obj) -> Iterable:
     if isinstance(obj, str):
         return [obj]
     return obj if isinstance(obj, Iterable) else [obj]
+
+
+def has_at_least_one(lst: list, value) -> bool:
+    """
+    Checks whether a given value appears at least once in a list.
+    If the object passed is not iterable, it is converted to an interable,
+    e.g. if lst = 5, the function transform lst = [lst].
+
+    Parameters
+    ----------
+    lst : list
+        The list to search.
+    value : Any
+        The value to look for in the list. If `None`, the function checks for the presence
+        of `None` using identity comparison.
+
+    Returns
+    -------
+    bool
+        True if the value appears at least once in the list; False otherwise.
+    """
+    lst = make_iterable(lst)
+
+    if value is None:
+        return any(x is None for x in lst)
+    else:
+        return any(x == value for x in lst)
 
 
 def _count_function_parameters(func):

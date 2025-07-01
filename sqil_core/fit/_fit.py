@@ -1,12 +1,14 @@
 import warnings
+from typing import Callable
 
 import numpy as np
 from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
 
 import sqil_core.fit._models as _models
-from sqil_core.utils._utils import fill_gaps, make_iterable
+from sqil_core.utils._utils import fill_gaps, has_at_least_one, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
+from ._guess import gaussian_bounds, gaussian_guess, lorentzian_bounds, lorentzian_guess
 
 
 @fit_input
@@ -15,7 +17,7 @@ def fit_lorentzian(
     x_data: np.ndarray,
     y_data: np.ndarray,
     guess: list = None,
-    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
+    bounds: list[tuple[float]] | tuple = None,
 ) -> FitResult:
     r"""
     Fits a Lorentzian function to the provided data. The function estimates the
@@ -59,35 +61,16 @@ def fit_lorentzian(
     x, y = x_data, y_data
 
     # Default intial guess if not provided
-    if guess is None:
-        median_y = np.median(y)
-        max_y, min_y = np.max(y), np.min(y)
-
-        # Determine A, x0, y0 based on peak prominence
-        if max_y - median_y >= median_y - min_y:
-            y0 = min_y
-            idx = np.argmax(y)
-            A = 1 / (max_y - median_y)
-        else:
-            y0 = max_y
-            idx = np.argmin(y)
-            A = 1 / (min_y - median_y)
-
-        x0 = x[idx]
-        half = y0 + A / 2.0
-        dx = np.abs(np.diff(x[np.argsort(np.abs(y - half))]))
-        dx_min = np.abs(np.diff(x))
-        dx = dx[dx >= 2.0 * dx_min]
-
-        fwhm = dx[0] / 2.0 if dx.size else dx_min
-        guess = [A, x0, fwhm, y0]
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, lorentzian_guess(x_data, y_data))
 
     # Default bounds if not provided
     if bounds is None:
-        bounds = (
-            [-5.0 * np.abs(guess[0]), np.min(x), guess[2] / 100.0, np.min(y)],
-            [5.0 * np.abs(guess[0]), np.max(x), 10.0 * guess[2], np.max(y)],
-        )
+        bounds = ([None] * len(guess), [None] * len(guess))
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess, upper_guess = lorentzian_bounds(x_data, y_data, guess)
+        bounds = (fill_gaps(lower, lower_guess), fill_gaps(upper, upper_guess))
 
     res = curve_fit(_models.lorentzian, x, y, p0=guess, bounds=bounds, full_output=True)
 
@@ -99,11 +82,78 @@ def fit_lorentzian(
 
 @fit_input
 @fit_output
+def fit_two_lorentzians_shared_x0(
+    x_data_1,
+    y_data_1,
+    x_data_2,
+    y_data_2,
+    guess: list = None,
+    bounds: list[tuple[float]] | tuple = None,
+):
+    y_all = np.concatenate([y_data_1, y_data_2])
+
+    if has_at_least_one(guess, None):
+        guess_1 = lorentzian_guess(x_data_1, y_data_1)
+        guess_2 = lorentzian_guess(x_data_2, y_data_2)
+        x01, x02 = guess_1[1], guess_2[1]
+        x0 = np.mean([x01, x02])
+        guess = fill_gaps(
+            guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
+        )
+
+    if bounds == None:
+        bounds = [[None] * len(guess), [None] * len(guess)]
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess_1, upper_guess_1 = lorentzian_bounds(x_data_1, y_data_1, guess_1)
+        lower_guess_2, upper_guess_2 = lorentzian_bounds(x_data_2, y_data_2, guess_2)
+        # Combine bounds for 1 and 2
+        lower_guess = np.concatenate(
+            [
+                np.delete(lower_guess_1, 1),
+                np.delete(lower_guess_2, 1),
+                [np.min([lower_guess_1, lower_guess_2])],
+            ]
+        )
+        upper_guess = np.concatenate(
+            [
+                np.delete(upper_guess_1, 1),
+                np.delete(upper_guess_2, 1),
+                [np.max([upper_guess_1, upper_guess_2])],
+            ]
+        )
+        lower = fill_gaps(lower, lower_guess)
+        upper = fill_gaps(upper, upper_guess)
+        bounds = (lower, upper)
+
+    res = curve_fit(
+        lambda _, A1, fwhm1, y01, A2, fwhm2, y02, x0: _models.two_lorentzians_shared_x0(
+            x_data_1, x_data_2, A1, fwhm1, y01, A2, fwhm2, y02, x0
+        ),
+        xdata=np.zeros_like(y_all),  # dummy x, since x1 and x2 are fixed via closure
+        ydata=y_all,
+        p0=guess,
+        # bounds=bounds,
+        full_output=True,
+    )
+
+    return res, {
+        "param_names": ["A1", "fwhm1", "y01", "A2", "fwhm2", "y02", "x0"],
+        "predict": _models.two_lorentzians_shared_x0,
+        "fit_output_vars": {
+            "x_data": np.concatenate([x_data_1, x_data_2]),
+            "y_data": y_all,
+        },
+    }
+
+
+@fit_input
+@fit_output
 def fit_gaussian(
     x_data: np.ndarray,
     y_data: np.ndarray,
     guess: list = None,
-    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
+    bounds: list[tuple[float]] | tuple = None,
 ) -> FitResult:
     r"""
     Fits a Gaussian function to the provided data. The function estimates the
@@ -148,36 +198,15 @@ def fit_gaussian(
     x, y = x_data, y_data
 
     # Default initial guess if not provided
-    if guess is None:
-        median_y = np.median(y)
-        max_x, min_x = np.max(x), np.min(x)
-        max_y, min_y = np.max(y), np.min(y)
-
-        # Determine A, x0, y0 based on peak prominence
-        if max_y - median_y >= median_y - min_y:
-            y0 = min_y
-            idx = np.argmax(y)
-            A = max_y - median_y
-        else:
-            y0 = max_y
-            idx = np.argmin(y)
-            A = min_y - median_y
-
-        x0 = x[idx]
-        half = y0 + A / 2.0
-        dx = np.abs(np.diff(x[np.argsort(np.abs(y - half))]))
-        dx_min = np.abs(np.diff(x))
-        dx = dx[dx >= 2.0 * dx_min]
-
-        sigma = dx[0] / 2.0 if dx.size else dx_min
-        guess = [A, x0, sigma, y0]
-
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, gaussian_guess(x_data, y_data))
     # Default bounds if not provided
     if bounds is None:
-        bounds = (
-            [-5.0 * np.abs(guess[0]), np.min(x), guess[2] / 100.0, np.min(y)],
-            [5.0 * np.abs(guess[0]), np.max(x), 10.0 * guess[2], np.max(y)],
-        )
+        bounds = ([None] * len(guess), [None] * len(guess))
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess, upper_guess = gaussian_bounds(x_data, y_data, guess)
+        bounds = (fill_gaps(lower, lower_guess), fill_gaps(upper, upper_guess))
 
     res = curve_fit(_models.gaussian, x, y, p0=guess, bounds=bounds, full_output=True)
 
@@ -189,6 +218,73 @@ def fit_gaussian(
         "param_names": ["A", "x0", "sigma", "y0"],
         "predict": _models.gaussian,
         "fwhm": fwhm,
+    }
+
+
+@fit_input
+@fit_output
+def fit_two_gaussians_shared_x0(
+    x_data_1,
+    y_data_1,
+    x_data_2,
+    y_data_2,
+    guess: list = None,
+    bounds: list[tuple[float]] | tuple = None,
+):
+    y_all = np.concatenate([y_data_1, y_data_2])
+
+    if has_at_least_one(guess, None):
+        guess_1 = gaussian_guess(x_data_1, y_data_1)
+        guess_2 = gaussian_guess(x_data_2, y_data_2)
+        x01, x02 = guess_1[1], guess_2[1]
+        x0 = np.mean([x01, x02])
+        guess = fill_gaps(
+            guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
+        )
+
+    if bounds == None:
+        bounds = [[None] * len(guess), [None] * len(guess)]
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess_1, upper_guess_1 = gaussian_bounds(x_data_1, y_data_1, guess_1)
+        lower_guess_2, upper_guess_2 = gaussian_bounds(x_data_2, y_data_2, guess_2)
+        # Combine bounds for 1 and 2
+        lower_guess = np.concatenate(
+            [
+                np.delete(lower_guess_1, 1),
+                np.delete(lower_guess_2, 1),
+                [np.min([lower_guess_1, lower_guess_2])],
+            ]
+        )
+        upper_guess = np.concatenate(
+            [
+                np.delete(upper_guess_1, 1),
+                np.delete(upper_guess_2, 1),
+                [np.max([upper_guess_1, upper_guess_2])],
+            ]
+        )
+        lower = fill_gaps(lower, lower_guess)
+        upper = fill_gaps(upper, upper_guess)
+        bounds = (lower, upper)
+
+    res = curve_fit(
+        lambda _, A1, fwhm1, y01, A2, fwhm2, y02, x0: _models.two_gaussians_shared_x0(
+            x_data_1, x_data_2, A1, fwhm1, y01, A2, fwhm2, y02, x0
+        ),
+        xdata=np.zeros_like(y_all),  # dummy x, since x1 and x2 are fixed via closure
+        ydata=y_all,
+        p0=guess,
+        # bounds=bounds,
+        full_output=True,
+    )
+
+    return res, {
+        "param_names": ["A1", "fwhm1", "y01", "A2", "fwhm2", "y02", "x0"],
+        "predict": _models.two_gaussians_shared_x0,
+        "fit_output_vars": {
+            "x_data": np.concatenate([x_data_1, x_data_2]),
+            "y_data": y_all,
+        },
     }
 
 
@@ -383,6 +479,7 @@ def fit_qubit_relaxation_qp(
     }
 
 
+# TODO: add fit input
 @fit_output
 def fit_decaying_oscillations(
     x_data: np.ndarray,
@@ -403,13 +500,15 @@ def fit_decaying_oscillations(
     Parameters
     ----------
     x_data : np.ndarray
-        The independent variable (e.g., time) of the data.
-
+        Independent variable array (e.g., time or frequency).
     y_data : np.ndarray
-        The dependent variable (e.g., signal) of the data.
-
-    num_init : int, optional, default=10
-        The number of initial guesses for the phase to use in the fitting process.
+        Dependent variable array representing the measured signal.
+    guess : list[float] or None, optional
+        Initial parameter estimates [A, tau, y0, phi, T]. Missing values are automatically filled.
+    bounds : list[tuple[float]] or tuple, optional
+        Lower and upper bounds for parameters during fitting, by default no bounds.
+    num_init : int, optional
+        Number of phase values to try when guessing, by default 10.
 
     Returns
     -------
@@ -425,12 +524,23 @@ def fit_decaying_oscillations(
     if not guess:
         guess = [None] * 5
     if np.any(np.array(guess) == None):
-        A = y_data[0] - y_data[-1]
+        A = np.max(y_data) - np.min(y_data)
         tau = np.max(x_data) - np.min(x_data)
         T = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
         y0 = [y_data[-1], np.mean(y_data)]
         phi = np.linspace(0.0, np.pi * T, num_init)
         guess = fill_gaps(guess, [A, tau, y0, phi, T])
+
+    # Default bounds
+    if bounds == (-np.inf, np.inf):
+        bounds = np.array([(-np.inf, np.inf)] * 5)
+        # Positive times
+        bounds[1] = (0, np.inf)
+        bounds[4] = (0, np.inf)
+        # Offset within y_min and y_max
+        bounds[3] = (np.min(y_data), np.max(y_data))
+        # Split into lower and upper bounds
+        bounds = [bounds[:, 0], bounds[:, 1]]
 
     A, tau, y0, phi, T = guess
     phi = make_iterable(phi)
@@ -438,6 +548,18 @@ def fit_decaying_oscillations(
 
     best_fit = None
     best_popt = None
+    best_chi2 = np.inf
+
+    @fit_output
+    def _curve_fit_osc(x_data, y_data, p0, bounds):
+        return curve_fit(
+            _models.decaying_oscillations,
+            x_data,
+            y_data,
+            p0,
+            bounds=bounds,
+            full_output=True,
+        )
 
     # Try multiple initializations
     for phi_guess in phi:
@@ -447,16 +569,10 @@ def fit_decaying_oscillations(
             try:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    fit_output = curve_fit(
-                        _models.decaying_oscillations,
-                        x_data,
-                        y_data,
-                        p0,
-                        bounds=bounds,
-                        full_output=True,
-                    )
-                popt = fit_output[0]
-                best_fit, best_popt = fit_output, popt
+                    fit_res = _curve_fit_osc(x_data, y_data, p0, bounds)
+                if fit_res.metrics["red_chi2"] < best_chi2:
+                    best_fit, best_popt = fit_res.output, fit_res.params
+                    best_chi2 = fit_res.metrics["red_chi2"]
             except:
                 if best_fit is None:
 
@@ -804,8 +920,13 @@ def transform_data(
     transform_type: str = "optm",
     params: list = None,
     deg: bool = True,
+    inv_transform: bool = False,
     full_output: bool = False,
-) -> np.ndarray | tuple[np.ndarray, list, np.ndarray]:
+) -> (
+    np.ndarray
+    | tuple[np.ndarray, Callable]
+    | tuple[np.ndarray, Callable, list, np.ndarray]
+):
     """
     Transforms complex-valued data using various transformation methods, including
     optimization-based alignment, real/imaginary extraction, amplitude, and phase.
@@ -831,8 +952,12 @@ def transform_data(
     deg : bool, optional
         If True, phase transformations return values in degrees (default: True).
 
+    inv_transform : bool, optional
+        If true returns transformed data and the function to perform the inverse transform.
+
     full_output : bool, optional
-        If True, returns transformed data, transformation parameters, and residuals.
+        If True, returns transformed data, the function to perform the inverse transform,
+        transformation parameters, and residuals.
 
     Returns
     -------
@@ -857,6 +982,9 @@ def transform_data(
 
     def transform(data, x0, y0, phi):
         return (data - x0 - 1.0j * y0) * np.exp(1.0j * phi)
+
+    def _inv_transform(data, x0, y0, phi):
+        return data * np.exp(-1.0j * phi) + x0 + 1.0j * y0
 
     def opt_transform(data):
         """Finds optimal transformation parameters."""
@@ -921,6 +1049,10 @@ def transform_data(
         if deg:
             transformed_data = np.degrees(transformed_data)
 
+    inv_transform_fun = lambda data: _inv_transform(data, *params)
+
     if full_output:
-        return np.array(transformed_data), params, residual
+        return np.array(transformed_data), inv_transform_fun, params, residual
+    if inv_transform:
+        return np.array(transformed_data), inv_transform_fun
     return np.array(transformed_data)

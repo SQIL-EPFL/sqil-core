@@ -8,10 +8,10 @@ from ._analysis import (
 )
 from ._const import ONE_TONE_PARAMS, TWO_TONE_PARAMS
 from ._formatter import (
+    format_fit_metrics,
+    format_fit_params,
     format_number,
     get_name_and_unit,
-    print_fit_metrics,
-    print_fit_params,
 )
 from ._plot import (
     build_title,
@@ -45,8 +45,8 @@ __all__ = [
     # Formatter
     "format_number",
     "get_name_and_unit",
-    "print_fit_params",
-    "print_fit_metrics",
+    "format_fit_params",
+    "format_fit_metrics",
     # Plot
     "set_plot_style",
     "reset_plot_style",
