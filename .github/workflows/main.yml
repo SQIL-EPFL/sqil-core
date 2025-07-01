@@ -11,6 +11,8 @@ on:
     branches:
       - main
 
+  workflow_dispatch: # Allow manual triggers
+
 jobs:
   check-formatting-and-run-tests:
     runs-on: ubuntu-latest  # You can choose a different runner if necessary
