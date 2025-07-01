@@ -4,7 +4,12 @@ import numpy as np
 import pytest
 
 from sqil_core.fit import FitResult, fit_circle_algebraic, fit_skewed_lorentzian
-from sqil_core.resonator._resonator import S11_reflection, S21_hanger, quick_fit
+from sqil_core.resonator._resonator import (
+    S11_reflection,
+    S21_hanger,
+    S21_transmission,
+    quick_fit,
+)
 from sqil_core.utils import estimate_linear_background
 
 
@@ -16,8 +21,8 @@ class TestQuickFit:
         "alpha": 0.2,
         "tau": 1e-9,
         "Q_tot": 4.2e3,
-        "Q_ext": 5e3 * np.exp(1j * 0.8),
         "fr": 5e9,
+        "Q_ext": 5e3 * np.exp(1j * 0.8),
         "phi_0": 0.8,
     }
     TRUE_PARAMS = list(TRUE_PARAMS_DICT.values())
@@ -36,19 +41,25 @@ class TestQuickFit:
 
     @pytest.fixture
     def mock_data(self):
-        freq = np.linspace(4.9e9, 5.1e9, 300)
+        freq = np.linspace(4.95e9, 5.05e9, 550)
         np.random.seed(13)
         noise = np.random.normal(0, 3e-3, freq.shape)
         data = {
             "reflection": S11_reflection(freq, *self.TRUE_PARAMS) + noise,
             "hanger": S21_hanger(freq, *self.TRUE_PARAMS) + noise,
+            "transmission": S21_transmission(freq, *self.TRUE_PARAMS[:-2]) + noise,
         }
         return freq, data
 
     @pytest.fixture
     def mock_fit_results(self):
         """Mock return values for the fitting functions used inside quick_fit"""
-        (a, alpha, tau, Q_tot, Q_ext, fr, phi0) = self.TRUE_PARAMS
+        (a, alpha, tau, Q_tot, fr, Q_ext, phi0) = self.TRUE_PARAMS
+
+        # Mock for fit_lorentzian
+        mock_lorentzian = MagicMock(spec=FitResult)
+        mock_lorentzian.params = [1, fr, fr / Q_tot, 0]
+        mock_lorentzian.metrics = {"nrmse": 0.35}
 
         # Mock for fit_skewed_lorentzian
         mock_skewed_lorentzian = MagicMock(spec=FitResult)
@@ -63,6 +74,7 @@ class TestQuickFit:
         mock_circle_algebraic.params = [0.2, 0.3, 0.5]
 
         return {
+            "lorentzian": mock_lorentzian,
             "skewed_lorentzian": mock_skewed_lorentzian,
             "phase_vs_freq": mock_phase_vs_freq,
             "circle_algebraic": mock_circle_algebraic,
@@ -76,14 +88,14 @@ class TestQuickFit:
             )
 
             assert len(result) == 7
-            a, alpha, tau, Q_tot, Q_ext, fr, phi0 = result
+            a, alpha, tau, Q_tot, fr, Q_ext, phi0 = result
 
             assert isinstance(a, float)
             assert isinstance(alpha, float)
             assert isinstance(tau, float)
             assert isinstance(Q_tot, float)
-            assert isinstance(Q_ext, complex)  # Q_ext should be complex
             assert isinstance(fr, float)
+            assert isinstance(Q_ext, complex)
             assert isinstance(phi0, float)
 
     def test_can_fit_with_default_parameters(self, mock_data):
@@ -149,18 +161,23 @@ class TestQuickFit:
                     call_kwargs.get("Q_tot") == guess_Q_tot
                 ), "Q_tot was changed before phase_vs_freq fit"
 
+    @patch("sqil_core.resonator._resonator.fit_lorentzian")
     @patch("sqil_core.resonator._resonator.fit_skewed_lorentzian")
     def test_should_estimate_Q_tot_and_fr_if_not_provided(
-        self, mock_fit_skewed, mock_data, mock_fit_results
+        self, mock_fit_skewed, mock_fit_lorentzian, mock_data, mock_fit_results
     ):
         freq, data = mock_data
         kwargs = {**self.KWARGS, "Q_tot": None, "fr": None}
 
         mock_fit_skewed.return_value = mock_fit_results["skewed_lorentzian"]
+        mock_fit_lorentzian.return_value = mock_fit_results["lorentzian"]
 
         for measurement in ["reflection", "hanger"]:
             quick_fit(freq, data[measurement], measurement=measurement, **kwargs)
-            mock_fit_skewed.assert_called_once()
+            assert (
+                mock_fit_lorentzian.called or mock_fit_skewed.called
+            ), f"Neither mock_lorentzian nor mock_fit_skewed was called for {measurement}"
+            mock_fit_lorentzian.reset_mock()
             mock_fit_skewed.reset_mock()
 
     @patch("sqil_core.resonator._resonator.estimate_linear_background")

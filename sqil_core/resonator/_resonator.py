@@ -697,7 +697,7 @@ def quick_fit(
         a *= (np.max(linmag) - np.min(linmag)) / (
             np.max(np.abs(res6)) - np.min(np.abs(res6))
         )
-    alpha += phase[0] - np.unwrap(np.angle(res6))[0]
+        alpha += phase[0] - np.unwrap(np.angle(res6))[0]
 
     # Plot small summary
     if do_plot:
