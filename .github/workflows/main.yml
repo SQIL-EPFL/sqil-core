@@ -31,21 +31,13 @@ jobs:
         curl -sSL https://install.python-poetry.org | python3 -  # Install Poetry
         echo "$HOME/.poetry/bin" >> $GITHUB_PATH  # Add Poetry to the PATH
 
-    - name: Install poetry shell
-      run: |
-        pip install poetry-plugin-shell
-
-    - name: Activate poetry shell
-      run: |
-        poetry shell
-
     - name: Install dependencies with Poetry
       run: |
         poetry install
 
     - name: Install Qt bindings (required for plottr)
       run: |
-        pip install PyQt5
+        poetry run pip install PyQt5
 
     - name: Check code formatting with Black
       run: |
