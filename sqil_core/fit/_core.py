@@ -614,6 +614,8 @@ def compute_nrmse(residuals: np.ndarray, y_data: np.ndarray) -> float:
     of residual errors normalized by the range of the observed data. It is useful
     for comparing the fit quality across different datasets or models.
 
+    For complex data it's computed using the L2 norm and the span of the magnitude.
+
     Parameters
     ----------
     residuals : np.ndarray
@@ -626,11 +628,17 @@ def compute_nrmse(residuals: np.ndarray, y_data: np.ndarray) -> float:
     float
         The normalized root mean squared error (NRMSE).
     """
-
     n = len(residuals)
-    y_span = np.max(y_data) - np.min(y_data)
-    rss = np.sum(residuals**2)
-    return np.sqrt(rss / n) / y_span
+    if np.iscomplexobj(y_data):
+        y_abs_span = np.max(np.abs(y_data)) - np.min(np.abs(y_data))
+        rmse = np.linalg.norm(residuals) / np.sqrt(n)
+        nrmse = rmse / y_abs_span
+    else:
+        y_span = np.max(y_data) - np.min(y_data)
+        rss = np.sum(residuals**2)
+        nrmse = np.sqrt(rss / n) / y_span
+
+    return nrmse
 
 
 def _is_scipy_tuple(result):
