@@ -870,7 +870,8 @@ def plot_resonator(
     # Subplot on the left (full height, first column)
     ax1 = fig.add_subplot(gs[:, 0])  # Left side spans both rows
     ax1.scatter(np.real(data), np.imag(data), color="tab:blue", s=20)
-    ax1.plot(np.real(y_fit), np.imag(y_fit), color="tab:orange")
+    if y_fit is not None:
+        ax1.plot(np.real(y_fit), np.imag(y_fit), color="tab:orange")
     ax1.set_aspect("equal")
     ax1.set_xlabel("Re")
     ax1.set_ylabel("Im")
@@ -879,7 +880,8 @@ def plot_resonator(
     # Subplot on the top-right (first row, second column)
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.scatter(freq, np.abs(data), color="tab:blue", s=5)
-    ax2.plot(x_fit, np.abs(y_fit), color="tab:orange")
+    if y_fit is not None:
+        ax2.plot(x_fit, np.abs(y_fit), color="tab:orange")
     if (mag_bg is not None) and (not np.isnan(mag_bg).any()):
         ax2.plot(freq, mag_bg, "-.", color="tab:green")
     ax2.set_ylabel("Amplitude")
@@ -888,7 +890,8 @@ def plot_resonator(
     # Subplot on the bottom-right (second row, second column)
     ax3 = fig.add_subplot(gs[1, 1])
     ax3.scatter(freq, np.unwrap(np.angle(data)), color="tab:blue", s=5)
-    ax3.plot(x_fit, np.unwrap(np.angle(y_fit)), color="tab:orange")
+    if y_fit is not None:
+        ax3.plot(x_fit, np.unwrap(np.angle(y_fit)), color="tab:orange")
     ax3.set_ylabel("Phase")
     ax3.set_xlabel("Frequency [Hz]")
     ax3.grid(True)
