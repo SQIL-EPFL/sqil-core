@@ -310,7 +310,7 @@ def build_plottr_dict(db_schema):
     db[data_key] = dict(axes=axes, unit=data_unit)
     datadict = DataDict(**db)
 
-    datadict.add_meta("schema", db_schema)
+    datadict.add_meta("schema", json.dumps(db_schema))
 
     return datadict
 

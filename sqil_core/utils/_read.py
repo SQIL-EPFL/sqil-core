@@ -48,7 +48,7 @@ def extract_h5_data(
 
         db_schema = None
         if schema:
-            db_schema = data.attrs.get("__schema__")
+            db_schema = json.loads(data.attrs.get("__schema__"))
 
         # Extract only the requested keys
         if bool(keys) and (len(keys) > 0):
@@ -61,7 +61,9 @@ def extract_h5_data(
                 res.append(np.array(data[key][:]))
             return tuple(res) if not schema else (*tuple(res), db_schema)
         # Extract the whole data dictionary
-        return {**_h5_to_dict(data), "schema": db_schema}
+        h5_dict = _h5_to_dict(data)
+        return h5_dict if not schema else {**h5_dict, "schema": db_schema}
+    #
 
 
 def _h5_to_dict(obj) -> dict:
