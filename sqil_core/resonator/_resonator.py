@@ -7,12 +7,14 @@ from scipy.optimize import leastsq, minimize
 from tabulate import tabulate
 
 from sqil_core.fit import (
+    FitResult,
     fit_circle_algebraic,
     fit_lorentzian,
     fit_output,
     fit_skewed_lorentzian,
 )
 from sqil_core.utils import estimate_linear_background, format_number
+from sqil_core.utils._plot import set_plot_style
 
 
 @fit_output
@@ -493,6 +495,20 @@ def S11_reflection_mesh(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi):
     return env * resonator
 
 
+def linmag_fit(freq: np.ndarray, data: np.ndarray):
+    linmag = np.abs(data)
+    norm_linmag = linmag / np.max(linmag)
+    # Lorentzian fit
+    fit_res = fit_lorentzian(freq, norm_linmag**2)
+    # If the lorentzian fit is bad, try a skewed lorentzian
+    if not fit_res.is_acceptable("nrmse"):
+        fit_res_skewed = fit_skewed_lorentzian(freq, norm_linmag**2)
+        delta_aic = fit_res["aic"] - fit_res_skewed["aic"]
+        fit_res = fit_res_skewed if delta_aic >= 0 else fit_res
+
+    return fit_res
+
+
 def quick_fit(
     freq: np.ndarray,
     data: np.ndarray,
@@ -738,7 +754,7 @@ def quick_fit(
 @fit_output
 def full_fit(
     freq, data, measurement, a, alpha, tau, Q_tot, fr, Q_ext=1, phi0=0, mag_bg=None
-):
+) -> FitResult:
     """
     Performs a full fit of the measured resonator data using a selected model
     (either reflection or hanger-type measurement). The fitting is handled
@@ -802,6 +818,7 @@ def full_fit(
     >>> fit_result = full_fit(freq, data, "reflection", 1, 0, 0, 1e4, 2e4, 1.5e9, 0)
     >>> fit_result.summary()
     """
+    model_name = None
 
     if measurement == "reflection":
 
@@ -814,6 +831,7 @@ def full_fit(
         params = model.make_params(
             a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, fr=fr, Q_ext_mag=Q_ext, phi=phi0
         )
+        model_name = "S11_reflection"
 
     elif measurement == "hanger":
 
@@ -824,6 +842,7 @@ def full_fit(
         params = model.make_params(
             a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, fr=fr, Q_ext_mag=Q_ext, phi=phi0
         )
+        model_name = "S21_hanger"
 
     elif measurement == "transmission":
 
@@ -832,9 +851,10 @@ def full_fit(
 
         model = Model(S21_transmission_fixed)
         params = model.make_params(a=a, alpha=alpha, tau=tau, Q_tot=Q_tot, fr=fr)
+        model_name = "S21_transmission"
 
     res = model.fit(data, params, freq=freq)
-    return res
+    return res, {"model_name": model_name}
 
 
 def plot_resonator(
@@ -864,41 +884,45 @@ def plot_resonator(
         The title of the plot. Default is an empty string.
     """
 
-    fig = plt.figure(figsize=(10, 5))
+    set_plot_style(plt)
+
+    fig = plt.figure(figsize=(24, 10))
     gs = fig.add_gridspec(2, 2)
+    ms = plt.rcParams.get("lines.markersize")
 
     # Subplot on the left (full height, first column)
     ax1 = fig.add_subplot(gs[:, 0])  # Left side spans both rows
-    ax1.scatter(np.real(data), np.imag(data), color="tab:blue", s=20)
+    ax1.plot(np.real(data), np.imag(data), "o", color="tab:blue", ms=ms + 1)
     if y_fit is not None:
         ax1.plot(np.real(y_fit), np.imag(y_fit), color="tab:orange")
     ax1.set_aspect("equal")
-    ax1.set_xlabel("Re")
-    ax1.set_ylabel("Im")
-    ax1.grid()
+    ax1.set_xlabel("In-phase")
+    ax1.set_ylabel("Quadrature")
+    ax1.grid(True)
 
     # Subplot on the top-right (first row, second column)
     ax2 = fig.add_subplot(gs[0, 1])
-    ax2.scatter(freq, np.abs(data), color="tab:blue", s=5)
+    ax2.plot(freq, np.abs(data), "o", color="tab:blue", ms=ms - 1)
     if y_fit is not None:
         ax2.plot(x_fit, np.abs(y_fit), color="tab:orange")
     if (mag_bg is not None) and (not np.isnan(mag_bg).any()):
         ax2.plot(freq, mag_bg, "-.", color="tab:green")
-    ax2.set_ylabel("Amplitude")
+    ax2.set_ylabel("Magnitude [V]")
     ax2.grid(True)
 
     # Subplot on the bottom-right (second row, second column)
     ax3 = fig.add_subplot(gs[1, 1])
-    ax3.scatter(freq, np.unwrap(np.angle(data)), color="tab:blue", s=5)
+    ax3.plot(freq, np.unwrap(np.angle(data)), "o", color="tab:blue", ms=ms - 1)
     if y_fit is not None:
         ax3.plot(x_fit, np.unwrap(np.angle(y_fit)), color="tab:orange")
-    ax3.set_ylabel("Phase")
+    ax3.set_ylabel("Phase [rad]")
     ax3.set_xlabel("Frequency [Hz]")
     ax3.grid(True)
 
     fig.suptitle(title)
     fig.tight_layout()
-    plt.show()
+
+    return fig, (ax1, ax2, ax3)
 
 
 def print_resonator_params(fit_params, measurement):
