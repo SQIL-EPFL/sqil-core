@@ -24,3 +24,9 @@ from ._guess import (
     lorentzian_bounds,
     lorentzian_guess,
 )
+from ._quality import (
+    FIT_QUALITY_LABELS,
+    FIT_QUALITY_THRESHOLDS,
+    FitQuality,
+    evaluate_fit_quality,
+)

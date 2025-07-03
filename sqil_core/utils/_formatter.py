@@ -114,63 +114,6 @@ def format_fit_params(param_names, params, std_errs=None, perc_errs=None):
     return table + "\n"
 
 
-def format_fit_metrics(fit_quality, keys: list[str] | None = None):
-    table_data = []
-
-    if keys is None:
-        keys = fit_quality.keys() if fit_quality else []
-
-    # Print fit quality parameters
-    for key in keys:
-        value = fit_quality[key]
-        quality = ""
-        # Evaluate reduced Chi-squared
-        if key == "red_chi2":
-            key = "reduced χ²"
-            if value <= 0.5:
-                quality = "GREAT (or overfitting)"
-            elif (value > 0.9) and (value <= 1.1):
-                quality = "GREAT"
-            elif (value > 0.5) and (value <= 2):
-                quality = "GOOD"
-            elif (value > 2) and (value <= 5):
-                quality = "MEDIUM"
-            elif value > 5:
-                quality = "BAD"
-        # Evaluate R-squared
-        elif key == "r2":
-            # Skip if complex
-            if isinstance(value, complex):
-                continue
-            key = "R²"
-            if value < 0:
-                quality = "BAD - a horizontal line would be better"
-            elif value > 0.97:
-                quality = "GREAT"
-            elif value > 0.95:
-                quality = "GOOD"
-            elif value > 0.80:
-                quality = "MEDIUM"
-            else:
-                quality = "BAD"
-        # Normalized root mean square error NRMSE
-        # Normalized mean absolute error NMAE and
-        elif (key == "nrmse") or (key == "nmae"):
-            if value < 0.01:
-                quality = "GREAT"
-            elif value < 0.03:
-                quality = "GOOD"
-            elif value < 0.1:
-                quality = "MEDIUM"
-            else:
-                quality = "BAD"
-        else:
-            continue
-
-        table_data.append([key, f"{value:.3e}", quality])
-    return tabulate(table_data, tablefmt="plain")
-
-
 def _sigma_for_confidence(confidence_level: float) -> float:
     """
     Calculates the sigma multiplier (z-score) for a given confidence level.

@@ -7,12 +7,7 @@ from ._analysis import (
     remove_offset,
 )
 from ._const import ONE_TONE_PARAMS, TWO_TONE_PARAMS
-from ._formatter import (
-    format_fit_metrics,
-    format_fit_params,
-    format_number,
-    get_name_and_unit,
-)
+from ._formatter import format_fit_params, format_number, get_name_and_unit
 from ._plot import (
     build_title,
     get_x_id_by_plot_dim,
@@ -46,7 +41,6 @@ __all__ = [
     "format_number",
     "get_name_and_unit",
     "format_fit_params",
-    "format_fit_metrics",
     # Plot
     "set_plot_style",
     "reset_plot_style",

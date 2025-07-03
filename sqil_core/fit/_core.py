@@ -6,7 +6,8 @@ import numpy as np
 import scipy.optimize as spopt
 from lmfit.model import ModelResult
 
-from sqil_core.utils import format_fit_metrics, format_fit_params
+from sqil_core.fit._quality import FitQuality, evaluate_fit_quality, format_fit_metrics
+from sqil_core.utils._formatter import format_fit_params
 from sqil_core.utils._utils import _count_function_parameters
 
 
@@ -87,6 +88,9 @@ class FitResult:
         if not no_print:
             print(s)
         return s
+
+    def is_acceptable(self, recipe, threshold=FitQuality.ACCEPTABLE):
+        return evaluate_fit_quality(self.metrics, recipe) >= threshold
 
     def _no_prediction(self):
         raise Exception("No predition function available")
@@ -234,9 +238,10 @@ def fit_output(fit_func):
         filtered_metadata = {k: v for k, v in metadata.items() if k not in sqil_keys}
 
         # Assign the optimized parameters to the prediction function
-        model_name = None
+        model_name = metadata.get("model_name", None)
         if sqil_dict["predict"] is not None:
-            model_name = sqil_dict["predict"].__name__
+            if model_name is None:
+                model_name = sqil_dict["predict"].__name__
             params = sqil_dict["params"]
             predict = sqil_dict["predict"]
             n_inputs = _count_function_parameters(predict)
