@@ -29,4 +29,6 @@ from ._quality import (
     FIT_QUALITY_THRESHOLDS,
     FitQuality,
     evaluate_fit_quality,
+    get_best_fit,
+    get_best_fit_nrmse_aic,
 )
