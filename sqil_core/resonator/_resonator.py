@@ -12,9 +12,10 @@ from sqil_core.fit import (
     fit_lorentzian,
     fit_output,
     fit_skewed_lorentzian,
+    get_best_fit,
 )
 from sqil_core.utils import estimate_linear_background, format_number
-from sqil_core.utils._plot import set_plot_style
+from sqil_core.utils._plot import reset_plot_style, set_plot_style
 
 
 @fit_output
@@ -495,7 +496,29 @@ def S11_reflection_mesh(freq, a, alpha, tau, Q_tot, Q_ext, fr, phi):
     return env * resonator
 
 
-def linmag_fit(freq: np.ndarray, data: np.ndarray):
+def linmag_fit(freq: np.ndarray, data: np.ndarray) -> FitResult:
+    """
+    Fits the magnitude squared of complex data to a Lorentzian profile.
+
+    This function computes the normalized magnitude of the input complex data and fits
+    its squared value to a Lorentzian function to characterize resonance features.
+    If the initial Lorentzian fit quality is poor (based on NRMSE), it attempts a fit
+    using a skewed Lorentzian model and returns the better fit.
+
+    Parameters
+    ----------
+    freq : np.ndarray
+        Frequency values corresponding to the data points.
+    data : np.ndarray
+        Complex-valued data to be fitted.
+
+    Returns
+    -------
+    FitResult
+        The best fit result from either the Lorentzian or skewed Lorentzian fit, selected
+        based on fit quality.
+    """
+
     linmag = np.abs(data)
     norm_linmag = linmag / np.max(linmag)
     # Lorentzian fit
@@ -503,8 +526,7 @@ def linmag_fit(freq: np.ndarray, data: np.ndarray):
     # If the lorentzian fit is bad, try a skewed lorentzian
     if not fit_res.is_acceptable("nrmse"):
         fit_res_skewed = fit_skewed_lorentzian(freq, norm_linmag**2)
-        delta_aic = fit_res["aic"] - fit_res_skewed["aic"]
-        fit_res = fit_res_skewed if delta_aic >= 0 else fit_res
+        fit_res = get_best_fit(fit_res, fit_res_skewed)
 
     return fit_res
 
@@ -921,6 +943,8 @@ def plot_resonator(
 
     fig.suptitle(title)
     fig.tight_layout()
+
+    reset_plot_style(plt)
 
     return fig, (ax1, ax2, ax3)
 
