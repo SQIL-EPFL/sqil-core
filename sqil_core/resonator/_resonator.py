@@ -944,8 +944,6 @@ def plot_resonator(
     fig.suptitle(title)
     fig.tight_layout()
 
-    reset_plot_style(plt)
-
     return fig, (ax1, ax2, ax3)
 
 
