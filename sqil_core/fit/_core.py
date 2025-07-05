@@ -34,6 +34,8 @@ class FitResult:
         If not provided, an exception will be raised when calling it.
     param_names : list, optional
         List of parameter names, defaulting to a range based on the number of parameters.
+    model_name : str, optional
+        Name of the model used to fit the data.
     metadata : dict, optional
         Additional information that can be passed in the fit result.
 
@@ -636,10 +638,18 @@ def compute_nrmse(residuals: np.ndarray, y_data: np.ndarray) -> float:
     n = len(residuals)
     if np.iscomplexobj(y_data):
         y_abs_span = np.max(np.abs(y_data)) - np.min(np.abs(y_data))
+        if y_abs_span == 0:
+            warnings.warn(
+                "y_data has zero span in magnitude. NRMSE is undefined.", RuntimeWarning
+            )
+            return np.nan
         rmse = np.linalg.norm(residuals) / np.sqrt(n)
         nrmse = rmse / y_abs_span
     else:
         y_span = np.max(y_data) - np.min(y_data)
+        if y_span == 0:
+            warnings.warn("y_data has zero span. NRMSE is undefined.", RuntimeWarning)
+            return np.nan
         rss = np.sum(residuals**2)
         nrmse = np.sqrt(rss / n) / y_span
 
