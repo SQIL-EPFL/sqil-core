@@ -11,13 +11,8 @@ class FitQuality(IntEnum):
     GOOD = 2
     GREAT = 3
 
-
-FIT_QUALITY_LABELS = {
-    FitQuality.GREAT: "GREAT",
-    FitQuality.GOOD: "GOOD",
-    FitQuality.ACCEPTABLE: "ACCEPTABLE",
-    FitQuality.BAD: "BAD",
-}
+    def __str__(self):
+        return self.name
 
 
 FIT_QUALITY_THRESHOLDS = {
@@ -196,8 +191,7 @@ def format_fit_metrics(fit_metrics: dict, keys: list[str] | None = None) -> str:
 
     This function generates a human-readable table that reports selected fit metrics
     (e.g., reduced χ², R², NRMSE) alongside their numerical values and qualitative
-    quality assessments. Quality categories are determined using `evaluate_fit_quality`,
-    and labels are mapped via `FIT_QUALITY_LABELS`.
+    quality assessments. Quality categories are determined using `evaluate_fit_quality`.
 
     Parameters
     ----------
@@ -255,7 +249,7 @@ def format_fit_metrics(fit_metrics: dict, keys: list[str] | None = None) -> str:
         else:
             continue
 
-        quality_label = FIT_QUALITY_LABELS.get(quality, "UNKNOWN")
+        quality_label = str(quality)
 
         table_data.append([key, f"{value:.3e}", quality_label])
     return tabulate(table_data, tablefmt="plain")

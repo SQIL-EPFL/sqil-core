@@ -91,8 +91,11 @@ class FitResult:
             print(s)
         return s
 
-    def is_acceptable(self, recipe, threshold=FitQuality.ACCEPTABLE):
-        return evaluate_fit_quality(self.metrics, recipe) >= threshold
+    def quality(self, recipe="nrmse"):
+        return evaluate_fit_quality(self.metrics, recipe)
+
+    def is_acceptable(self, recipe="nrmse", threshold=FitQuality.ACCEPTABLE):
+        return self.quality(recipe) >= threshold
 
     def _no_prediction(self):
         raise Exception("No predition function available")
