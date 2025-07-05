@@ -24,13 +24,13 @@ FIT_QUALITY_THRESHOLDS = {
     "nrmse": [
         (0.01, FitQuality.GREAT),
         (0.03, FitQuality.GOOD),
-        (0.1, FitQuality.ACCEPTABLE),
+        (0.08, FitQuality.ACCEPTABLE),
         (np.inf, FitQuality.BAD),
     ],
     "nmae": [
         (0.01, FitQuality.GREAT),
         (0.03, FitQuality.GOOD),
-        (0.1, FitQuality.ACCEPTABLE),
+        (0.08, FitQuality.ACCEPTABLE),
         (np.inf, FitQuality.BAD),
     ],
     "red_chi2": [
