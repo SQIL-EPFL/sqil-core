@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import yaml
 
-from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
+from ._const import _EXP_UNIT_MAP, PARAM_METADATA
 
 
 # TODO: add tests for schema
@@ -91,106 +91,6 @@ def read_yaml(path: str) -> dict:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             print(exc)
-
-
-class ParamInfo:
-    """Parameter information for items of param_dict
-
-    Attributes:
-        id (str): param_dict key
-        value (any): the value of the parameter
-        name (str): full name of the parameter (e.g. Readout frequency)
-        symbol (str): symbol of the parameter in Latex notation (e.g. f_{RO})
-        unit (str): base unit of measurement (e.g. Hz)
-        scale (int): the scale that should be generally applied to raw data (e.g. 1e-9 to take raw Hz to GHz)
-    """
-
-    def __init__(self, id, value):
-        self.id = id
-        self.value = value
-        if id in _PARAM_METADATA:
-            meta = _PARAM_METADATA[id]
-        else:
-            meta = {}
-        self.name = meta["name"] if "name" in meta else id
-        self.symbol = meta["symbol"] if "symbol" in meta else id
-        self.unit = meta["unit"] if "unit" in meta else ""
-        self.scale = meta["scale"] if "scale" in meta else 1
-
-    def get_name_and_unit(self):
-        res = self.name
-        if self.unit != "":
-            exponent = -(int(f"{self.scale:.0e}".split("e")[1]) // 3) * 3
-            unit = f" [{_EXP_UNIT_MAP[exponent]}{self.unit}]"
-            res += unit
-        return res
-
-    def to_dict(self):
-        """Convert ParamInfo to a dictionary."""
-        return {
-            "id": self.id,
-            "value": self.value,
-            "name": self.name,
-            "symbol": self.symbol,
-            "unit": self.unit,
-            "scale": self.scale,
-        }
-
-    def __str__(self):
-        """Return a JSON-formatted string of the object."""
-        return json.dumps(self.to_dict())
-
-    def __eq__(self, other):
-        if isinstance(other, ParamInfo):
-            return (self.id == other.id) & (self.value == other.value)
-        if isinstance(other, (int, float, complex, str)):
-            return self.value == other
-        return False
-
-    def __bool__(self):
-        return bool(self.id)
-
-
-ParamDict = dict[str, ParamInfo | dict[str, ParamInfo]]
-
-
-def _enrich_param_dict(param_dict: dict) -> ParamDict:
-    """Add metadata to param_dict entries."""
-    res = {}
-    for key, value in param_dict.items():
-        if isinstance(value, dict):
-            # Recursive step for nested dictionaries
-            res[key] = _enrich_param_dict(value)
-        else:
-            res[key] = ParamInfo(key, value)
-    return res
-
-
-def read_param_dict(path: str) -> ParamDict:
-    """Read param_dict and include additional information for each entry.
-
-    Parameters
-    ----------
-    path : str
-        Path to the file or a folder in which is contained a param_dict.json file
-
-    Returns
-    -------
-    ParamDict
-        The param_dict with additional metadata
-    """
-    # If the path is to a folder open /param_dict.json
-    if os.path.isdir(path):
-        path = os.path.join(path, "param_dict.json")
-    return _enrich_param_dict(read_json(path))
-
-
-def get_sweep_param(path: str, exp_id: str):
-    params = read_param_dict(path)
-    sweep_id = params[exp_id]["sweep"].value
-    if sweep_id:
-        return params[sweep_id]
-    return ParamInfo("", "")
 
 
 def get_measurement_id(path):
