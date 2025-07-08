@@ -5,9 +5,9 @@ import shutil
 import h5py
 import numpy as np
 import yaml
+from laboneq import serializers
 
 from ._const import _EXP_UNIT_MAP, PARAM_METADATA
-from laboneq import serializers
 
 
 # TODO: add tests for schema
