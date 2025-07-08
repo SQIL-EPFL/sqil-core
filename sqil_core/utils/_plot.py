@@ -1,8 +1,9 @@
 import numpy as np
 
-from ._const import _PARAM_METADATA
-from ._formatter import format_number
-from ._read import read_json
+from ._const import PARAM_METADATA
+from ._formatter import format_number, param_info_from_schema
+from ._read import read_json, extract_h5_data, map_data_dict
+import matplotlib.pyplot as plt
 
 
 def set_plot_style(plt):
@@ -68,10 +69,10 @@ def build_title(title: str, path: str, params: list[str]) -> str:
     dic = read_json(f"{path}/param_dict.json")
     title += " with "
     for idx, param in enumerate(params):
-        if not (param in _PARAM_METADATA.keys()) or not (param in dic):
+        if not (param in PARAM_METADATA.keys()) or not (param in dic):
             title += f"{param} = ? & "
             continue
-        meta = _PARAM_METADATA[param]
+        meta = PARAM_METADATA[param]
         value = format_number(dic[param], 3, meta["unit"])
         title += f"${meta['symbol']} =${value} & "
         if idx % 2 == 0 and idx != 0:
@@ -106,3 +107,82 @@ def guess_plot_dimension(
         return "1.5"
     else:
         return "1"
+
+
+def plot_mag_phase(path=None, datadict=None):
+    if path is None and datadict is None:
+        raise Exception("At least one of `path` and `datadict` must be specified.")
+
+    if path is not None:
+        datadict = extract_h5_data(path, schema=True)
+
+    # Get schema and map data
+    schema = datadict.get("schema")
+    x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
+
+    # Get metadata on x_data and y_data
+    x_info = param_info_from_schema(
+        datadict_map["x_data"], schema[datadict_map["x_data"]]
+    )
+    y_info = param_info_from_schema(
+        datadict_map["y_data"], schema[datadict_map["y_data"]]
+    )
+    # Rescale data
+    x_data_scaled = x_data * x_info.scale
+    y_data_scaled = y_data * y_info.scale
+
+    set_plot_style(plt)
+
+    if len(sweeps) == 0:  # 1D plot
+        fig, axs = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
+
+        x_data_scaled = x_data * x_info.scale
+        y_data_scaled = y_data * y_info.scale
+
+        axs[0].plot(x_data_scaled, np.abs(y_data_scaled), "o")
+        axs[0].set_ylabel(
+            "Magnitude" + f" [{y_info.rescaled_unit}]" if y_info.unit else ""
+        )
+        axs[0].tick_params(labelbottom=True)
+        axs[0].xaxis.set_tick_params(
+            which="both", labelbottom=True
+        )  # Redundant for safety
+
+        axs[1].plot(x_data_scaled, np.unwrap(np.angle(y_data_scaled)), "o")
+        axs[1].set_xlabel(x_info.name_and_unit)
+        axs[1].set_ylabel("Phase [rad]")
+    else:  # 2D plot
+        fig, axs = plt.subplots(1, 2, figsize=(24, 12), sharex=True, sharey=True)
+
+        sweep_key = datadict_map["sweeps"][0]
+        sweep0_info = param_info_from_schema(sweep_key, schema[sweep_key])
+        sweep0_scaled = sweeps[0] * sweep0_info.scale
+
+        print(sweep0_info)
+
+        c0 = axs[0].pcolormesh(
+            x_data_scaled, sweep0_scaled, np.abs(y_data_scaled), shading="auto"
+        )
+        fig.colorbar(c0, ax=axs[0])
+        axs[0].set_title(
+            "Magnitude" + f" [{y_info.rescaled_unit}]" if y_info.unit else ""
+        )
+        axs[0].set_xlabel(x_info.name_and_unit)
+        axs[0].set_ylabel(sweep0_info.name_and_unit)
+
+        c1 = axs[1].pcolormesh(
+            x_data_scaled,
+            sweep0_scaled,
+            np.unwrap(np.angle(y_data_scaled)),
+            shading="auto",
+        )
+        fig.colorbar(c1, ax=axs[1])
+        axs[1].set_title("Phase [rad]")
+        axs[1].set_xlabel(x_info.name_and_unit)
+        axs[1].tick_params(labelleft=True)
+        axs[1].xaxis.set_tick_params(
+            which="both", labelleft=True
+        )  # Redundant for safety
+
+    fig.tight_layout()
+    return fig, axs

@@ -23,6 +23,7 @@ from ._plot import (
     guess_plot_dimension,
     reset_plot_style,
     set_plot_style,
+    plot_mag_phase,
 )
 from ._read import (
     extract_h5_data,
@@ -60,6 +61,7 @@ __all__ = [
     "get_x_id_by_plot_dim",
     "build_title",
     "guess_plot_dimension",
+    "plot_mag_phase",
     # Read
     "extract_h5_data",
     "map_data_dict",
