@@ -184,7 +184,7 @@ class ExperimentHandler(ABC):
             # Add sweeps to the database schema
             for i, key in enumerate(sweep_keys):
                 # TODO: dynamically add unit
-                sweep_schema[f"sweep{i}"] = {"role": "axis", "name": key}
+                sweep_schema[f"sweep{i}"] = {"role": "axis", "param_id": key}
 
         # Create the plotter datadict (database) using the inferred schema
         db_schema = {**self.db_schema, **sweep_schema}
