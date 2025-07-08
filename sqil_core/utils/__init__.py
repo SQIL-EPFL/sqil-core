@@ -17,6 +17,8 @@ from ._plot import (
 )
 from ._read import (
     extract_h5_data,
+    map_data_dict,
+    extract_mapped_data,
     get_measurement_id,
     read_json,
     read_yaml,
@@ -45,11 +47,9 @@ __all__ = [
     "guess_plot_dimension",
     # Read
     "extract_h5_data",
+    "map_data_dict",
+    "extract_mapped_data",
     "read_json",
     "read_yaml",
-    "ParamInfo",
-    "ParamDict",
-    "read_param_dict",
-    "get_sweep_param",
     "get_measurement_id",
 ]

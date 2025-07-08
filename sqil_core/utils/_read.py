@@ -78,6 +78,110 @@ def _h5_to_dict(obj) -> dict:
     return data_dict
 
 
+def map_data_dict(data_dict: dict):
+    """
+    Maps experimental data to standardized arrays using a provided schema.
+
+    This function interprets the structure of a measurement data dictionary
+    (obtained using extract_h5_data) by extracting relevant data fields according
+    to roles specified in the database schema. It returns the x-axis values, y-axis data,
+    any additional sweep parameters, and a mapping of keys used for each role.
+
+    Parameters
+    ----------
+    data_dict : dict
+        Dictionary containing measurement data and an associated 'schema' key
+        that defines the role of each field (e.g., "x-axis", "data", "axis").
+
+    Returns
+    -------
+    x_data : np.ndarray
+        Array containing the x-axis values.
+    y_data : np.ndarray
+        Array containing the y-axis (measured) data.
+    sweeps : list[np.ndarray]
+        List of additional swept parameter arrays (if any).
+    key_map : dict
+        Dictionary with keys `"x_data"`, `"y_data"`, and `"sweeps"` indicating
+        the corresponding keys used in the original `data_dict`.
+
+    Notes
+    -----
+    - If the schema is missing, the function prints a warning and returns empty arrays.
+    - Each item in the schema must be a dictionary with a `"role"` key.
+
+    Examples
+    --------
+    >>> x, y, sweeps, mapping = map_data_dict(experiment_data)
+    >>> print(f"x-axis data from key: {mapping['x_data']}")
+    """
+
+    schema = data_dict.get("schema", None)
+    if schema is None:
+        print(
+            "Cannot automatically read data: no database schema was provided by the experiment."
+        )
+
+    x_data, y_data, sweeps = np.array([]), np.array([]), []
+    key_map = {"x_data": "", "y_data": "", "sweeps": []}
+
+    for key, value in schema.items():
+        if type(value) is not dict:
+            continue
+        role = value.get("role", None)
+        if role == "data":
+            key_map["y_data"] = key
+            y_data = data_dict[key]
+        elif role == "x-axis":
+            key_map["x_data"] = key
+            x_data = data_dict[key]
+        elif role == "axis":
+            key_map["sweeps"].append(key)
+            sweeps.append(data_dict[key])
+
+    return x_data, y_data, sweeps, key_map
+
+
+def extract_mapped_data(path: str):
+    """
+    Loads measurement data from an HDF5 file and maps it into x_data, y_data and sweeps.
+    The map and the database schema on which it relies are also returned.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the HDF5 file containing experimental data and schema definitions.
+
+    Returns
+    -------
+    x_data : np.ndarray
+        Array of x-axis values extracted according to the schema.
+    y_data : np.ndarray
+        Array of measured data values (y-axis).
+    sweeps : list[np.ndarray]
+        List of arrays for any additional swept parameters defined in the schema.
+    datadict_map : dict
+        Mapping of keys used for `"x_data"`, `"y_data"`, and `"sweeps"` in the original file.
+    schema : dict
+        The schema used to interpret the data structure and field roles.
+
+    Notes
+    -----
+    - This function expects the file to contain a top-level "schema" key that defines the
+      role of each dataset (e.g., "data", "x-axis", "axis").
+    - Uses `extract_h5_data` and `map_data_dict` internally for loading and interpretation.
+
+    Examples
+    --------
+    >>> x, y, sweeps, datadict_map, schema = extract_mapped_data(path)
+    """
+
+    datadict = extract_h5_data(path, schema=True)
+    schema = datadict.get("schema")
+    x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
+    return x_data, y_data, sweeps, datadict_map, schema
+
+
 def read_json(path: str) -> dict:
     """Reads a json file and returns the data as a dictionary."""
     with open(path) as f:
