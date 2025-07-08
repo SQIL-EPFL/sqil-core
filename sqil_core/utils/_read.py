@@ -7,6 +7,7 @@ import numpy as np
 import yaml
 
 from ._const import _EXP_UNIT_MAP, PARAM_METADATA
+from laboneq import serializers
 
 
 # TODO: add tests for schema
@@ -195,6 +196,12 @@ def read_yaml(path: str) -> dict:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             print(exc)
+
+
+def read_qpu(dir_path, filename):
+    """Reads QPU file stored in dir_path/filename using laboneq serializers."""
+    qpu = serializers.load(os.path.join(dir_path, filename))
+    return qpu
 
 
 def get_measurement_id(path):

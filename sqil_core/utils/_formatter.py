@@ -1,12 +1,12 @@
+import json
 from decimal import ROUND_DOWN, Decimal
 
+import attrs
 import numpy as np
 from scipy.stats import norm
 from tabulate import tabulate
 
 from ._const import _EXP_UNIT_MAP, PARAM_METADATA
-import json
-import attrs
 
 
 def _cut_to_significant_digits(number, n):

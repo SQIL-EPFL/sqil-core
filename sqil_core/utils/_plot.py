@@ -1,9 +1,9 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 from ._const import PARAM_METADATA
 from ._formatter import format_number, param_info_from_schema
-from ._read import read_json, extract_h5_data, map_data_dict
-import matplotlib.pyplot as plt
+from ._read import extract_h5_data, map_data_dict, read_json
 
 
 def set_plot_style(plt):
