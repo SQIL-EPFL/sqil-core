@@ -4,7 +4,9 @@ import numpy as np
 from scipy.stats import norm
 from tabulate import tabulate
 
-from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
+from ._const import _EXP_UNIT_MAP, PARAM_METADATA
+import json
+import attrs
 
 
 def _cut_to_significant_digits(number, n):
@@ -88,7 +90,7 @@ def get_name_and_unit(param_id: str) -> str:
     str
         Name and [unit]
     """
-    meta = _PARAM_METADATA[param_id]
+    meta = PARAM_METADATA[param_id]
     scale = meta["scale"] if "scale" in meta else 1
     exponent = -(int(f"{scale:.0e}".split("e")[1]) // 3) * 3
     return f"{meta['name']} [{_EXP_UNIT_MAP[exponent]}{meta['unit']}]"
@@ -135,3 +137,114 @@ def _sigma_for_confidence(confidence_level: float) -> float:
     sigma_multiplier = norm.ppf(1 - alpha / 2)
 
     return sigma_multiplier
+
+
+class ParamInfo:
+    """Parameter information for items of param_dict
+
+    Attributes:
+        id (str): QPU key
+        value (any): the value of the parameter
+        name (str): full name of the parameter (e.g. Readout frequency)
+        symbol (str): symbol of the parameter in Latex notation (e.g. f_{RO})
+        unit (str): base unit of measurement (e.g. Hz)
+        scale (int): the scale that should be generally applied to raw data (e.g. 1e-9 to take raw Hz to GHz)
+    """
+
+    def __init__(self, id, value=None, metadata=None):
+        self.id = id
+        self.value = value
+
+        if metadata is not None:
+            meta = metadata
+        elif id in PARAM_METADATA:
+            meta = PARAM_METADATA[id]
+        else:
+            meta = {}
+
+        self.name = meta.get("name", None)
+        self.symbol = meta.get("symbol", id)
+        self.unit = meta.get("unit", "")
+        self.scale = meta.get("scale", 1)
+
+        if self.name is None:
+            self.name = self.id[0].upper() + self.id[1:].replace("_", " ")
+
+    def to_dict(self):
+        """Convert ParamInfo to a dictionary."""
+        return {
+            "id": self.id,
+            "value": self.value,
+            "name": self.name,
+            "symbol": self.symbol,
+            "unit": self.unit,
+            "scale": self.scale,
+        }
+
+    @property
+    def name_and_unit(self):
+        return self.name + (
+            f" [{self.rescaled_unit}]" if self.unit or self.scale != 1 else ""
+        )
+
+    @property
+    def rescaled_unit(self):
+        # if self.unit == "":
+        #     return self.unit
+        exponent = -(int(f"{self.scale:.0e}".split("e")[1]) // 3) * 3
+        unit = f"{_EXP_UNIT_MAP[exponent]}{self.unit}"
+        return unit
+
+    @property
+    def symbol_and_value(self, precision=3, latex=True):
+        sym = f"${self.symbol}$" if latex else self.symbol
+        equal = f"$=$" if latex else " = "
+        val = format_number(self.value, precision, self.unit, latex=latex)
+        return f"{sym}{equal}{val}"
+
+    def __str__(self):
+        """Return a JSON-formatted string of the object."""
+        return json.dumps(self.to_dict())
+
+    def __eq__(self, other):
+        if isinstance(other, ParamInfo):
+            return (self.id == other.id) & (self.value == other.value)
+        if isinstance(other, (int, float, complex, str)):
+            return self.value == other
+        return False
+
+    def __bool__(self):
+        return bool(self.id)
+
+
+ParamDict = dict[str, ParamInfo]
+
+
+def param_info_from_schema(key, metadata) -> ParamInfo:
+    metadata_id = metadata.get("param_id")
+    if metadata_id is not None:
+        return ParamInfo(metadata_id)
+    return ParamInfo(key, metadata=metadata)
+
+
+def enrich_qubit_params(qubit) -> ParamDict:
+    qubit_params = attrs.asdict(qubit.parameters)
+    res = {}
+    for key, value in qubit_params.items():
+        res[key] = ParamInfo(key, value)
+    return res
+
+
+def get_relevant_exp_parameters(qubit_params: ParamDict, exp_param_ids, sweep_ids):
+    # Filter out sweeps
+    filtered = [id for id in exp_param_ids if id not in sweep_ids]
+
+    # Filter special cases
+    # No external LO frequency => external Lo info is irrelevant
+    if (["external_lo_frequency"] in exp_param_ids) and (
+        not qubit_params.get("external_lo_frequency").value
+    ):
+        parms_to_exclude = ["external_lo_frequency", "external_lo_power"]
+        filtered = [id for id in filtered if id not in parms_to_exclude]
+
+    return {key: value for key, value in qubit_params.items() if key in filtered}
