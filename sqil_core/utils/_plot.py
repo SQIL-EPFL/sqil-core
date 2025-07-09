@@ -158,10 +158,12 @@ def plot_mag_phase(path=None, datadict=None):
         sweep0_info = param_info_from_schema(sweep_key, schema[sweep_key])
         sweep0_scaled = sweeps[0] * sweep0_info.scale
 
-        print(sweep0_info)
-
         c0 = axs[0].pcolormesh(
-            x_data_scaled, sweep0_scaled, np.abs(y_data_scaled), shading="auto"
+            x_data_scaled,
+            sweep0_scaled,
+            np.abs(y_data_scaled),
+            shading="auto",
+            cmap="PuBu",
         )
         fig.colorbar(c0, ax=axs[0])
         axs[0].set_title(
@@ -175,6 +177,7 @@ def plot_mag_phase(path=None, datadict=None):
             sweep0_scaled,
             np.unwrap(np.angle(y_data_scaled)),
             shading="auto",
+            cmap="PuBu",
         )
         fig.colorbar(c1, ax=axs[1])
         axs[1].set_title("Phase [rad]")
