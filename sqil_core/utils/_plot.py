@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ._analysis import remove_linear_background, remove_offset, soft_normalize
 from ._const import PARAM_METADATA
 from ._formatter import format_number, param_info_from_schema
 from ._read import extract_h5_data, map_data_dict, read_json
@@ -109,7 +110,41 @@ def guess_plot_dimension(
         return "1"
 
 
-def plot_mag_phase(path=None, datadict=None):
+def plot_mag_phase(path=None, datadict=None, raw=False):
+    """
+    Plot the magnitude and phase of complex measurement data from an db path or in-memory dictionary.
+
+    This function generates either a 1D or 2D plot of the magnitude and phase of complex data,
+    depending on the presence of sweep parameters. It supports normalization and background
+    subtraction.
+
+    Parameters
+    ----------
+    path : str or None, optional
+        Path to the folder containing measurement data. Required if `datadict` is not provided.
+    datadict : dict or None, optional
+        Pre-loaded data dictionary with schema, typically extracted using `extract_h5_data`.
+        Required if `path` is not provided.
+    raw : bool, default False
+        If True, skip normalization and background subtraction for 2D plots. Useful for viewing raw data.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The matplotlib Figure object containing the plot.
+    axs : matplotlib.axes.Axes or ndarray of Axes
+        The Axes object(s) used for the subplot(s).
+
+    Raises
+    ------
+    Exception
+        If neither `path` nor `datadict` is provided.
+
+    Notes
+    -----
+    - Axes and units are automatically inferred from the schema in the dataset.
+    """
+
     if path is None and datadict is None:
         raise Exception("At least one of `path` and `datadict` must be specified.")
 
@@ -154,6 +189,13 @@ def plot_mag_phase(path=None, datadict=None):
     else:  # 2D plot
         fig, axs = plt.subplots(1, 2, figsize=(24, 12), sharex=True, sharey=True)
 
+        # Process mag and phase
+        mag, phase = np.abs(y_data), np.unwrap(np.angle(y_data))
+        if not raw:
+            mag = soft_normalize(remove_offset(mag))
+            flat_phase = remove_linear_background(x_data, phase, points_cut=1)
+            phase = soft_normalize(flat_phase)
+        # Load sweep parameter
         sweep_key = datadict_map["sweeps"][0]
         sweep0_info = param_info_from_schema(sweep_key, schema[sweep_key])
         sweep0_scaled = sweeps[0] * sweep0_info.scale
@@ -161,26 +203,32 @@ def plot_mag_phase(path=None, datadict=None):
         c0 = axs[0].pcolormesh(
             x_data_scaled,
             sweep0_scaled,
-            np.abs(y_data_scaled),
+            mag,
             shading="auto",
             cmap="PuBu",
         )
-        fig.colorbar(c0, ax=axs[0])
-        axs[0].set_title(
-            "Magnitude" + f" [{y_info.rescaled_unit}]" if y_info.unit else ""
-        )
+        if raw:
+            fig.colorbar(c0, ax=axs[0])
+            axs[0].set_title(
+                "Magnitude" + f" [{y_info.rescaled_unit}]" if y_info.unit else ""
+            )
+        else:
+            axs[0].set_title("Magnitude (normalized)")
         axs[0].set_xlabel(x_info.name_and_unit)
         axs[0].set_ylabel(sweep0_info.name_and_unit)
 
         c1 = axs[1].pcolormesh(
             x_data_scaled,
             sweep0_scaled,
-            np.unwrap(np.angle(y_data_scaled)),
+            phase,
             shading="auto",
             cmap="PuBu",
         )
-        fig.colorbar(c1, ax=axs[1])
-        axs[1].set_title("Phase [rad]")
+        if raw:
+            fig.colorbar(c1, ax=axs[1])
+            axs[1].set_title("Phase [rad]")
+        else:
+            axs[1].set_title("Phase (normalized)")
         axs[1].set_xlabel(x_info.name_and_unit)
         axs[1].tick_params(labelleft=True)
         axs[1].xaxis.set_tick_params(
