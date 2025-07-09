@@ -5,6 +5,7 @@ from ._analysis import (
     linear_interpolation,
     remove_linear_background,
     remove_offset,
+    soft_normalize,
 )
 from ._const import ONE_TONE_PARAMS, PARAM_METADATA, TWO_TONE_PARAMS
 from ._formatter import (
@@ -42,6 +43,7 @@ __all__ = [
     "remove_linear_background",
     "linear_interpolation",
     "line_between_2_points",
+    "soft_normalize",
     "compute_snr_peaked",
     # Const
     "PARAM_METADATA",

@@ -245,6 +245,29 @@ class TestLineBetween2Points:
         assert slope == 2.0
 
 
+class TestSoftNormalize:
+    def test_shapes_are_unchanged(self):
+        assert soft_normalize(np.random.rand(100)).shape == (100,)
+        assert soft_normalize(np.random.rand(10, 50)).shape == (10, 50)
+
+    def test_does_not_change_nans(self):
+        arr = np.array([1.0, 2.0, np.nan, 3.0])
+        out = soft_normalize(arr)
+        assert np.isnan(out[2])  # NaN stays NaN
+
+    def test_soft_normalize_constant_input(self):
+        arr = np.ones(100)
+        out = soft_normalize(arr)
+        assert np.allclose(out, 0.5)
+
+    def test_soft_normalize_range(self):
+        np.random.seed(7)
+        arr = np.random.randn(1000)
+        out = soft_normalize(arr)
+        assert 0.0 <= np.nanmin(out) <= 1.0
+        assert 0.0 <= np.nanmax(out) <= 1.0
+
+
 class TestComputeSNRPeaked:
 
     @pytest.fixture
