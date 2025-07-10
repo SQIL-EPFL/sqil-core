@@ -262,13 +262,22 @@ class ExperimentHandler(ABC):
         # Run analysis script
         try:
             anal_res = self.analyze(storage_path_local, *args, **kwargs)
+            # TODO: update qpu
+            if is_laboneq_exp:  # FIXME: multiple qubits
+                used_qubits = [self.qpu.quantum_elements[i] for i in qu_indices]
+                for qubit in used_qubits:  # FIXME: in anal res
+                    qubit.update(**anal_res)
             # writer.save_text("analysis.md", anal_res)
             plt.show()
         except Exception as e:
             logger.error(f"Error while analyzing the data {e}")
 
-        # TODO: update qpu
         serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_new.json"))
+        qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
+        serializers.save(
+            self.qpu,
+            os.path.join(db_path_local, qpu_filename),
+        )
 
         # Copy the local folder to the server
         copy_folder(storage_path_local, storage_path)
