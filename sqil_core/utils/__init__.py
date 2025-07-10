@@ -1,6 +1,7 @@
 from ._analysis import (
     compute_snr_peaked,
     estimate_linear_background,
+    find_closest_index,
     line_between_2_points,
     linear_interpolation,
     remove_linear_background,
@@ -44,6 +45,7 @@ __all__ = [
     "linear_interpolation",
     "line_between_2_points",
     "soft_normalize",
+    "find_closest_index",
     "compute_snr_peaked",
     # Const
     "PARAM_METADATA",

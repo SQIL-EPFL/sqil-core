@@ -287,6 +287,14 @@ def soft_normalize(data: np.ndarray) -> np.ndarray:
     return rescaled
 
 
+def find_closest_index(arr, target):
+    """
+    Find the index of the element in `arr` closest to the `target` value.
+    """
+
+    return np.abs(arr - target).argmin()
+
+
 def compute_snr_peaked(
     x_data: np.ndarray,
     y_data: np.ndarray,
