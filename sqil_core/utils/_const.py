@@ -45,13 +45,13 @@ PARAM_METADATA = {
         "unit": "Hz",
         "scale": 1e-9,
     },
-    "external_lo_frequency": {
+    "readout_external_lo_frequency": {
         "name": "External LO frequency",
         "symbol": "f_{LO}^{Ext}",
         "unit": "Hz",
         "scale": 1e-9,
     },
-    "external_lo_power": {
+    "readout_external_lo_power": {
         "name": "External LO power",
         "symbol": "P_{LO}^{Ext}",
         "unit": "dBm",
@@ -64,8 +64,8 @@ ONE_TONE_PARAMS = np.array(
     [
         "readout_amplitude",
         "readout_length",
-        "external_lo_frequency",
-        "external_lo_power",
+        "readout_external_lo_frequency",
+        "readout_external_lo_power",
     ]
 )
 
