@@ -35,6 +35,7 @@ from sqil_core.experiment._events import (
     clear_signal,
 )
 from sqil_core.experiment.data.plottr import DataDict, DDH5Writer
+from sqil_core.experiment.helpers._labone_wrappers import w_save
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.server import (
     connect_instruments,
@@ -122,7 +123,7 @@ class ExperimentHandler(ABC):
             logger.warning(f" -> Creating a new QPU file")
             self.qpu = generate_qpu(self.zi_setup)
             os.makedirs(db_path_local, exist_ok=True)
-            serializers.save(
+            w_save(
                 self.qpu,
                 os.path.join(db_path_local, qpu_filename),
             )
@@ -272,9 +273,9 @@ class ExperimentHandler(ABC):
         except Exception as e:
             logger.error(f"Error while analyzing the data {e}")
 
-        serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_new.json"))
+        w_save(self.qpu, os.path.join(storage_path_local, "qpu_new.json"))
         qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
-        serializers.save(
+        w_save(
             self.qpu,
             os.path.join(db_path_local, qpu_filename),
         )
