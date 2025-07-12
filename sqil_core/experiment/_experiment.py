@@ -5,7 +5,7 @@ import itertools
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Callable, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -271,6 +271,7 @@ class ExperimentHandler(ABC):
                     for qu_id in anal_res.updated_params.keys():
                         qubit = self.qpu.quantum_element_by_uid(qu_id)
                         qubit.update(**anal_res.updated_params[qu_id])
+                anal_res.add_exp_info_to_figures(storage_path_local)
                 anal_res.save_figures(storage_path_local)
                 writer.save_text("fit.mono.md", anal_res.aggregate_fit_summaries())
                 # writer.save_text("analysis.md", anal_res)

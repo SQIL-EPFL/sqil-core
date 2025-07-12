@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import mpld3
+
+from sqil_core.utils import get_measurement_id
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -26,6 +29,24 @@ class AnalysisResult:
         self.figures = figures or {}
         self.fits = fits or {}
 
+    def add_exp_info_to_figures(self, dir_path: str):
+        id = get_measurement_id(dir_path)
+        cooldown_name = Path(dir_path).parts[-3]
+        for _, fig in self.figures.items():
+            # Add dummy text to infer font size
+            dummy_text = fig.text(0, 0, "dummy", visible=False)
+            font_size = dummy_text.get_fontsize()
+            dummy_text.remove()
+            fig.text(
+                0.98,
+                0.98,
+                f"{cooldown_name}\n{id} | {dir_path[-16:]}",
+                ha="right",
+                va="top",
+                color="gray",
+                fontsize=font_size * 0.8,
+            )
+
     def save_figures(self, dir_path: str):
         """Saves figures both as png and interactive html."""
         for key, fig in self.figures.items():
@@ -36,6 +57,7 @@ class AnalysisResult:
                 f.write(html)
 
     def aggregate_fit_summaries(self):
+        """Aggreate all the fit summaries and include model name."""
         result = ""
         for key, fit in self.fits.items():
             summary = fit.summary(no_print=True)
