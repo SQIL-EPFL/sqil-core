@@ -40,7 +40,7 @@ class TestExtractH5Data:
             assert np.array_equal(data[key], np.array(value))
 
     def test_extract_only_one_array(self, temp_h5_file):
-        (arr1,) = extract_h5_data(temp_h5_file, ["array1"])
+        arr1 = extract_h5_data(temp_h5_file, ["array1"])
         assert np.array_equal(arr1, np.array(self.test_data["array1"]))
 
     def test_extract_many_arrays(self, temp_h5_file):
