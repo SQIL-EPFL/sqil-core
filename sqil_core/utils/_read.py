@@ -60,6 +60,8 @@ def extract_h5_data(
                     res.append([])
                     continue
                 res.append(np.array(data[key][:]))
+            if not schema and len(res) == 1:
+                return res[0]
             return tuple(res) if not schema else (*tuple(res), db_schema)
         # Extract the whole data dictionary
         h5_dict = _h5_to_dict(data)
