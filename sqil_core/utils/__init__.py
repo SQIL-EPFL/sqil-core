@@ -2,6 +2,7 @@ from ._analysis import (
     compute_snr_peaked,
     estimate_linear_background,
     find_closest_index,
+    find_first_minima_idx,
     line_between_2_points,
     linear_interpolation,
     remove_linear_background,
@@ -47,6 +48,7 @@ __all__ = [
     "soft_normalize",
     "find_closest_index",
     "compute_snr_peaked",
+    "find_first_minima_idx",
     # Const
     "PARAM_METADATA",
     "ONE_TONE_PARAMS",

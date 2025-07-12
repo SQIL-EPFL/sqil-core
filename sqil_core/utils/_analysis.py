@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.signal import argrelextrema
 
 
 def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
@@ -374,3 +375,41 @@ def compute_snr_peaked(
     snr = signal / noise_std if noise_std > 0 else np.inf  # Avoid division by zero
 
     return snr
+
+
+def find_first_minima_idx(data):
+    """
+    Find the index of the first local minimum in a 1D array.
+
+    Parameters
+    ----------
+    data : array-like
+        1D sequence of numerical values.
+
+    Returns
+    -------
+    int or None
+        Index of the first local minimum, or None if no local minimum is found.
+
+    Notes
+    -----
+    A local minimum is defined as a point that is smaller than its immediate neighbors.
+    Uses `scipy.signal.argrelextrema` to detect local minima.
+
+    Examples
+    --------
+    >>> data = [3, 2, 4, 1, 5]
+    >>> find_first_minima_idx(data)
+    1
+    """
+    data = np.array(data)
+    minima_indices = argrelextrema(data, np.less)[0]
+
+    # Check boundaries for minima (optional)
+    if data.size < 2:
+        return None
+
+    if len(minima_indices) > 0:
+        return minima_indices[0]
+
+    return None

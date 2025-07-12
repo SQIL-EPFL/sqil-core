@@ -313,3 +313,64 @@ class TestComputeSNRPeaked:
                 x_data, y_data, x0=5, fwhm=1, noise_region_factor=10
             )
         assert snr > 0
+
+
+class TestFindFirstMinimaIdx:
+
+    @pytest.fixture
+    def simple_data(self):
+        return np.array([3, 2, 4, 1, 5])
+
+    @pytest.fixture
+    def data_with_no_minima(self):
+        return np.array([1, 2, 3, 4, 5])
+
+    @pytest.fixture
+    def data_with_multiple_minima(self):
+        return np.array([5, 1, 3, 0, 2, 1])
+
+    @pytest.fixture
+    def data_with_minimum_at_start(self):
+        return np.array([0, 1, 2, 3, 4])
+
+    @pytest.fixture
+    def data_with_minimum_at_end(self):
+        return np.array([4, 3, 2, 1, 0])
+
+    def test_should_return_first_local_minimum_index(self, simple_data):
+        idx = find_first_minima_idx(simple_data)
+        assert idx == 1  # first local min at index 1
+
+    def test_should_return_none_when_no_local_minimum(self, data_with_no_minima):
+        idx = find_first_minima_idx(data_with_no_minima)
+        assert idx is None
+
+    def test_should_return_first_of_multiple_local_minima(
+        self, data_with_multiple_minima
+    ):
+        idx = find_first_minima_idx(data_with_multiple_minima)
+        assert idx == 1  # first local min at index 1 (value=1)
+
+    def test_should_handle_empty_array(self):
+        idx = find_first_minima_idx(np.array([]))
+        assert idx is None
+
+    def test_should_return_none_for_single_element_array(self):
+        idx = find_first_minima_idx(np.array([42]))
+        assert idx is None
+
+    def test_should_return_none_for_constant_array(self):
+        idx = find_first_minima_idx(np.array([2, 2, 2, 2]))
+        assert idx is None
+
+    def test_should_return_none_for_two_elements_no_minimum(self):
+        idx = find_first_minima_idx(np.array([2, 3]))
+        assert idx is None
+
+    def test_should_return_none_for_two_elements_equal(self):
+        idx = find_first_minima_idx(np.array([2, 2]))
+        assert idx is None
+
+    def test_should_return_minimum_in_middle_of_plateau(self):
+        data = np.array([5, 3, 3, 3, 4])
+        idx = find_first_minima_idx
