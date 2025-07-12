@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from enum import IntEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from tabulate import tabulate
+
+if TYPE_CHECKING:
+    from sqil_core.fit._core import FitResult
 
 
 class FitQuality(IntEnum):
@@ -83,7 +88,11 @@ def evaluate_fit_quality(fit_metrics: dict, recipe: str = "nrmse") -> FitQuality
     return FitQuality.BAD
 
 
-def get_best_fit(fit_res_a, fit_res_b, recipe: Literal["nrmse_aic"] = "nrmse_aic"):
+def get_best_fit(
+    fit_res_a: FitResult,
+    fit_res_b: FitResult,
+    recipe: Literal["nrmse_aic"] = "nrmse_aic",
+):
     """
     Selects the better fit result according to a specified selection recipe.
 
@@ -119,7 +128,9 @@ def get_best_fit(fit_res_a, fit_res_b, recipe: Literal["nrmse_aic"] = "nrmse_aic
     raise NotImplementedError(f"Recipe {recipe} does not exist")
 
 
-def get_best_fit_nrmse_aic(fit_res_a, fit_res_b, aic_rel_tol: float = 0.01):
+def get_best_fit_nrmse_aic(
+    fit_res_a: FitResult, fit_res_b: FitResult, aic_rel_tol: float = 0.01
+):
     """
     Selects the better fit result based on NRMSE quality and AIC with complexity penalty.
 
