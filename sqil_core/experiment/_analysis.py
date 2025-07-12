@@ -4,7 +4,9 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import h5py
 import mpld3
+import numpy as np
 
 from sqil_core.utils import get_measurement_id
 
@@ -18,18 +20,23 @@ class AnalysisResult:
     updated_params: dict[str, dict] = {}
     figures: dict[str, Figure] = {}
     fits: dict[str, FitResult] = {}
+    extra_data: dict[str, np.ndarray] = {}
 
     def __init__(
         self,
-        updated_params: dict = {},
-        figures: dict = {},
-        fits: dict = {},
+        updated_params: dict[str, dict] = {},
+        figures: dict[str, Figure] = {},
+        fits: dict[str, FitResult] = {},
+        extra_data: dict[str, np.ndarray] = {},
     ):
         self.updated_params = updated_params or {}
         self.figures = figures or {}
         self.fits = fits or {}
+        self.extra_data = extra_data or {}
 
     def add_exp_info_to_figures(self, dir_path: str):
+        if not self.figures:
+            return
         id = get_measurement_id(dir_path)
         cooldown_name = Path(dir_path).parts[-3]
         for _, fig in self.figures.items():
@@ -63,3 +70,26 @@ class AnalysisResult:
             summary = fit.summary(no_print=True)
             result += f"{key}\nModel: {fit.model_name}\n{summary}\n"
         return result
+
+    def save_fits(self, dir_path: str):
+        if not self.fits:
+            return
+        with open(os.path.join(dir_path, "fit.mono.md"), "w", encoding="utf-8") as f:
+            f.write(self.aggregate_fit_summaries())
+
+    def save_extra_data(self, dir_path: str):
+        if not self.extra_data:
+            return
+        with h5py.File(os.path.join(dir_path, "extra.ddh5"), "a") as f:
+            grp = f.require_group("data")
+            for key, array in self.extra_data.items():
+                # Overwrite if already exists
+                if key in grp:
+                    del grp[key]
+            grp.create_dataset(key, data=array)
+
+    def save_all(self, dir_path: str):
+        self.add_exp_info_to_figures(dir_path)
+        self.save_figures(dir_path)
+        self.save_fits(dir_path)
+        self.save_extra_data(dir_path)
