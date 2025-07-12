@@ -27,6 +27,7 @@ from numpy.typing import ArrayLike
 from qcodes import Instrument as QCodesInstrument
 
 from sqil_core.config_log import logger
+from sqil_core.experiment._analysis import AnalysisResult
 from sqil_core.experiment._events import (
     after_experiment,
     after_sequence,
@@ -200,7 +201,7 @@ class ExperimentHandler(ABC):
             storage_path = get_plottr_path(writer, db_path)
             storage_path_local = get_plottr_path(writer, db_path_local)
             # Save helper files
-            writer.save_text("directry_path.md", storage_path)
+            writer.save_text("paths.md", f"{storage_path_local}\n{storage_path}")
             # Save backup qpu
             old_qubits = self.qpu.copy_quantum_elements()
             serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
@@ -263,13 +264,18 @@ class ExperimentHandler(ABC):
         # Run analysis script
         try:
             anal_res = self.analyze(storage_path_local, *args, **kwargs)
-            # TODO: update qpu
-            if is_laboneq_exp:  # FIXME: multiple qubits
-                used_qubits = [self.qpu.quantum_elements[i] for i in qu_indices]
-                for qubit in used_qubits:  # FIXME: in anal res
-                    qubit.update(**anal_res)
-            # writer.save_text("analysis.md", anal_res)
-            plt.show()
+            if type(anal_res) == AnalysisResult:
+                anal_res = cast(AnalysisResult, anal_res)
+                # Update QPU
+                if is_laboneq_exp:
+                    print(anal_res.updated_params)
+                    for qu_id in anal_res.updated_params.keys():
+                        qubit = self.qpu.quantum_element_by_uid(qu_id)
+                        qubit.update(**anal_res.updated_params[qu_id])
+                anal_res.save_figures(storage_path_local)
+                writer.save_text("fit.mono.md", anal_res.aggregate_fit_summaries())
+                # writer.save_text("analysis.md", anal_res)
+                plt.show()
         except Exception as e:
             logger.error(f"Error while analyzing the data {e}")
 

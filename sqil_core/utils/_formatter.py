@@ -241,10 +241,13 @@ def get_relevant_exp_parameters(qubit_params: ParamDict, exp_param_ids, sweep_id
 
     # Filter special cases
     # No external LO frequency => external Lo info is irrelevant
-    if (["external_lo_frequency"] in exp_param_ids) and (
-        not qubit_params.get("external_lo_frequency").value
+    if (["readout_external_lo_frequency"] in exp_param_ids) and (
+        not qubit_params.get("readout_external_lo_frequency").value
     ):
-        parms_to_exclude = ["external_lo_frequency", "external_lo_power"]
+        parms_to_exclude = [
+            "readout_external_lo_frequency",
+            "readout_external_lo_power",
+        ]
         filtered = [id for id in filtered if id not in parms_to_exclude]
 
     return {key: value for key, value in qubit_params.items() if key in filtered}

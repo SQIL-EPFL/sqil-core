@@ -1,3 +1,4 @@
+from ._analysis import AnalysisResult
 from ._events import after_experiment, before_experiment
 from ._experiment import ExperimentHandler
 from .instruments._instrument import Instrument
