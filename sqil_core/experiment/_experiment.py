@@ -268,7 +268,6 @@ class ExperimentHandler(ABC):
                 anal_res = cast(AnalysisResult, anal_res)
                 # Update QPU
                 if is_laboneq_exp:
-                    print(anal_res.updated_params)
                     for qu_id in anal_res.updated_params.keys():
                         qubit = self.qpu.quantum_element_by_uid(qu_id)
                         qubit.update(**anal_res.updated_params[qu_id])

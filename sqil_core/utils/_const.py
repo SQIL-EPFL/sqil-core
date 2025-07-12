@@ -20,6 +20,7 @@ PARAM_METADATA = {
         "symbol": "f_{RO}",
         "unit": "Hz",
         "scale": 1e-9,
+        "precision": 5,
     },
     "readout_range_out": {
         "name": "Readout power offset",
@@ -29,7 +30,7 @@ PARAM_METADATA = {
     },
     "readout_amplitude": {
         "name": "Readout amplitude",
-        "symbol": "P_{amp}^{RO}",
+        "symbol": "A_{RO}",
         "unit": "",
         "scale": 1,
     },

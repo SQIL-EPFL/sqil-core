@@ -166,6 +166,7 @@ class ParamInfo:
         self.symbol = meta.get("symbol", id)
         self.unit = meta.get("unit", "")
         self.scale = meta.get("scale", 1)
+        self.precision = meta.get("precision", 3)
 
         if self.name is None:
             self.name = self.id[0].upper() + self.id[1:].replace("_", " ")
@@ -179,6 +180,7 @@ class ParamInfo:
             "symbol": self.symbol,
             "unit": self.unit,
             "scale": self.scale,
+            "precision": self.precision,
         }
 
     @property
@@ -196,10 +198,10 @@ class ParamInfo:
         return unit
 
     @property
-    def symbol_and_value(self, precision=3, latex=True):
+    def symbol_and_value(self, latex=True):
         sym = f"${self.symbol}$" if latex else self.symbol
         equal = f"$=$" if latex else " = "
-        val = format_number(self.value, precision, self.unit, latex=latex)
+        val = format_number(self.value, self.precision, self.unit, latex=latex)
         return f"{sym}{equal}{val}"
 
     def __str__(self):
