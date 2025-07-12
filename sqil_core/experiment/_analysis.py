@@ -51,7 +51,7 @@ class AnalysisResult:
         """Saves figures both as png and interactive html."""
         for key, fig in self.figures.items():
             path = os.path.join(dir_path, key)
-            fig.savefig(os.path.join(f"{path}.png"))
+            fig.savefig(os.path.join(f"{path}.png"), bbox_inches="tight", dpi=300)
             html = mpld3.fig_to_html(fig)
             with open(f"{path}.html", "w") as f:
                 f.write(html)
