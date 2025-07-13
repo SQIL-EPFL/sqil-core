@@ -59,6 +59,32 @@ PARAM_METADATA = {
         "scale": 1,
     },
     "readout_kappa_tot": {"symbol": r"\kappa_{tot}", "unit": "Hz", "scale": "MHz"},
+    "resonance_frequency_ge": {
+        "name": "Readout frequency",
+        "symbol": "f_{ge}",
+        "unit": "Hz",
+        "scale": 1e-9,
+        "precision": 5,
+    },
+    "resonance_frequency_ef": {
+        "name": "Readout frequency",
+        "symbol": "f_{ef}",
+        "unit": "Hz",
+        "scale": 1e-9,
+        "precision": 5,
+    },
+    "spectroscopy_amplitude": {
+        "name": "Spectroscopy amplitude",
+        "symbol": "A_{sp}",
+        "unit": "",
+        "scale": 1,
+    },
+    "ge_drive_amplitude_pi": {
+        "name": "Drive amplitude pi ge",
+        "symbol": r"A_{ge}^{\pi}",
+        "unit": "",
+        "scale": 1,
+    },
 }
 
 ONE_TONE_PARAMS = np.array(
@@ -70,6 +96,4 @@ ONE_TONE_PARAMS = np.array(
     ]
 )
 
-TWO_TONE_PARAMS = np.array(
-    ["ro_freq", "ro_power", "current", "vna_bw", "vna_avg", "qu_power"]
-)
+TWO_TONE_PARAMS = np.array(["spectroscopy_amplitude"])
