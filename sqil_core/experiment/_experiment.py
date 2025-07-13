@@ -267,9 +267,9 @@ class ExperimentHandler(ABC):
             anal_res = self.analyze(storage_path_local, *args, **kwargs)
             if type(anal_res) == AnalysisResult:
                 anal_res = cast(AnalysisResult, anal_res)
+                anal_res.save_all(storage_path_local)
                 # Update QPU
                 if is_laboneq_exp and not kwargs.get("no_update", False):
-                    anal_res.save_all(storage_path_local)
                     for qu_id in anal_res.updated_params.keys():
                         qubit = self.qpu.quantum_element_by_uid(qu_id)
                         qubit.update(**anal_res.updated_params[qu_id])
