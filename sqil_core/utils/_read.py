@@ -7,6 +7,8 @@ import numpy as np
 import yaml
 from laboneq import serializers
 
+from sqil_core.utils._formatter import param_info_from_schema
+
 from ._const import _EXP_UNIT_MAP, PARAM_METADATA
 
 
@@ -183,6 +185,32 @@ def extract_mapped_data(path: str):
     schema = datadict.get("schema")
     x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
     return x_data, y_data, sweeps, datadict_map, schema
+
+
+def get_data_and_info(path=None, datadict=None):
+    if path is None and datadict is None:
+        raise Exception("At least one of `path` and `datadict` must be specified.")
+
+    if path is not None:
+        datadict = extract_h5_data(path, schema=True)
+
+    # Get schema and map data
+    schema = datadict.get("schema")
+    x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
+
+    # Get metadata on x_data and y_data
+    x_info = param_info_from_schema(
+        datadict_map["x_data"], schema[datadict_map["x_data"]]
+    )
+    y_info = param_info_from_schema(
+        datadict_map["y_data"], schema[datadict_map["y_data"]]
+    )
+
+    sweep_info = []
+    for sweep_key in datadict_map["sweeps"]:
+        sweep_info.append(param_info_from_schema(sweep_key, schema[sweep_key]))
+
+    return (x_data, y_data, sweeps), (x_info, y_info, sweep_info), datadict
 
 
 def read_json(path: str) -> dict:

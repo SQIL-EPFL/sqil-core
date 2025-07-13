@@ -1,10 +1,26 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.gridspec import GridSpec
+
+from sqil_core.fit import transform_data
 
 from ._analysis import remove_linear_background, remove_offset, soft_normalize
 from ._const import PARAM_METADATA
-from ._formatter import format_number, param_info_from_schema
-from ._read import extract_h5_data, map_data_dict, read_json
+from ._formatter import (
+    ParamInfo,
+    format_number,
+    get_relevant_exp_parameters,
+    param_info_from_schema,
+)
+from ._read import extract_h5_data, get_data_and_info, map_data_dict, read_json
+
+if TYPE_CHECKING:
+    from sqil_core.fit._core import FitResult
+    from sqil_core.utils import ParamDict
 
 
 def set_plot_style(plt):
@@ -110,6 +126,55 @@ def guess_plot_dimension(
         return "1"
 
 
+def finalize_plot(
+    fig,
+    title,
+    fit_res: FitResult = None,
+    qubit_params: ParamDict = {},
+    updated_params: dict = {},
+    sweep_info={},
+    relevant_params=[],
+):
+    """
+    Annotates a matplotlib figure with experiment parameters, fit quality, and title.
+
+    Parameters
+    ----------
+    fig : matplotlib.figure.Figure
+        The figure object to annotate.
+    title : str
+        Title text to use for the plot.
+    fit_res : FitResult, optional
+        Fit result object containing model name and quality summary.
+    qubit_params : ParamDict, optional
+        Dictionary of experimental qubit parameters, indexed by parameter ID.
+    updated_params : dict, optional
+        Dictionary of updated parameters (e.g., from fitting), where keys are param IDs
+        and values are numeric or symbolic parameter values.
+    sweep_info : dict, optional
+        Information about sweep parameters (e.g., their IDs and labels).
+    relevant_params : list, optional
+        List of parameter IDs considered relevant for display under "Experiment".
+    """
+    exp_params_keys = get_relevant_exp_parameters(
+        qubit_params, relevant_params, [info.id for info in sweep_info]
+    )
+    params_str = ",   ".join(
+        [qubit_params[id].symbol_and_value for id in exp_params_keys]
+    )
+
+    updated_params_info = {k: ParamInfo(k, v) for k, v in updated_params.items()}
+    update_params_str = ",   ".join(
+        [updated_params_info[id].symbol_and_value for id in updated_params_info.keys()]
+    )
+
+    fig.suptitle(f"{title}\n" + update_params_str)
+    if fit_res:
+        fig.text(0.02, -0.03, f"Model: {fit_res.model_name} - {fit_res.quality()}")
+    if params_str:
+        fig.text(0.3, -0.03, "Experiment:   " + params_str, ha="left")
+
+
 def plot_mag_phase(path=None, datadict=None, raw=False):
     """
     Plot the magnitude and phase of complex measurement data from an db path or in-memory dictionary.
@@ -145,39 +210,22 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
     - Axes and units are automatically inferred from the schema in the dataset.
     """
 
-    if path is None and datadict is None:
-        raise Exception("At least one of `path` and `datadict` must be specified.")
+    all_data, all_info, _ = get_data_and_info(path=path, datadict=datadict)
+    x_data, y_data, sweeps = all_data
+    x_info, y_info, sweep_info = all_info
 
-    if path is not None:
-        datadict = extract_h5_data(path, schema=True)
-
-    # Get schema and map data
-    schema = datadict.get("schema")
-    x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
-
-    # Get metadata on x_data and y_data
-    x_info = param_info_from_schema(
-        datadict_map["x_data"], schema[datadict_map["x_data"]]
-    )
-    y_info = param_info_from_schema(
-        datadict_map["y_data"], schema[datadict_map["y_data"]]
-    )
     # Rescale data
     x_data_scaled = x_data * x_info.scale
     y_data_scaled = y_data * y_info.scale
+    y_unit = f" [{y_info.rescaled_unit}]" if y_info.unit else ""
 
     set_plot_style(plt)
 
     if len(sweeps) == 0:  # 1D plot
         fig, axs = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
 
-        x_data_scaled = x_data * x_info.scale
-        y_data_scaled = y_data * y_info.scale
-
         axs[0].plot(x_data_scaled, np.abs(y_data_scaled), "o")
-        axs[0].set_ylabel(
-            "Magnitude" + f" [{y_info.rescaled_unit}]" if y_info.unit else ""
-        )
+        axs[0].set_ylabel("Magnitude" + y_unit)
         axs[0].tick_params(labelbottom=True)
         axs[0].xaxis.set_tick_params(
             which="both", labelbottom=True
@@ -196,8 +244,7 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
             flat_phase = remove_linear_background(x_data, phase, points_cut=1)
             phase = soft_normalize(flat_phase)
         # Load sweep parameter
-        sweep_key = datadict_map["sweeps"][0]
-        sweep0_info = param_info_from_schema(sweep_key, schema[sweep_key])
+        sweep0_info = sweep_info[0]
         sweep0_scaled = sweeps[0] * sweep0_info.scale
 
         c0 = axs[0].pcolormesh(
@@ -209,9 +256,7 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
         )
         if raw:
             fig.colorbar(c0, ax=axs[0])
-            axs[0].set_title(
-                "Magnitude" + f" [{y_info.rescaled_unit}]" if y_info.unit else ""
-            )
+            axs[0].set_title("Magnitude" + y_unit)
         else:
             axs[0].set_title("Magnitude (normalized)")
         axs[0].set_xlabel(x_info.name_and_unit)
@@ -237,3 +282,78 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
 
     fig.tight_layout()
     return fig, axs
+
+
+def plot_projection_IQ(path=None, datadict=None, proj_data=None, full_output=False):
+    """
+    Plots the real projection of complex I/Q data versus the x-axis and the full IQ plane.
+
+    Parameters
+    ----------
+    path : str, optional
+        Path to the HDF5 file containing the data. Required if `datadict` is not provided.
+    datadict : dict, optional
+        Pre-loaded data dictionary with schema, typically extracted using `extract_h5_data`.
+        Required if `path` is not provided.
+    proj_data : np.ndarray, optional
+        Precomputed projected data (real part of transformed complex values).
+        If not provided, it will be computed using `transform_data`.
+    full_output : bool, default False
+        Whether to return projected data and the inverse transformation function.
+
+    Returns
+    -------
+    res : tuple
+        If `full_output` is False:
+            (fig, [ax_proj, ax_iq])
+        If `full_output` is True:
+            (fig, [ax_proj, ax_iq], proj_data, inv)
+        - `fig`: matplotlib Figure object.
+        - `ax_proj`: Axis for projection vs x-axis.
+        - `ax_iq`: Axis for I/Q scatter plot.
+        - `proj_data`: The real projection of the complex I/Q data.
+        - `inv`: The inverse transformation function used during projection.
+
+    Notes
+    -----
+    This function supports only 1D datasets. If sweep dimensions are detected, no plot is created.
+    The projection is performed using a data transformation routine (e.g., PCA or rotation).
+    """
+
+    all_data, all_info, _ = get_data_and_info(path=path, datadict=datadict)
+    x_data, y_data, sweeps = all_data
+    x_info, y_info, sweep_info = all_info
+
+    # Get y_unit
+    y_unit = f" [{y_info.rescaled_unit}]" if y_info.unit else ""
+
+    set_plot_style(plt)
+
+    if len(sweeps) == 0:
+        # Project data
+        if proj_data is None:
+            proj_data, inv = transform_data(y_data, inv_transform=True)
+
+        set_plot_style(plt)
+        fig = plt.figure(figsize=(20, 7), constrained_layout=True)
+        gs = GridSpec(nrows=1, ncols=10, figure=fig, wspace=0.2)
+
+        # Plot the projection
+        ax_proj = fig.add_subplot(gs[:, :6])  # 6/10 width
+        ax_proj.plot(x_data * x_info.scale, proj_data.real * y_info.scale, "o")
+        ax_proj.set_xlabel(x_info.name_and_unit)
+        ax_proj.set_ylabel("Projected" + y_unit)
+
+        # Plot IQ data
+        ax_iq = fig.add_subplot(gs[:, 6:])  # 4/10 width
+        ax_iq.scatter(0, 0, marker="+", color="black", s=150)
+        ax_iq.plot(y_data.real * y_info.scale, y_data.imag * y_info.scale, "o")
+        ax_iq.set_xlabel("In-Phase" + y_unit)
+        ax_iq.set_ylabel("Quadrature" + y_unit)
+        ax_iq.set_aspect(aspect="equal", adjustable="datalim")
+
+    if full_output:
+        res = (fig, [ax_proj, ax_iq], proj_data, inv)
+    else:
+        res = (fig, [ax_proj, ax_iq])
+    return res

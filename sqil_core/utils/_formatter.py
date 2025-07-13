@@ -238,7 +238,7 @@ def enrich_qubit_params(qubit) -> ParamDict:
 
 
 def get_relevant_exp_parameters(
-    qubit_params: ParamDict, exp_param_ids: list, sweep_ids: list
+    qubit_params: ParamDict, exp_param_ids: list, sweep_ids: list, only_keys=True
 ):
     # Filter out sweeps
     filtered = [id for id in exp_param_ids if id not in sweep_ids]
@@ -254,4 +254,6 @@ def get_relevant_exp_parameters(
         ]
         filtered = [id for id in filtered if id not in parms_to_exclude]
 
-    return {key: value for key, value in qubit_params.items() if key in filtered}
+    result = {key: value for key, value in qubit_params.items() if key in filtered}
+
+    return list(result.keys()) if only_keys else result
