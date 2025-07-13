@@ -186,7 +186,7 @@ def finalize_plot(
     if fit_res:
         fig.text(0.02, y_pos, f"Model: {fit_res.model_name} - {fit_res.quality()}")
     if params_str:
-        fig.text(0.3, y_pos, "Experiment:   " + params_str, ha="left")
+        fig.text(0.4, y_pos, "Experiment:   " + params_str, ha="left")
 
 
 def plot_mag_phase(path=None, datadict=None, raw=False):
