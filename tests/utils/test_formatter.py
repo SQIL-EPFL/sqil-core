@@ -87,10 +87,12 @@ class TestFormatNumber:
         assert format_number(0.1, unit="A", precision=3, latex=True) == "$100~mA$"
         assert format_number(0.01, unit="A", precision=3, latex=True) == "$10~mA$"
         assert format_number(0.001, unit="A", precision=3, latex=True) == "$1~mA$"
-        assert format_number(0.0001, unit="A", precision=3, latex=True) == r"$100~\muA$"
+        assert (
+            format_number(0.0001, unit="A", precision=3, latex=True) == r"$100~\mu A$"
+        )
         assert format_number(1e6, unit="A", precision=3, latex=True) == "$1~MA$"
         assert format_number(1e9, unit="A", precision=3, latex=True) == "$1~GA$"
-        assert format_number(1e-6, unit="A", precision=3, latex=True) == r"$1~\muA$"
+        assert format_number(1e-6, unit="A", precision=3, latex=True) == r"$1~\mu A$"
         assert format_number(1e-9, unit="A", precision=3, latex=True) == "$1~nA$"
 
     def test_adds_latex_syntax(self):

@@ -245,6 +245,29 @@ class TestLineBetween2Points:
         assert slope == 2.0
 
 
+class TestSoftNormalize:
+    def test_shapes_are_unchanged(self):
+        assert soft_normalize(np.random.rand(100)).shape == (100,)
+        assert soft_normalize(np.random.rand(10, 50)).shape == (10, 50)
+
+    def test_does_not_change_nans(self):
+        arr = np.array([1.0, 2.0, np.nan, 3.0])
+        out = soft_normalize(arr)
+        assert np.isnan(out[2])  # NaN stays NaN
+
+    def test_soft_normalize_constant_input(self):
+        arr = np.ones(100)
+        out = soft_normalize(arr)
+        assert np.allclose(out, 0.5)
+
+    def test_soft_normalize_range(self):
+        np.random.seed(7)
+        arr = np.random.randn(1000)
+        out = soft_normalize(arr)
+        assert 0.0 <= np.nanmin(out) <= 1.0
+        assert 0.0 <= np.nanmax(out) <= 1.0
+
+
 class TestComputeSNRPeaked:
 
     @pytest.fixture
@@ -290,3 +313,64 @@ class TestComputeSNRPeaked:
                 x_data, y_data, x0=5, fwhm=1, noise_region_factor=10
             )
         assert snr > 0
+
+
+class TestFindFirstMinimaIdx:
+
+    @pytest.fixture
+    def simple_data(self):
+        return np.array([3, 2, 4, 1, 5])
+
+    @pytest.fixture
+    def data_with_no_minima(self):
+        return np.array([1, 2, 3, 4, 5])
+
+    @pytest.fixture
+    def data_with_multiple_minima(self):
+        return np.array([5, 1, 3, 0, 2, 1])
+
+    @pytest.fixture
+    def data_with_minimum_at_start(self):
+        return np.array([0, 1, 2, 3, 4])
+
+    @pytest.fixture
+    def data_with_minimum_at_end(self):
+        return np.array([4, 3, 2, 1, 0])
+
+    def test_should_return_first_local_minimum_index(self, simple_data):
+        idx = find_first_minima_idx(simple_data)
+        assert idx == 1  # first local min at index 1
+
+    def test_should_return_none_when_no_local_minimum(self, data_with_no_minima):
+        idx = find_first_minima_idx(data_with_no_minima)
+        assert idx is None
+
+    def test_should_return_first_of_multiple_local_minima(
+        self, data_with_multiple_minima
+    ):
+        idx = find_first_minima_idx(data_with_multiple_minima)
+        assert idx == 1  # first local min at index 1 (value=1)
+
+    def test_should_handle_empty_array(self):
+        idx = find_first_minima_idx(np.array([]))
+        assert idx is None
+
+    def test_should_return_none_for_single_element_array(self):
+        idx = find_first_minima_idx(np.array([42]))
+        assert idx is None
+
+    def test_should_return_none_for_constant_array(self):
+        idx = find_first_minima_idx(np.array([2, 2, 2, 2]))
+        assert idx is None
+
+    def test_should_return_none_for_two_elements_no_minimum(self):
+        idx = find_first_minima_idx(np.array([2, 3]))
+        assert idx is None
+
+    def test_should_return_none_for_two_elements_equal(self):
+        idx = find_first_minima_idx(np.array([2, 2]))
+        assert idx is None
+
+    def test_should_return_minimum_in_middle_of_plateau(self):
+        data = np.array([5, 3, 3, 3, 4])
+        idx = find_first_minima_idx

@@ -11,6 +11,8 @@ on:
     branches:
       - main
 
+  workflow_dispatch: # Allow manual triggers
+
 jobs:
   check-formatting-and-run-tests:
     runs-on: ubuntu-latest  # You can choose a different runner if necessary
@@ -32,6 +34,10 @@ jobs:
     - name: Install dependencies with Poetry
       run: |
         poetry install
+
+    - name: Install Qt bindings (required for plottr)
+      run: |
+        poetry run pip install PyQt5
 
     - name: Check code formatting with Black
       run: |

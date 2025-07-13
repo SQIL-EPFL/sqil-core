@@ -68,6 +68,7 @@ nav:
   - Notebooks:
     - The fit_output decorator: 'Notebooks/fit_output_decorator.ipynb'
     - The fit_input decorator: 'Notebooks/fit_input_decorator.ipynb'
+    - Fitting resonators: 'Notebooks/resonator_fit.ipynb'
   - API reference:
     - Fit:
       - Core: 'API reference/fit/core.md'

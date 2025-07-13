@@ -1,10 +1,12 @@
+import json
 from decimal import ROUND_DOWN, Decimal
 
+import attrs
 import numpy as np
 from scipy.stats import norm
 from tabulate import tabulate
 
-from ._const import _EXP_UNIT_MAP, _PARAM_METADATA
+from ._const import _EXP_UNIT_MAP, PARAM_METADATA
 
 
 def _cut_to_significant_digits(number, n):
@@ -88,13 +90,13 @@ def get_name_and_unit(param_id: str) -> str:
     str
         Name and [unit]
     """
-    meta = _PARAM_METADATA[param_id]
+    meta = PARAM_METADATA[param_id]
     scale = meta["scale"] if "scale" in meta else 1
     exponent = -(int(f"{scale:.0e}".split("e")[1]) // 3) * 3
     return f"{meta['name']} [{_EXP_UNIT_MAP[exponent]}{meta['unit']}]"
 
 
-def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
+def format_fit_params(param_names, params, std_errs=None, perc_errs=None):
     matrix = [param_names, params]
 
     headers = ["Param", "Fitted value"]
@@ -111,58 +113,7 @@ def print_fit_params(param_names, params, std_errs=None, perc_errs=None):
     data = [matrix[:, i] for i in range(len(params))]
 
     table = tabulate(data, headers=headers, tablefmt="github")
-    print(table + "\n")
-
-
-def print_fit_metrics(fit_quality, keys: list[str] | None = None):
-    if keys is None:
-        keys = fit_quality.keys() if fit_quality else []
-
-    # Print fit quality parameters
-    for key in keys:
-        value = fit_quality[key]
-        quality = ""
-        # Evaluate reduced Chi-squared
-        if key == "red_chi2":
-            key = "reduced χ²"
-            if value <= 0.5:
-                quality = "GREAT (or overfitting)"
-            elif (value > 0.9) and (value <= 1.1):
-                quality = "GREAT"
-            elif (value > 0.5) and (value <= 2):
-                quality = "GOOD"
-            elif (value > 2) and (value <= 5):
-                quality = "MEDIUM"
-            elif value > 5:
-                quality = "BAD"
-        # Evaluate R-squared
-        elif key == "r2":
-            # Skip if complex
-            if isinstance(value, complex):
-                continue
-            key = "R²"
-            if value < 0:
-                quality = "BAD - a horizontal line would be better"
-            elif value > 0.97:
-                quality = "GREAT"
-            elif value > 0.95:
-                quality = "GOOD"
-            elif value > 0.80:
-                quality = "MEDIUM"
-            else:
-                quality = "BAD"
-        # Normalized mean absolute error NMAE and
-        # normalized root mean square error NRMSE
-        elif (key == "nmae") or (key == "nrmse"):
-            if value < 0.1:
-                quality = "GREAT"
-            elif value < 0.2:
-                quality = "GOOD"
-            else:
-                quality = "BAD"
-
-        # Print result
-        print(f"{key}\t{value:.3e}\t{quality}")
+    return table + "\n"
 
 
 def _sigma_for_confidence(confidence_level: float) -> float:
@@ -186,3 +137,123 @@ def _sigma_for_confidence(confidence_level: float) -> float:
     sigma_multiplier = norm.ppf(1 - alpha / 2)
 
     return sigma_multiplier
+
+
+class ParamInfo:
+    """Parameter information for items of param_dict
+
+    Attributes:
+        id (str): QPU key
+        value (any): the value of the parameter
+        name (str): full name of the parameter (e.g. Readout frequency)
+        symbol (str): symbol of the parameter in Latex notation (e.g. f_{RO})
+        unit (str): base unit of measurement (e.g. Hz)
+        scale (int): the scale that should be generally applied to raw data (e.g. 1e-9 to take raw Hz to GHz)
+    """
+
+    def __init__(self, id, value=None, metadata=None):
+        self.id = id
+        self.value = value
+
+        if metadata is not None:
+            meta = metadata
+        elif id in PARAM_METADATA:
+            meta = PARAM_METADATA[id]
+        else:
+            meta = {}
+
+        self.name = meta.get("name", None)
+        self.symbol = meta.get("symbol", id)
+        self.unit = meta.get("unit", "")
+        self.scale = meta.get("scale", 1)
+        self.precision = meta.get("precision", 3)
+
+        if self.name is None:
+            self.name = self.id[0].upper() + self.id[1:].replace("_", " ")
+
+    def to_dict(self):
+        """Convert ParamInfo to a dictionary."""
+        return {
+            "id": self.id,
+            "value": self.value,
+            "name": self.name,
+            "symbol": self.symbol,
+            "unit": self.unit,
+            "scale": self.scale,
+            "precision": self.precision,
+        }
+
+    @property
+    def name_and_unit(self):
+        return self.name + (
+            f" [{self.rescaled_unit}]" if self.unit or self.scale != 1 else ""
+        )
+
+    @property
+    def rescaled_unit(self):
+        # if self.unit == "":
+        #     return self.unit
+        exponent = -(int(f"{self.scale:.0e}".split("e")[1]) // 3) * 3
+        unit = f"{_EXP_UNIT_MAP[exponent]}{self.unit}"
+        return unit
+
+    @property
+    def symbol_and_value(self, latex=True):
+        sym = f"${self.symbol}$" if latex else self.symbol
+        equal = f"$=$" if latex else " = "
+        val = format_number(self.value, self.precision, self.unit, latex=latex)
+        return f"{sym}{equal}{val}"
+
+    def __str__(self):
+        """Return a JSON-formatted string of the object."""
+        return json.dumps(self.to_dict())
+
+    def __eq__(self, other):
+        if isinstance(other, ParamInfo):
+            return (self.id == other.id) & (self.value == other.value)
+        if isinstance(other, (int, float, complex, str)):
+            return self.value == other
+        return False
+
+    def __bool__(self):
+        return bool(self.id)
+
+
+ParamDict = dict[str, ParamInfo]
+
+
+def param_info_from_schema(key, metadata) -> ParamInfo:
+    metadata_id = metadata.get("param_id")
+    if metadata_id is not None:
+        return ParamInfo(metadata_id)
+    return ParamInfo(key, metadata=metadata)
+
+
+def enrich_qubit_params(qubit) -> ParamDict:
+    qubit_params = attrs.asdict(qubit.parameters)
+    res = {}
+    for key, value in qubit_params.items():
+        res[key] = ParamInfo(key, value)
+    return res
+
+
+def get_relevant_exp_parameters(
+    qubit_params: ParamDict, exp_param_ids: list, sweep_ids: list, only_keys=True
+):
+    # Filter out sweeps
+    filtered = [id for id in exp_param_ids if id not in sweep_ids]
+
+    # Filter special cases
+    # No external LO frequency => external Lo info is irrelevant
+    if (["readout_external_lo_frequency"] in exp_param_ids) and (
+        not qubit_params.get("readout_external_lo_frequency").value
+    ):
+        parms_to_exclude = [
+            "readout_external_lo_frequency",
+            "readout_external_lo_power",
+        ]
+        filtered = [id for id in filtered if id not in parms_to_exclude]
+
+    result = {key: value for key, value in qubit_params.items() if key in filtered}
+
+    return list(result.keys()) if only_keys else result

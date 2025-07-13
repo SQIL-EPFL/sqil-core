@@ -10,6 +10,17 @@ def lorentzian(x, A, x0, fwhm, y0):
     return A * (np.abs(fwhm) / 2.0) / ((x - x0) ** 2.0 + fwhm**2.0 / 4.0) + y0
 
 
+def two_lorentzians_shared_x0(x_data_1, x_data_2, A1, fwhm1, y01, A2, fwhm2, y02, x0):
+    r"""
+    Concatenates two lorentzians with same x0.
+    L_1(x) = A_1 * (|FWHM_1| / 2) / ((x - x0)^2 + (FWHM_1^2 / 4)) + y0_1
+    L_2(x) = A_2 * (|FWHM_2| / 2) / ((x - x0)^2 + (FWHM_2^2 / 4)) + y0_2
+    """
+    y1 = lorentzian(x_data_1, A1, x0, fwhm1, y01)
+    y2 = lorentzian(x_data_2, A2, x0, fwhm2, y02)
+    return np.concatenate([y1, y2])
+
+
 def gaussian(x, A, x0, sigma, y0):
     r"""
     G(x) = A / (|σ| * sqrt(2π)) * exp(- (x - x0)^2 / (2σ^2)) + y0
@@ -22,6 +33,17 @@ def gaussian(x, A, x0, sigma, y0):
         * np.exp(-((x - x0) ** 2.0) / (2.0 * sigma**2.0))
         + y0
     )
+
+
+def two_gaussians_shared_x0(x_data_1, x_data_2, A1, fwhm1, y01, A2, fwhm2, y02, x0):
+    r"""
+    Concatenates two gaussians with same x0.
+    G_1(x) = A_1 / (|σ_1| * sqrt(2π)) * exp(- (x - x0)^2 / (2σ_1^2)) + y0_1
+    G_1(x) = A_2 / (|σ_2| * sqrt(2π)) * exp(- (x - x0)^2 / (2σ_2^2)) + y0_2
+    """
+    y1 = gaussian(x_data_1, A1, x0, fwhm1, y01)
+    y2 = gaussian(x_data_2, A2, x0, fwhm2, y02)
+    return np.concatenate([y1, y2])
 
 
 def decaying_exp(x, A, tau, y0):
@@ -52,10 +74,19 @@ def decaying_oscillations(x, A, tau, y0, phi, T):
     return A * np.exp(-x / tau) * np.cos(2.0 * np.pi * (x - phi) / T) + y0
 
 
+def oscillations(x, A, y0, phi, T):
+    r"""
+    f(x) = A * cos(2π * (x - φ) / T) + y0
+
+    $$f(x) = A \cos\left( 2\pi \frac{x - \phi}{T} \right) + y_0$$
+    """
+    return A * np.cos(2.0 * np.pi * (x - phi) / T) + y0
+
+
 def skewed_lorentzian(
     f: np.ndarray, A1: float, A2: float, A3: float, A4: float, fr: float, Q_tot: float
 ) -> np.ndarray:
-    """
+    r"""
     Computes the skewed Lorentzian function.
 
     This function models asymmetric resonance peaks using a skewed Lorentzian

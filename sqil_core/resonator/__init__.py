@@ -6,6 +6,8 @@ from ._resonator import (
     fit_phase_vs_freq,
     fit_phase_vs_freq_global,
     full_fit,
+    linmag_fit,
     plot_resonator,
+    print_resonator_params,
     quick_fit,
 )

@@ -1,0 +1,21 @@
+param_dict_path: >
+  ./param_dict.py
+
+instruments:
+  sgsa:
+    name: "SGSA100"
+    address: "TCPIP0::128.178.120.72::inst0::INSTR"
+    model: "RohdeSchwarzSGS100A"
+    type: "LO"
+
+  SC5511A:
+    name: "SC"
+    address: "10003C68"
+    model: "SignalCore_SC5511A"
+    type: "LO"
+
+  SC5521A:
+    name: "mw1"
+    address: "" #name based connection, don't need address
+    model: "SC5521A"
+    type: "LO"

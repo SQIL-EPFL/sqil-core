@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.signal import argrelextrema
 
 
 def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
@@ -211,6 +212,90 @@ def line_between_2_points(
     return slope, intercept
 
 
+def soft_normalize(data: np.ndarray) -> np.ndarray:
+    """
+    Apply soft normalization to a 1D or 2D array with optional NaNs.
+
+    This function performs z-score normalization followed by a smooth
+    non-linear compression using a hyperbolic tangent (tanh) function.
+    It is designed to reduce the effect of outliers while preserving
+    the dynamic range of typical data values. The result is rescaled to [0, 1].
+
+    For 2D arrays, normalization is done row-wise, but compression is
+    based on a global threshold across all non-NaN entries.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Input data, must be a 1D or 2D NumPy array. Can contain NaNs.
+
+    Returns
+    -------
+    np.ndarray
+        Normalized data, same shape as input, with values scaled to [0, 1].
+        NaNs are preserved.
+
+    Raises
+    ------
+    ValueError
+        If `data` is not 1D or 2D.
+
+    Notes
+    -----
+    - Z-score normalization is done using nanmean and nanstd.
+    - Outliers are compressed using a tanh centered at a scaled threshold.
+    - Output values are guaranteed to be in [0, 1] range, except NaNs.
+    - Rows with zero standard deviation are flattened to 0.5.
+    """
+
+    if data.ndim not in [1, 2]:
+        raise ValueError("Input must be 1D or 2D")
+
+    data = np.array(data, dtype=np.float64)
+    nan_mask = np.isnan(data)
+
+    if data.ndim == 1:
+        mean = np.nanmean(data)
+        std = np.nanstd(data)
+        std = 1.0 if std == 0 else std
+        abs_z = np.abs((data - mean) / std)
+    else:
+        mean = np.nanmean(data, axis=1, keepdims=True)
+        std = np.nanstd(data, axis=1, keepdims=True)
+        std = np.where(std == 0, 1.0, std)
+        abs_z = np.abs((data - mean) / std)
+
+    # Flatten over all values for global thresholding
+    flat_abs_z = abs_z[~nan_mask]
+    if flat_abs_z.size == 0:
+        return np.full_like(data, 0.5)
+
+    threshold = 4.0 * np.mean(flat_abs_z)
+    alpha = 1.0 / (4.0 * np.std(flat_abs_z)) if np.std(flat_abs_z) != 0 else 1.0
+
+    compressed = np.tanh(alpha * (abs_z - threshold))
+
+    # Rescale to [0, 1]
+    compressed[nan_mask] = np.nan
+    min_val = np.nanmin(compressed)
+    max_val = np.nanmax(compressed)
+    if max_val == min_val:
+        rescaled = np.full_like(compressed, 0.5)
+    else:
+        rescaled = (compressed - min_val) / (max_val - min_val)
+
+    rescaled[nan_mask] = np.nan
+    return rescaled
+
+
+def find_closest_index(arr, target):
+    """
+    Find the index of the element in `arr` closest to the `target` value.
+    """
+
+    return np.abs(arr - target).argmin()
+
+
 def compute_snr_peaked(
     x_data: np.ndarray,
     y_data: np.ndarray,
@@ -290,3 +375,41 @@ def compute_snr_peaked(
     snr = signal / noise_std if noise_std > 0 else np.inf  # Avoid division by zero
 
     return snr
+
+
+def find_first_minima_idx(data):
+    """
+    Find the index of the first local minimum in a 1D array.
+
+    Parameters
+    ----------
+    data : array-like
+        1D sequence of numerical values.
+
+    Returns
+    -------
+    int or None
+        Index of the first local minimum, or None if no local minimum is found.
+
+    Notes
+    -----
+    A local minimum is defined as a point that is smaller than its immediate neighbors.
+    Uses `scipy.signal.argrelextrema` to detect local minima.
+
+    Examples
+    --------
+    >>> data = [3, 2, 4, 1, 5]
+    >>> find_first_minima_idx(data)
+    1
+    """
+    data = np.array(data)
+    minima_indices = argrelextrema(data, np.less)[0]
+
+    # Check boundaries for minima (optional)
+    if data.size < 2:
+        return None
+
+    if len(minima_indices) > 0:
+        return minima_indices[0]
+
+    return None
