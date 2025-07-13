@@ -237,7 +237,9 @@ def enrich_qubit_params(qubit) -> ParamDict:
     return res
 
 
-def get_relevant_exp_parameters(qubit_params: ParamDict, exp_param_ids, sweep_ids):
+def get_relevant_exp_parameters(
+    qubit_params: ParamDict, exp_param_ids: list, sweep_ids: list
+):
     # Filter out sweeps
     filtered = [id for id in exp_param_ids if id not in sweep_ids]
 
