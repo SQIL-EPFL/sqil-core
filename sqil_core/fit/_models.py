@@ -74,6 +74,15 @@ def decaying_oscillations(x, A, tau, y0, phi, T):
     return A * np.exp(-x / tau) * np.cos(2.0 * np.pi * (x - phi) / T) + y0
 
 
+def oscillations(x, A, y0, phi, T):
+    r"""
+    f(x) = A * cos(2π * (x - φ) / T) + y0
+
+    $$f(x) = A \cos\left( 2\pi \frac{x - \phi}{T} \right) + y_0$$
+    """
+    return A * np.cos(2.0 * np.pi * (x - phi) / T) + y0
+
+
 def skewed_lorentzian(
     f: np.ndarray, A1: float, A2: float, A3: float, A4: float, fr: float, Q_tot: float
 ) -> np.ndarray:

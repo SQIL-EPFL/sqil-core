@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from sqil_core.fit._guess import estimate_peak
-from sqil_core.fit._models import gaussian, lorentzian, skewed_lorentzian
+from sqil_core.fit._guess import estimate_peak, oscillations_guess
+from sqil_core.fit._models import gaussian, lorentzian, oscillations, skewed_lorentzian
 
 
 class TestEstimatePeak:
@@ -87,3 +87,62 @@ class TestEstimatePeak:
         x0, fwhm, height, baseline, is_peak = estimate_peak(x, y)
         assert fwhm == pytest.approx((x[-1] - x[0]) / 10)
         assert isinstance(is_peak, bool)
+
+
+class TestOscillationsGuess:
+
+    def test_pure_cosine(self):
+        x = np.linspace(0, 10, 500)
+        y = oscillations(x, A=3, T=2, phi=0.5, y0=1)
+        A, y0_candidates, phi_candidates, T = oscillations_guess(x, y)
+
+        assert pytest.approx(A, rel=0.15) == 3
+        assert any(pytest.approx(y0, rel=0.1) == 1 for y0 in y0_candidates)
+        assert pytest.approx(T, rel=0.1) == 2
+        assert all(0 <= phi < T for phi in phi_candidates)
+
+    def test_offset_cosine_with_noise(self):
+        rng = np.random.default_rng(123)
+        x = np.linspace(0, 20, 800)
+        noise = rng.normal(0, 0.2, size=x.shape)
+        y = oscillations(x, A=4, T=5, phi=1.5, y0=2.5) + noise
+
+        A, y0_candidates, phi_candidates, T = oscillations_guess(x, y)
+
+        assert A > 2.5  # should remain robust despite noise
+        assert any(abs(y0 - 2.5) < 0.5 for y0 in y0_candidates)
+        assert pytest.approx(T, rel=0.15) == 5
+        assert all(0 <= phi < T for phi in phi_candidates)
+
+    def test_low_amplitude_signal(self):
+        x = np.linspace(0, 6, 300)
+        y = oscillations(x, A=0.3, T=1.5, phi=0.2, y0=0.1)
+
+        A, y0_candidates, phi_candidates, T = oscillations_guess(x, y)
+
+        assert pytest.approx(A, rel=0.3) == 0.3
+        assert any(abs(y0 - 0.1) < 0.2 for y0 in y0_candidates)
+        assert pytest.approx(T, rel=0.2) == 1.5
+        assert all(0 <= phi < T for phi in phi_candidates)
+
+    def test_constant_signal(self):
+        x = np.linspace(0, 10, 100)
+        y = np.ones_like(x) * 1.0
+
+        A, y0_candidates, phi_candidates, T = oscillations_guess(x, y)
+
+        assert A == pytest.approx(0.0)
+        assert all(y0 == pytest.approx(1.0) for y0 in y0_candidates)
+        assert T > 0  # fallback value based on range
+        assert all(0 <= phi < T for phi in phi_candidates)
+
+    def test_short_signal(self):
+        x = np.linspace(0, 2, 20)
+        y = oscillations(x, A=2, T=1, phi=0.25, y0=0.5)
+
+        A, y0_candidates, phi_candidates, T = oscillations_guess(x, y)
+
+        assert pytest.approx(A, rel=0.2) == 2
+        assert any(abs(y0 - 0.5) < 0.3 for y0 in y0_candidates)
+        assert pytest.approx(T, rel=0.2) == 1
+        assert all(0 <= phi < T for phi in phi_candidates)

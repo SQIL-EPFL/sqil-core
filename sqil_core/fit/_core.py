@@ -196,8 +196,10 @@ def fit_output(fit_func):
             del metadata["fit_output_vars"]
 
         # Format the raw_fit_output into a standardized dict
+        if raw_fit_output is None:
+            raise TypeError("Fit didn't coverge, result is None")
         # Scipy tuple (curve_fit, leastsq)
-        if _is_scipy_tuple(raw_fit_output):
+        elif _is_scipy_tuple(raw_fit_output):
             formatted = _format_scipy_tuple(raw_fit_output, y_data, has_sigma=has_sigma)
 
         # Scipy least squares

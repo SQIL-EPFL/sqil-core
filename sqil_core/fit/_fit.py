@@ -10,7 +10,16 @@ import sqil_core.fit._models as _models
 from sqil_core.utils._utils import fill_gaps, has_at_least_one, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
-from ._guess import gaussian_bounds, gaussian_guess, lorentzian_bounds, lorentzian_guess
+from ._guess import (
+    decaying_oscillations_bounds,
+    decaying_oscillations_guess,
+    gaussian_bounds,
+    gaussian_guess,
+    lorentzian_bounds,
+    lorentzian_guess,
+    oscillations_bounds,
+    oscillations_guess,
+)
 
 
 @fit_input
@@ -481,13 +490,13 @@ def fit_qubit_relaxation_qp(
     }
 
 
-# TODO: add fit input
+@fit_input
 @fit_output
 def fit_decaying_oscillations(
     x_data: np.ndarray,
     y_data: np.ndarray,
     guess: list[float] | None = None,
-    bounds: list[tuple[float]] | tuple = (-np.inf, np.inf),
+    bounds: list[tuple[float]] | tuple = None,
     num_init: int = 10,
 ) -> FitResult:
     r"""
@@ -522,27 +531,17 @@ def fit_decaying_oscillations(
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the pi_time and its standard error.
     """
-    # Fill empty guesses
-    if not guess:
-        guess = [None] * 5
-    if np.any(np.array(guess) == None):
-        A = np.max(y_data) - np.min(y_data)
-        tau = np.max(x_data) - np.min(x_data)
-        T = 2.0 * np.abs(x_data[np.argmax(y_data)] - x_data[np.argmin(y_data)])
-        y0 = [y_data[-1], np.mean(y_data)]
-        phi = np.linspace(0.0, np.pi * T, num_init)
-        guess = fill_gaps(guess, [A, tau, y0, phi, T])
+    # Default intial guess if not provided
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, decaying_oscillations_guess(x_data, y_data, num_init))
 
-    # Default bounds
-    if bounds == (-np.inf, np.inf):
-        bounds = np.array([(-np.inf, np.inf)] * 5)
-        # Positive times
-        bounds[1] = (0, np.inf)
-        bounds[4] = (0, np.inf)
-        # Offset within y_min and y_max
-        bounds[3] = (np.min(y_data), np.max(y_data))
-        # Split into lower and upper bounds
-        bounds = [bounds[:, 0], bounds[:, 1]]
+    # Default bounds if not provided
+    if bounds is None:
+        bounds = ([None] * len(guess), [None] * len(guess))
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess, upper_guess = decaying_oscillations_bounds(x_data, y_data, guess)
+        bounds = (fill_gaps(lower, lower_guess), fill_gaps(upper, upper_guess))
 
     A, tau, y0, phi, T = guess
     phi = make_iterable(phi)
@@ -550,7 +549,7 @@ def fit_decaying_oscillations(
 
     best_fit = None
     best_popt = None
-    best_chi2 = np.inf
+    best_nrmse = np.inf
 
     @fit_output
     def _curve_fit_osc(x_data, y_data, p0, bounds):
@@ -572,9 +571,9 @@ def fit_decaying_oscillations(
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     fit_res = _curve_fit_osc(x_data, y_data, p0, bounds)
-                if fit_res.metrics["red_chi2"] < best_chi2:
+                if fit_res.metrics["nrmse"] < best_nrmse:
                     best_fit, best_popt = fit_res.output, fit_res.params
-                    best_chi2 = fit_res.metrics["red_chi2"]
+                    best_nrmse = fit_res.metrics["nrmse"]
             except:
                 if best_fit is None:
 
@@ -591,7 +590,10 @@ def fit_decaying_oscillations(
                     )
                     best_fit, best_popt = result, result.x
 
-    # Compute π-time (half-period + phase offset)
+    if best_fit is None:
+        return None
+
+    # Compute pi-time (half-period + phase offset)
     pi_time_raw = 0.5 * best_popt[4] + best_popt[3]
     while pi_time_raw > 0.75 * np.abs(best_popt[4]):
         pi_time_raw -= 0.5 * np.abs(best_popt[4])
@@ -610,6 +612,135 @@ def fit_decaying_oscillations(
     metadata = {
         "param_names": ["A", "tau", "y0", "phi", "T"],
         "predict": _models.decaying_oscillations,
+        "pi_time": pi_time_raw,
+        "@pi_time_std_err": _get_pi_time_std_err,
+    }
+
+    return best_fit, metadata
+
+
+@fit_input
+@fit_output
+def fit_oscillations(
+    x_data: np.ndarray,
+    y_data: np.ndarray,
+    guess: list[float] | None = None,
+    bounds: list[tuple[float]] | tuple = None,
+    num_init: int = 10,
+) -> FitResult:
+    r"""
+    Fits an oscillation model to data. The function estimates key features
+    like the oscillation period and phase, and tries multiple initial guesses for
+    the optimization process.
+
+    f(x) = A * cos(2π * (x - φ) / T) + y0
+
+    $$f(x) = A \cos\left( 2\pi \frac{x - \phi}{T} \right) + y_0$$
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        Independent variable array (e.g., time or frequency).
+    y_data : np.ndarray
+        Dependent variable array representing the measured signal.
+    guess : list[float] or None, optional
+        Initial parameter estimates [A, y0, phi, T]. Missing values are automatically filled.
+    bounds : list[tuple[float]] or tuple, optional
+        Lower and upper bounds for parameters during fitting, by default no bounds.
+    num_init : int, optional
+        Number of phase values to try when guessing, by default 10.
+
+    Returns
+    -------
+    FitResult
+        A `FitResult` object containing:
+        - Fitted parameters (`params`).
+        - Standard errors (`std_err`).
+        - Goodness-of-fit metrics (`rmse`, root mean squared error).
+        - A callable `predict` function for generating fitted responses.
+        - A metadata dictionary containing the pi_time and its standard error.
+    """
+    # Default intial guess if not provided
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, oscillations_guess(x_data, y_data, num_init))
+
+    # Default bounds if not provided
+    if bounds is None:
+        bounds = ([None] * len(guess), [None] * len(guess))
+    if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
+        lower, upper = bounds
+        lower_guess, upper_guess = oscillations_bounds(x_data, y_data, guess)
+        bounds = (fill_gaps(lower, lower_guess), fill_gaps(upper, upper_guess))
+
+    A, y0, phi, T = guess
+    phi = make_iterable(phi)
+    y0 = make_iterable(y0)
+
+    best_fit = None
+    best_popt = None
+    best_nrmse = np.inf
+
+    @fit_output
+    def _curve_fit_osc(x_data, y_data, p0, bounds):
+        return curve_fit(
+            _models.oscillations,
+            x_data,
+            y_data,
+            p0,
+            bounds=bounds,
+            full_output=True,
+        )
+
+    # Try multiple initializations
+    for phi_guess in phi:
+        for offset in y0:
+            p0 = [A, offset, phi_guess, T]
+
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    fit_res = _curve_fit_osc(x_data, y_data, p0, bounds)
+                if fit_res.metrics["nrmse"] < best_nrmse:
+                    best_fit, best_popt = fit_res.output, fit_res.params
+                    best_nrmse = fit_res.metrics["nrmse"]
+            except:
+                if best_fit is None:
+
+                    def _oscillations_res(p, x, y):
+                        return _models.oscillations(x, *p) - y
+
+                    result = least_squares(
+                        _oscillations_res,
+                        p0,
+                        loss="soft_l1",
+                        f_scale=0.1,
+                        bounds=bounds,
+                        args=(x_data, y_data),
+                    )
+                    best_fit, best_popt = result, result.x
+
+    if best_fit is None:
+        return None
+
+    # Compute pi-time (half-period + phase offset)
+    pi_time_raw = 0.5 * best_popt[3] + best_popt[2]
+    while pi_time_raw > 0.75 * np.abs(best_popt[3]):
+        pi_time_raw -= 0.5 * np.abs(best_popt[3])
+    while pi_time_raw < 0.25 * np.abs(best_popt[3]):
+        pi_time_raw += 0.5 * np.abs(best_popt[3])
+
+    def _get_pi_time_std_err(sqil_dict):
+        if sqil_dict["std_err"] is not None:
+            phi_err = sqil_dict["std_err"][2]
+            T_err = sqil_dict["std_err"][3]
+            if np.isfinite(T_err) and np.isfinite(phi_err):
+                return np.sqrt((T_err / 2) ** 2 + phi_err**2)
+        return np.nan
+
+    # Metadata dictionary
+    metadata = {
+        "param_names": ["A", "y0", "phi", "T"],
+        "predict": _models.oscillations,
         "pi_time": pi_time_raw,
         "@pi_time_std_err": _get_pi_time_std_err,
     }

@@ -1,4 +1,6 @@
 import numpy as np
+from numpy.fft import rfft, rfftfreq
+from scipy.signal import hilbert
 
 
 def estimate_peak(
@@ -131,3 +133,100 @@ def gaussian_bounds(x_data, y_data, guess):
         [10 * A_abs, np.max(x) + 0.1 * x_span, sigma_max, np.max(y) + 0.5 * A_abs],
     )
     return bounds
+
+
+def oscillations_guess(x_data, y_data, num_init=10):
+    """Generate robust initial guesses for oscillation parameters."""
+    x_data = np.asarray(x_data)
+    y_data = np.asarray(y_data)
+    dx = np.mean(np.diff(x_data))
+
+    # Amplitude guess (robust against outliers)
+    A = (np.percentile(y_data, 95) - np.percentile(y_data, 5)) / 2
+
+    # Offset guess (tail median + mean)
+    y0_tail = np.median(y_data[-max(5, len(y_data) // 10) :])
+    y0_mean = np.mean(y_data)
+    y0_candidates = [y0_tail, y0_mean]
+
+    # FFT-based T (period)
+    y_demeaned = y_data - np.mean(y_data)
+    freqs = rfftfreq(len(x_data), d=dx)
+    spectrum = np.abs(rfft(y_demeaned))
+    peak_idx = np.argmax(spectrum[1:]) + 1  # Ignore DC
+    freq_peak = freqs[peak_idx]
+    T = 1 / freq_peak if freq_peak > 0 else np.ptp(x_data)  # fallback to range
+
+    # Phase estimate from cross-correlation
+    cos_wave = np.cos(2 * np.pi * x_data / T)
+    lag = np.argmax(np.correlate(y_demeaned, cos_wave, mode="full")) - len(x_data) + 1
+    phi_base = x_data[0] + lag * dx
+    phi_candidates = np.linspace(phi_base - T, phi_base + T, num_init)
+    phi_candidates = np.mod(phi_candidates, T)
+
+    return [A, y0_candidates, phi_candidates, T]
+
+
+def oscillations_bounds(x_data, y_data, guess):
+    """Generate realistic bounds for oscillation parameters."""
+    x_data = np.asarray(x_data)
+    y_data = np.asarray(y_data)
+
+    A, y0, phi, T = guess
+
+    # Add small offset to ensure bounds don't collaps
+    eps = 1e-12
+
+    A_min = 0.1 * A - eps
+    A_max = 10 * A
+
+    y0_min = np.min(y_data) - eps
+    y0_max = np.max(y_data)
+
+    phi_min = 0.0 - eps
+    phi_max = T  # reasonable 1-period wrap
+
+    T_min = 0.1 * T - eps
+    T_max = 10 * T
+
+    lower = [A_min, y0_min, phi_min, T_min]
+    upper = [A_max, y0_max, phi_max, T_max]
+    return (lower, upper)
+
+
+def decaying_oscillations_guess(x_data, y_data, num_init=10):
+    """Generate robust initial guesses for decaying oscillation parameters."""
+    x_data = np.asarray(x_data)
+    y_data = np.asarray(y_data)
+    dx = np.mean(np.diff(x_data))
+
+    # Oscillations params
+    A, y0_candidates, phi_candidates, T = oscillations_guess(x_data, y_data, num_init)
+
+    # Decay time (tau) from log-envelope
+    try:
+        y_demeaned = y_data - np.mean(y_data)
+        envelope = np.abs(hilbert(y_demeaned))
+        log_env = np.log(np.clip(envelope, 1e-10, None))
+        slope, _ = np.polyfit(x_data, log_env, 1)
+        tau = -1 / slope if slope < 0 else np.ptp(x_data)
+    except Exception:
+        tau = np.ptp(x_data)
+
+    return [A, tau, y0_candidates, phi_candidates, T]
+
+
+def decaying_oscillations_bounds(x_data, y_data, guess):
+    """Generate realistic bounds for decaying oscillation parameters."""
+    x_data = np.asarray(x_data)
+    y_data = np.asarray(y_data)
+
+    A, tau, y0, phi, T = guess
+    lower, upper = oscillations_bounds(x_data, y_data, [A, y0, phi, T])
+
+    tau_min = 0.01 * tau
+    tau_max = 10 * tau
+
+    lower.insert(1, tau_min)
+    upper.insert(1, tau_max)
+    return (lower, upper)
