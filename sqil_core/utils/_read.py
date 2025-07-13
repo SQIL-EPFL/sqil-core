@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
 import os
 import shutil
+from typing import TYPE_CHECKING
 
 import h5py
 import numpy as np
@@ -10,6 +13,9 @@ from laboneq import serializers
 from sqil_core.utils._formatter import param_info_from_schema
 
 from ._const import _EXP_UNIT_MAP, PARAM_METADATA
+
+if TYPE_CHECKING:
+    from laboneq.dsl.quantum.qpu import QPU
 
 
 # TODO: add tests for schema
@@ -228,7 +234,7 @@ def read_yaml(path: str) -> dict:
             print(exc)
 
 
-def read_qpu(dir_path, filename):
+def read_qpu(dir_path: str, filename: str) -> QPU:
     """Reads QPU file stored in dir_path/filename using laboneq serializers."""
     qpu = serializers.load(os.path.join(dir_path, filename))
     return qpu
