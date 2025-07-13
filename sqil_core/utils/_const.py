@@ -81,9 +81,15 @@ PARAM_METADATA = {
     },
     "ge_drive_amplitude_pi": {
         "name": "Drive amplitude pi ge",
-        "symbol": r"A_{ge}^{\pi}",
+        "symbol": r"A_{\pi}^{ge}",
         "unit": "",
         "scale": 1,
+    },
+    "ge_drive_length": {
+        "name": "Drive length ge",
+        "symbol": r"T_{\pi}^{ge}",
+        "unit": "s",
+        "scale": 1e9,
     },
 }
 

@@ -156,23 +156,37 @@ def finalize_plot(
     relevant_params : list, optional
         List of parameter IDs considered relevant for display under "Experiment".
     """
+    # Make a summary of relevant experimental parameters
     exp_params_keys = get_relevant_exp_parameters(
         qubit_params, relevant_params, [info.id for info in sweep_info]
     )
     params_str = ",   ".join(
         [qubit_params[id].symbol_and_value for id in exp_params_keys]
     )
-
+    # Make a summary of the updated qubit parameters
     updated_params_info = {k: ParamInfo(k, v) for k, v in updated_params.items()}
     update_params_str = ",   ".join(
         [updated_params_info[id].symbol_and_value for id in updated_params_info.keys()]
     )
 
+    # Find appropriate y_position to print text
+    bbox = fig.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    fig_height_inches = bbox.height
+    if fig_height_inches < 8:
+        y_pos = -0.05
+    elif fig_height_inches < 10:
+        y_pos = -0.03
+    elif fig_height_inches < 13:
+        y_pos = -0.02
+    else:
+        y_pos = -0.01
+
+    # Add text to the plot
     fig.suptitle(f"{title}\n" + update_params_str)
     if fit_res:
-        fig.text(0.02, -0.03, f"Model: {fit_res.model_name} - {fit_res.quality()}")
+        fig.text(0.02, y_pos, f"Model: {fit_res.model_name} - {fit_res.quality()}")
     if params_str:
-        fig.text(0.3, -0.03, "Experiment:   " + params_str, ha="left")
+        fig.text(0.3, y_pos, "Experiment:   " + params_str, ha="left")
 
 
 def plot_mag_phase(path=None, datadict=None, raw=False):
