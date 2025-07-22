@@ -230,3 +230,41 @@ def decaying_oscillations_bounds(x_data, y_data, guess):
     lower.insert(1, tau_min)
     upper.insert(1, tau_max)
     return (lower, upper)
+
+
+def decaying_exp_guess(x_data: np.ndarray, y_data: np.ndarray) -> list[float]:
+    """
+    Robust initial guess for decaying exponential even if the full decay isn't captured.
+    """
+    x = np.asarray(x_data)
+    y = np.asarray(y_data)
+
+    # Rough estimate of y0 with a local min or mean of last N points
+    N_tail = max(3, int(0.1 * len(y)))
+    tail_mean = np.mean(y[-N_tail:])
+    y0 = min(np.min(y), tail_mean)
+
+    # Amplitude
+    A = y[0] - y0
+    A = np.clip(A, 1e-12, None)
+
+    # Ensure sign consistency
+    if np.abs(np.max(y) - y0) > np.abs(A):
+        A = np.max(y) - y0
+
+    # Estimate tau using log-linear fit of the first ~30% of data
+    N_fit = max(5, int(0.3 * len(x)))
+    y_fit = y[:N_fit] - y0
+    mask = y_fit > 0  # log() only valid on positive values
+
+    if np.count_nonzero(mask) > 1:
+        x_fit = x[:N_fit][mask]
+        log_y = np.log(y_fit[mask])
+        slope, intercept = np.polyfit(x_fit, log_y, 1)
+        tau = -1 / slope if slope < 0 else (x[-1] - x[0]) / 3
+    else:
+        tau = (x[-1] - x[0]) / 3
+
+    tau = max(tau, np.finfo(float).eps)
+
+    return [A, tau, y0]
