@@ -11,6 +11,7 @@ from sqil_core.utils._utils import fill_gaps, has_at_least_one, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
 from ._guess import (
+    decaying_exp_guess,
     decaying_oscillations_bounds,
     decaying_oscillations_guess,
     gaussian_bounds,
@@ -347,19 +348,9 @@ def fit_decaying_exp(
     """
     x, y = x_data, y_data
 
-    # Default initial guess if not provided
-    if guess is None:
-        max_y = np.max(y)
-        min_y = np.min(y)
-        half = 0.5 * (max_y + min_y)
-
-        if y[0] > y[-1]:
-            tau0_idx = np.argmax(y < half)
-        else:
-            tau0_idx = np.argmax(y > half)
-
-        b0 = x[tau0_idx] if tau0_idx != 0 else 0.5 * (x[0] + x[-1])
-        guess = [y[0] - y[-1], b0, y[-1]]
+    # Default intial guess if not provided
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, decaying_exp_guess(x_data, y_data))
 
     # Default bounds if not provided
     if bounds is None:
