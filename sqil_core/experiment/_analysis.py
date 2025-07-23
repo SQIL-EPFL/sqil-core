@@ -17,6 +17,36 @@ if TYPE_CHECKING:
 
 
 class AnalysisResult:
+    """
+    Container for storing and managing results from a quantum measurement analysis.
+
+    Attributes
+    ----------
+    updated_params : dict[str, dict]
+        Dictionary containing the updated parameters for each qubit.
+    figures : dict[str, matplotlib.figure.Figure]
+        Dictionary of matplotlib figures.
+    fits : dict[str, FitResult]
+        Dictionary of fit results.
+    extra_data : dict[str, np.ndarray]
+        Dictionary of auxiliary computed arrays (e.g., processed IQ data, FFT results).
+
+    Methods
+    -------
+    add_exp_info_to_figures(dir_path)
+        Annotates each figure with experiment ID and cooldown name from directory path.
+    save_figures(dir_path)
+        Saves all figures as PNG and interactive HTML using mpld3.
+    aggregate_fit_summaries()
+        Aggregates human-readable summaries from all fit results.
+    save_fits(dir_path)
+        Saves aggregated fit summaries to a markdown file.
+    save_extra_data(dir_path)
+        Saves extra data arrays into an HDF5 file.
+    save_all(dir_path)
+        Runs all save methods and annotates figures with experimental metadata.
+    """
+
     updated_params: dict[str, dict] = {}
     figures: dict[str, Figure] = {}
     fits: dict[str, FitResult] = {}
