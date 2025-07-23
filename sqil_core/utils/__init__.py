@@ -1,8 +1,10 @@
 from ._analysis import (
+    compute_fft,
     compute_snr_peaked,
     estimate_linear_background,
     find_closest_index,
     find_first_minima_idx,
+    get_peaks,
     line_between_2_points,
     linear_interpolation,
     remove_linear_background,
@@ -52,6 +54,8 @@ __all__ = [
     "find_closest_index",
     "compute_snr_peaked",
     "find_first_minima_idx",
+    "compute_fft",
+    "get_peaks",
     # Const
     "PARAM_METADATA",
     "ONE_TONE_PARAMS",

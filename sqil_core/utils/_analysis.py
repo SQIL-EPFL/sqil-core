@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import argrelextrema
+from scipy.signal import argrelextrema, find_peaks
 
 
 def remove_offset(data: np.ndarray, avg: int = 3) -> np.ndarray:
@@ -413,3 +413,106 @@ def find_first_minima_idx(data):
         return minima_indices[0]
 
     return None
+
+
+def compute_fft(x_data, y_data):
+    """
+    Computes the Fast Fourier Transform (FFT) of a signal and returns the positive frequency spectrum.
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        Time or independent variable array, assumed to be uniformly spaced.
+    y_data : np.ndarray
+        Signal data corresponding to `x_data`. Can be real or complex.
+
+    Returns
+    -------
+    positive_freqs : np.ndarray
+        Array of positive frequency components corresponding to the FFT.
+    fft_magnitude : np.ndarray
+        Magnitude of the FFT at the positive frequencies.
+
+    Notes
+    -----
+    - The signal is centered by subtracting its mean before computing the FFT, which removes the DC component.
+    - Only the positive frequency half of the FFT spectrum is returned, assuming a real-valued input signal.
+    - If `y_data` is complex, returned FFT values still reflect magnitude only.
+    - The input `x_data` must be uniformly spaced for the frequency axis to be accurate.
+
+    Examples
+    --------
+    >>> t = np.linspace(0, 1, 1000)
+    >>> y = np.sin(2 * np.pi * 50 * t)
+    >>> freqs, spectrum = compute_fft(t, y)
+    """
+
+    # Subtract DC offset to focus on oscillations
+    y_data_centered = y_data - np.mean(y_data)
+
+    # Calculate time step (assumes uniform spacing)
+    dt = x_data[1] - x_data[0]
+    N = len(x_data)
+
+    # Compute FFT and frequency axis
+    fft_vals = np.fft.fft(y_data_centered)
+    freqs = np.fft.fftfreq(N, dt)
+
+    # Take only positive frequencies
+    positive_freqs = freqs[: N // 2]
+    fft_magnitude = np.abs(fft_vals[: N // 2])
+
+    return positive_freqs, fft_magnitude
+
+
+def get_peaks(x_data, y_data, prominence: float | None = None, sort=True):
+    """
+    Detects and returns peaks in a 1D signal based on prominence.
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        1D array of x-values corresponding to `y_data` (e.g., frequency or time axis).
+    y_data : np.ndarray
+        1D array of y-values representing the signal in which to find peaks.
+    prominence : float or None, optional
+        Minimum prominence of peaks to detect. If None, defaults to 5% of the maximum
+        value in `y_data`.
+    sort : bool, optional
+        If True, peaks are sorted in descending order of magnitude. Default is True.
+
+    Returns
+    -------
+    peak_freqs : np.ndarray
+        x-values at which peaks occur.
+    peak_magnitudes : np.ndarray
+        y-values (magnitudes) at the detected peaks.
+
+    Notes
+    -----
+    - Uses `scipy.signal.find_peaks` for detection.
+
+    Examples
+    --------
+    >>> x = np.linspace(0, 10, 1000)
+    >>> y = np.sin(2 * np.pi * x) + 0.1 * np.random.randn(1000)
+    >>> freqs, mags = get_peaks(x, np.abs(y))
+    >>> print(freqs[:3], mags[:3])  # Show top 3 peak locations and magnitudes
+    """
+
+    if prominence is None:
+        prominence = 0.05 * np.max(y_data)
+
+    # Find peaks
+    peaks, properties = find_peaks(y_data, prominence=prominence)
+
+    # Get the corresponding frequencies and magnitudes
+    peak_freqs = x_data[peaks]
+    peak_magnitudes = y_data[peaks]
+
+    if sort:
+        sorted_indices = np.argsort(peak_magnitudes)[::-1]
+        peak_freqs = peak_freqs[sorted_indices]
+        peak_magnitudes = peak_magnitudes[sorted_indices]
+
+    return peak_freqs, peak_magnitudes
