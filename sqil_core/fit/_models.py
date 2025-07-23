@@ -74,6 +74,24 @@ def decaying_oscillations(x, A, tau, y0, phi, T):
     return A * np.exp(-x / tau) * np.cos(2.0 * np.pi * (x - phi) / T) + y0
 
 
+def many_decaying_oscillations(t, *params):
+    r"""
+    f(x) = SUM_i A_i * exp(-x / τ_i) * cos(2π * (x - φ_i) / T_i) + y0
+
+    $$f(x) = \sum_i A_i \cdot e^{-x/\tau_i} \cdot \cos\left(\frac{2\pi (x - \phi_i)}{T_i}\right) + y_0$$
+    """
+    n = (len(params) - 1) // 4  # Each oscillation has 4 params: A, tau, phi, T
+    offset = params[-1]
+    result = np.zeros_like(t)
+    for i in range(n):
+        A = params[4 * i]
+        tau = params[4 * i + 1]
+        phi = params[4 * i + 2]
+        T = params[4 * i + 3]
+        result += A * np.exp(-t / tau) * np.cos(2 * np.pi * T * t + phi)
+    return result + offset
+
+
 def oscillations(x, A, y0, phi, T):
     r"""
     f(x) = A * cos(2π * (x - φ) / T) + y0

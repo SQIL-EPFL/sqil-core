@@ -2,6 +2,8 @@ import numpy as np
 from numpy.fft import rfft, rfftfreq
 from scipy.signal import hilbert
 
+from sqil_core.utils import compute_fft, get_peaks
+
 
 def estimate_peak(
     x_data: np.ndarray, y_data: np.ndarray
@@ -213,6 +215,12 @@ def decaying_oscillations_guess(x_data, y_data, num_init=10):
     except Exception:
         tau = np.ptp(x_data)
 
+    # Rough estimate of y0 with a local min or mean of last N points
+    N_tail = max(3, int(0.1 * len(y_data)))
+    tail_mean = np.mean(y_data[-N_tail:])
+    y0_decay = min(np.min(y_data), tail_mean)
+    y0_candidates.append(y0_decay)
+
     return [A, tau, y0_candidates, phi_candidates, T]
 
 
@@ -230,6 +238,32 @@ def decaying_oscillations_bounds(x_data, y_data, guess):
     lower.insert(1, tau_min)
     upper.insert(1, tau_max)
     return (lower, upper)
+
+
+def many_decaying_oscillations_guess(x_data, y_data, n):
+    offset = np.mean(y_data)
+    y_centered = y_data - offset
+
+    freqs, fft_mag = compute_fft(x_data, y_centered)
+    peak_freqs, peak_mags = get_peaks(freqs, fft_mag)
+
+    if len(peak_freqs) < n:
+        raise ValueError(
+            f"Not enough frequency peaks found to initialize {n} oscillations."
+        )
+
+    guess = []
+    signal_duration = x_data[-1] - x_data[0]
+
+    for i in range(n):
+        A = peak_mags[i]
+        tau = signal_duration / (2 + i)  # Increasing τ for later oscillations
+        phi = 0.0  # Can be refined
+        T = peak_freqs[i]
+        guess.extend([A, tau, phi, T])
+
+    guess.append(offset)
+    return guess
 
 
 def decaying_exp_guess(x_data: np.ndarray, y_data: np.ndarray) -> list[float]:
