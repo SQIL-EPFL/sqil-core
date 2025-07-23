@@ -66,13 +66,20 @@ plugins:
 nav:
   - Getting started: index.md
   - Notebooks:
+    - Experiments quick start: 'Notebooks/exp_quick_start.ipynb'
     - The fit_output decorator: 'Notebooks/fit_output_decorator.ipynb'
     - The fit_input decorator: 'Notebooks/fit_input_decorator.ipynb'
     - Fitting resonators: 'Notebooks/resonator_fit.ipynb'
   - API reference:
+    - Experiment:
+      - Experiment Handler: 'API reference/experiment/handler.md'
+      - Analysis: 'API reference/experiment/analysis.md'
+      - Instruments: 'API reference/experiment/instruments.md'
     - Fit:
       - Core: 'API reference/fit/core.md'
       - Fit: 'API reference/fit/fit.md'
+      - Guess: 'API reference/fit/guess.md'
+      - Quality: 'API reference/fit/quality.md'
     - Resonator: 'API reference/resonator/resonator.md'
     - Utilies:
       - Read data: 'API reference/utils/read data.md'
