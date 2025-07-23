@@ -91,6 +91,15 @@ PARAM_METADATA = {
         "unit": "s",
         "scale": 1e9,
     },
+    "ge_T1": {"name": "T1", "symbol": "T_1", "unit": "s", "scale": 1e6},
+    "ge_T2": {"name": "T2", "symbol": "T_2", "unit": "s", "scale": 1e6},
+    "ge_T2_star": {"name": "T2*", "symbol": "T_2^*", "unit": "s", "scale": 1e6},
+    "reset_delay_length": {
+        "name": "Reset delay",
+        "symbol": "T_{reset}",
+        "unit": "s",
+        "scale": 1e6,
+    },
 }
 
 ONE_TONE_PARAMS = np.array(

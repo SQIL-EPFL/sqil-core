@@ -184,10 +184,10 @@ class ParamInfo:
         }
 
     @property
-    def name_and_unit(self):
-        return self.name + (
-            f" [{self.rescaled_unit}]" if self.unit or self.scale != 1 else ""
-        )
+    def name_and_unit(self, latex=True):
+        unit = f"[{self.rescaled_unit}]" if self.unit or self.scale != 1 else ""
+        # FIXME: adding ${unit}$ breaks plotting
+        return self.name + rf" {unit}" if latex else rf" {unit}"
 
     @property
     def rescaled_unit(self):
