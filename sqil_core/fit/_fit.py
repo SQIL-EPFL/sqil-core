@@ -18,6 +18,7 @@ from ._guess import (
     gaussian_guess,
     lorentzian_bounds,
     lorentzian_guess,
+    many_decaying_oscillations_guess,
     oscillations_bounds,
     oscillations_guess,
 )
@@ -608,6 +609,55 @@ def fit_decaying_oscillations(
     }
 
     return best_fit, metadata
+
+
+@fit_output
+def fit_many_decaying_oscillations(
+    x_data: np.ndarray, y_data: np.ndarray, n: int, guess=None
+):
+    """
+    Fits a sum of `n` exponentially decaying oscillations to the given data.
+
+    Each component of the model is of the form:
+        A_i * exp(-x / tau_i) * cos(2π * T_i * x + phi_i)
+
+    Parameters
+    ----------
+    x_data : np.ndarray
+        1D array of x-values (e.g., time).
+    y_data : np.ndarray
+        1D array of y-values (e.g., signal amplitude).
+    n : int
+        Number of decaying oscillation components to fit.
+    guess : list or None, optional
+        Optional initial parameter guess. If None, a guess is automatically generated
+        using `many_decaying_oscillations_guess`.
+
+    Returns
+    -------
+    FitResult
+    """
+
+    if has_at_least_one(guess, None):
+        guess = fill_gaps(guess, many_decaying_oscillations_guess(x_data, y_data, n))
+
+    res = curve_fit(
+        _models.many_decaying_oscillations,
+        x_data,
+        y_data,
+        p0=guess,
+        # maxfev=10000,
+        full_output=True,
+    )
+
+    metadata = {
+        "param_names": [f"{p}{i}" for i in range(n) for p in ("A", "tau", "phi", "T")]
+        + ["y0"],
+        "predict": lambda x: _models.many_decaying_oscillations(x, *res[0]),
+        "model_name": f"many_decaying_oscillations({n})",
+    }
+
+    return res, metadata
 
 
 @fit_input

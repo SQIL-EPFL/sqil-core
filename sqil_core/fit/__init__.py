@@ -11,6 +11,7 @@ from ._fit import (
     fit_decaying_oscillations,
     fit_gaussian,
     fit_lorentzian,
+    fit_many_decaying_oscillations,
     fit_oscillations,
     fit_qubit_relaxation_qp,
     fit_skewed_lorentzian,
