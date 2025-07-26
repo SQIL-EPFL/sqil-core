@@ -8,15 +8,13 @@ import Pyro5.errors as pyro_errors
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
+from sqil_core.experiment.instruments.current_source import CurrentSoruce
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
 from sqil_core.utils._read import read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module, _hash_file
 
-_instrument_classes = {
-    "LO": LocalOscillator,
-    "ZI": ZI_Instrument,
-}
+_instrument_classes = {"LO": LocalOscillator, "ZI": ZI_Instrument, "CS": CurrentSoruce}
 
 
 @pyro.expose
