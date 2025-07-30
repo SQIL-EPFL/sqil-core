@@ -81,7 +81,8 @@ class Instrument(FunctionOverrideHandler, ABC):
 
     def connect(self, *args, **kwargs):
         """Calls the overridden or default `connect` method."""
-        return self.call("connect", *args, **kwargs)
+        self._device = self.call("connect", *args, **kwargs)
+        return self._device
 
     @abstractmethod
     def _default_connect(self, *args, **kwargs):
