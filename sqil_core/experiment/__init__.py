@@ -1,6 +1,7 @@
 from ._analysis import AnalysisResult
 from ._events import after_experiment, before_experiment
 from ._experiment import ExperimentHandler
+from ._utils import bind_instrument_qubit
 from .instruments._instrument import Instrument
 from .instruments.local_oscillator import LocalOscillator
 from .instruments.server import (
