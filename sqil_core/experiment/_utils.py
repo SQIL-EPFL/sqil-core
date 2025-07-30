@@ -6,7 +6,7 @@ def bind_instrument_qubit(qubit_param: str, qu_uid="q0"):
     def bind(exp: ExperimentHandler):
         try:
             qubit = exp.qpu[qu_uid]
-            return getattr(qubit.parameters, qu_uid)
+            return getattr(qubit.parameters, qubit_param)
         except Exception as e:
             logger.error(
                 f"Error binding instrument to qubit parameter `{qubit_param}`"
