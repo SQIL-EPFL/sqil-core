@@ -76,8 +76,13 @@ class ExperimentHandler(ABC):
         params: dict = {},
         param_dict_path: str = "",
         setup_path: str = "",
+        emulation=False,
         server=False,
     ):
+        self.emulation = emulation
+        if self.emulation:
+            logger.warning("Using emulation")
+
         # Read setup file
         if not setup_path:
             config = read_yaml("config.yaml")
@@ -107,7 +112,7 @@ class ExperimentHandler(ABC):
             self.zi_setup = zi.generate_setup()
             # self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
-            self.zi_session.connect()
+            self.zi_session.connect(do_emulation=self.emulation)
             self._load_qpu(zi.generate_qpu)
 
         self.instruments = Instruments(instrument_instances)
