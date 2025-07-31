@@ -1762,16 +1762,16 @@ files = [
 
 [[package]]
 name = "laboneq"
-version = "2.54.0"
+version = "2.56.0"
 description = "Zurich Instruments LabOne Q software framework for quantum computing control"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "laboneq-2.54.0-cp39-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:5aceefe79cdacc4f50d84c8324d7d5b6cc76fb78a1d9e77d9458987857ce2912"},
-    {file = "laboneq-2.54.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:948a13a4d0517dfa5862506f23d98648bd4d8b377360ffafa87d5414168edd2c"},
-    {file = "laboneq-2.54.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d0726699dd17d5b9546ef721303e024d4a0131bb8cd2209f05b34f189c1a41c1"},
-    {file = "laboneq-2.54.0-cp39-abi3-win_amd64.whl", hash = "sha256:d732a440497f1a8e70765298f0ff981c0d50d567885e8d71c249bc587fc800e7"},
+    {file = "laboneq-2.56.0-cp39-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:528526d988c4871c9d4992d360fa5bab6b5beabbc66e1db12962c714e649e0f1"},
+    {file = "laboneq-2.56.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:427293a03c0bfe9fea64e10e0f05bb71a5c030bb0ee5fab2242dbc4dfb2c7116"},
+    {file = "laboneq-2.56.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:43154c4444ad22d794879fc7cdcc4ddcb1d948cee64f36814e90fe9533e63852"},
+    {file = "laboneq-2.56.0-cp39-abi3-win_amd64.whl", hash = "sha256:7739237c0c1c8aa229a0689ff267b3ecbebf4a2035edcf8e8cd4b10cd8d2e809"},
 ]
 
 [package.dependencies]
@@ -1811,18 +1811,18 @@ xarray = ["xarray (>=2024)"]
 
 [[package]]
 name = "laboneq-applications"
-version = "2.8.0"
+version = "2.10.0"
 description = "Library of LabOne Q experiments, analysis functions, and more."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "laboneq_applications-2.8.0-py3-none-any.whl", hash = "sha256:af7dd45f261f8b544ecdfba54080ffa03d0fc2ff08e1feafcec9caf120076ff6"},
-    {file = "laboneq_applications-2.8.0.tar.gz", hash = "sha256:fa367075b44c08c6d16d59a19f40d596064d4b4c92f6621fb3d1a6e7e2c19afa"},
+    {file = "laboneq_applications-2.10.0-py3-none-any.whl", hash = "sha256:156d2e54c89ed459d0ce1418144abb4ee1213aeb3b24813ed748999df1844a98"},
+    {file = "laboneq_applications-2.10.0.tar.gz", hash = "sha256:edd39e932a1e000c1d378b96095d7afa6d691cd083af334fa02aeb76e534e499"},
 ]
 
 [package.dependencies]
-laboneq = ">=2.54.0,<2.55.0"
+laboneq = ">=2.56.0,<2.57.0"
 lmfit = "*"
 matplotlib = "*"
 numpy = ">=1.26"
