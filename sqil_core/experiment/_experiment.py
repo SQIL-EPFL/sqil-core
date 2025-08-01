@@ -47,7 +47,12 @@ from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
 
 # from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import copy_folder, read_yaml
-from sqil_core.utils._utils import _extract_variables_from_module
+from sqil_core.utils._utils import (
+    _extract_variables_from_module,
+    flatten_dict,
+    make_iterable,
+    unflatten_dict,
+)
 
 
 class Instruments:
@@ -172,7 +177,11 @@ class ExperimentHandler(ABC):
             for instrument in self.instruments:
                 del instrument
 
-    def run_with_plottr(self, *args, **kwargs):
+    def run_with_plottr(self, *args, qu_ids=["q0"], **kwargs):
+        # Sanitize inputs
+        qu_ids = make_iterable(qu_ids)
+
+        # Before experiment
         logger.info("Before exp")
         before_experiment.send(sender=self)
 
@@ -181,22 +190,17 @@ class ExperimentHandler(ABC):
 
         # Get information on sweeps
         sweeps: dict = kwargs.get("sweeps", None)
-        sweep_keys = []
-        sweep_grid = []
-        sweep_schema = {}
+        sweep_keys, sweep_grid, sweep_len, sweep_schema = [], {}, 0, {}
         if sweeps is not None:
-            # Name of the parameters to sweep
-            sweep_keys = list(sweeps.keys())
-            # Create a mesh grid of all the sweep parameters
-            sweep_grid = list(itertools.product(*sweeps.values()))
-            # Add sweeps to the database schema
-            for i, key in enumerate(sweep_keys):
-                # TODO: dynamically add unit
-                sweep_schema[f"sweep{i}"] = {"role": "axis", "param_id": key}
+            sweep_keys, sweep_grid, sweep_len, sweep_schema = parse_sweeps(
+                sweeps, qu_ids
+            )
+            # Update experiment name
+            self.exp_name = "_vs_".join([self.exp_name] + sweep_keys)
 
         # Create the plotter datadict (database) using the inferred schema
         db_schema = {**self.db_schema, **sweep_schema}
-        datadict = build_plottr_dict(db_schema)
+        datadict = build_plottr_dict(db_schema, qu_ids=qu_ids)
         # Get local and server storage folders
         db_path = self.setup["storage"]["db_path"]
         db_path_local = self.setup["storage"]["db_path_local"]
@@ -213,8 +217,8 @@ class ExperimentHandler(ABC):
             serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
 
             # TODO: for index sweep don't recompile laboneq
-            for sweep_values in sweep_grid or [None]:
-                data_to_save = {}
+            for sweep_idx in range(sweep_len) or [None]:
+                data_to_save = {qu_id: {} for qu_id in qu_ids}
 
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
                 seq = self.sequence(*args, **kwargs)
@@ -222,17 +226,13 @@ class ExperimentHandler(ABC):
                 is_laboneq_exp = type(seq) == LaboneQExperiment
 
                 if is_laboneq_exp:
-                    qu_indices = kwargs.get("qu_idx", [0])
-                    if type(qu_indices) == int:
-                        qu_indices = [qu_indices]
-                    used_qubits = [self.qpu.quantum_elements[i] for i in qu_indices]
-                    qu_idx_by_uid = [qubit.uid for qubit in self.qpu.quantum_elements]
-                    # TODO: save and re-apply old qubit params
                     # Reset to the first value of every sweep,
                     # then override current sweep value for all qubits
-                    for qubit in used_qubits:
-                        tmp = dict(zip(sweep_keys, sweep_values or []))
-                        qubit.update(**tmp)
+                    if sweep_idx is not None:
+                        for qu_id in qu_ids:
+                            sweep_values = sweep_grid[qu_id][sweep_idx]
+                            tmp = dict(zip(sweep_keys, sweep_values))
+                            qubit.update(**tmp)
                     # Create the experiment (required to update params)
                     seq = self.sequence(*args, **kwargs)
                     compiled_exp = compile_experiment(self.zi_session, seq)
@@ -240,26 +240,30 @@ class ExperimentHandler(ABC):
                     before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
                     after_sequence.send(sender=self)
-                    # TODO: handle multiple qubits. Maybe different datadicts?
-                    raw_data = result[qu_idx_by_uid[qu_indices[0]]].result.data
-                    data_to_save["data"] = raw_data
-                    result = raw_data
+                    # Save data for multiple qubits
+                    for qu_id in qu_ids:
+                        raw_data = result[qu_id].result.data
+                        data_to_save[qu_id]["data"] = raw_data
                 else:
                     # TODO: handle results for different instrumets
                     data_to_save["data"] = seq
 
                 # Add parameters to the data to save
-                datadict_keys = datadict.keys()
-                for key, value in params_map.items():
-                    if key in datadict_keys:
-                        data_to_save[key] = args[value]
+                nested_datadict = unflatten_dict(datadict)
+                for qu_id in qu_ids:
+                    datadict_keys = nested_datadict[qu_id].keys()
+                    for key, value in params_map.items():
+                        if key in datadict_keys:
+                            data_to_save[qu_id][key] = args[value]
                 # Add sweeps to the data to save
                 if sweeps is not None:
-                    for i, key in enumerate(sweep_keys):
-                        data_to_save[f"sweep{i}"] = sweep_values[i]
+                    for qu_id in qu_ids:
+                        for i, key in enumerate(sweep_keys):
+                            sweep_value = sweep_grid[qu_id][sweep_idx][i]
+                            data_to_save[qu_id][f"sweep{i}"] = sweep_value
 
                 # Save data using plottr
-                writer.add_data(**data_to_save)
+                writer.add_data(**flatten_dict(data_to_save))
 
             after_experiment.send()
 
@@ -414,26 +418,72 @@ class ExperimentHandler(ABC):
         return attrs.asdict(params).get(param_id)
 
 
-def build_plottr_dict(db_schema):
+def parse_sweeps(sweeps, qu_ids):
+    sweep_keys = []
+    sweep_grid = {}
+    sweep_schema = {}
+
+    # Name of the parameters to sweep
+    sweep_keys = list(sweeps.keys())
+
+    # Create database schema for sweeps
+    for i, key in enumerate(sweep_keys):
+        sweep_schema[f"sweep{i}"] = {"role": "axis", "param_id": key}
+
+    # Build sweep_map of shape { sweep_key: { qu_id: values, ... }, ...}
+    sweep_map = {}
+    for key, value in sweeps.items():
+        if type(value) == dict:
+            # Check if there is a sweep for each qubit used
+            if not set(qu_ids).issubset(value.keys()):
+                raise KeyError(
+                    f"Sweep qubit ids ({value.keys()} do not match the qubits currently in use ({qu_ids})"
+                )
+            # Build sweep by qubit dict
+            sweep_map[key] = {qu_id: value[qu_id] for qu_id in qu_ids}
+            # Check if all the sweeps have the same length
+            if len(set([len(v) for v in sweep_map[key].values()])) != 1:
+                raise ValueError(
+                    f"The sweep values of `{key}` must have the same length for each qubit."
+                )
+        else:
+            sweep_map[key] = {qu_id: value for qu_id in qu_ids}
+
+    # Create a mesh grid of all the sweep parameters
+    for qu_id in qu_ids:
+        values = [s[qu_id] for s in sweep_map.values()]
+        sweep_grid[qu_id] = list(itertools.product(*values))
+
+    # Get the length of the sweep by checking the first qubit,
+    # since all sweeps must have the same length
+    sweep_len = len(sweep_grid[qu_ids[0]])
+
+    return sweep_keys, sweep_grid, sweep_len, sweep_schema
+
+
+def build_plottr_dict(db_schema, qu_ids):
     """Create a DataDict object from the given schema."""
-    axes = []
-    db = {}
+    axes = {qu_id: [] for qu_id in qu_ids}
+    db = {qu_id: {} for qu_id in qu_ids}
 
     data_key = "data"
     data_unit = ""
 
-    for key, value in db_schema.items():
-        if value.get("role") in ("axis", "x-axis"):
-            unit = value.get("unit", "")
-            db[key] = dict(unit=unit)
-            axes.append(key)
-        elif value.get("role") == "data":
-            data_key = key
-            data_unit = value.get("unit", "")
-    db[data_key] = dict(axes=axes, unit=data_unit)
-    datadict = DataDict(**db)
+    for qu_id in qu_ids:
+        for key, value in db_schema.items():
+            if value.get("role") in ("axis", "x-axis"):
+                unit = value.get("unit", "")
+                db[qu_id][key] = dict(unit=unit)
+                axes[qu_id].append(f"{qu_id}/{key}")
+            elif value.get("role") == "data":
+                data_key = key
+                data_unit = value.get("unit", "")
+        db[qu_id][data_key] = dict(axes=axes[qu_id], unit=data_unit)
+
+    datadict = DataDict(**flatten_dict(db))
 
     datadict.add_meta("schema", json.dumps(db_schema))
+    datadict.add_meta("qu_ids", json.dumps(qu_ids))
 
     return datadict
 

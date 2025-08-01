@@ -16,7 +16,7 @@ from ._formatter import (
     get_relevant_exp_parameters,
     param_info_from_schema,
 )
-from ._read import extract_h5_data, get_data_and_info, map_data_dict, read_json
+from ._read import extract_h5_data, get_data_and_info, map_datadict, read_json
 
 if TYPE_CHECKING:
     from sqil_core.fit._core import FitResult

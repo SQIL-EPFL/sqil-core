@@ -37,7 +37,7 @@ from ._read import (
     extract_mapped_data,
     get_data_and_info,
     get_measurement_id,
-    map_data_dict,
+    map_datadict,
     read_json,
     read_qpu,
     read_yaml,
@@ -80,7 +80,7 @@ __all__ = [
     "finalize_plot",
     # Read
     "extract_h5_data",
-    "map_data_dict",
+    "map_datadict",
     "extract_mapped_data",
     "read_json",
     "read_yaml",

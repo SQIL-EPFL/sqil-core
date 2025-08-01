@@ -2,6 +2,7 @@ import hashlib
 import importlib.util
 import inspect
 import sys
+from collections import defaultdict
 from collections.abc import Iterable
 
 from sqil_core.config_log import logger
@@ -112,6 +113,23 @@ def has_at_least_one(lst: list, value) -> bool:
         return any(x is None for x in lst)
     else:
         return any(x == value for x in lst)
+
+
+def flatten_dict(dic):
+    return {
+        f"{parent_key}/{key}": val
+        for parent_key, nested in dic.items()
+        for key, val in nested.items()
+    }
+
+
+def unflatten_dict(flat: dict) -> dict:
+    nested = defaultdict(dict)
+    for key, value in flat.items():
+        if "/" in key:
+            parent_key, field = key.split("/", 1)
+            nested[parent_key][field] = value
+    return dict(nested)
 
 
 def _count_function_parameters(func):

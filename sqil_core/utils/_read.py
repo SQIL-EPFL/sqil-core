@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 # TODO: add tests for schema
 def extract_h5_data(
-    path: str, keys: list[str] | None = None, schema=False
+    path: str, keys: list[str] | None = None, get_metadata=False
 ) -> dict | tuple[np.ndarray, ...]:
     """Extract data at the given keys from an HDF5 file. If no keys are
     given (None) returns the data field of the object.
@@ -31,6 +31,9 @@ def extract_h5_data(
         path to the HDF5 file or a folder in which is contained a data.ddh5 file
     keys : None or List, optional
         list of keys to extract from file['data'], by default None
+    get_metadata : bool, optional
+        whether or not to extract also metadata, like database schema and qubit IDs,
+        by default None.
 
     Returns
     -------
@@ -55,9 +58,10 @@ def extract_h5_data(
         data = h5file["data"]
         data_keys = data.keys()
 
-        db_schema = None
-        if schema:
-            db_schema = json.loads(data.attrs.get("__schema__"))
+        metadata = {}
+        if get_metadata:
+            metadata["schema"] = json.loads(data.attrs.get("__schema__"))
+            metadata["qu_ids"] = data.attrs.get("__qu_ids__")
 
         # Extract only the requested keys
         if bool(keys) and (len(keys) > 0):
@@ -68,28 +72,26 @@ def extract_h5_data(
                     res.append([])
                     continue
                 res.append(np.array(data[key][:]))
-            if not schema and len(res) == 1:
+            if not get_metadata and len(res) == 1:
                 return res[0]
-            return tuple(res) if not schema else (*tuple(res), db_schema)
+            return tuple(res) if not get_metadata else (*tuple(res), metadata)
         # Extract the whole data dictionary
         h5_dict = _h5_to_dict(data)
-        return h5_dict if not schema else {**h5_dict, "schema": db_schema}
-    #
+        return h5_dict if not get_metadata else {**h5_dict, "metadata": metadata}
 
 
 def _h5_to_dict(obj) -> dict:
-    """Convert h5 data into a dictionary"""
-    data_dict = {}
-    for key in obj.keys():
-        item = obj[key]
+    """Recursively convert h5py Group or Dataset to nested dict."""
+    result = {}
+    for key, item in obj.items():
         if isinstance(item, h5py.Dataset):
-            data_dict[key] = item[:]
+            result[key] = item[()]
         elif isinstance(item, h5py.Group):
-            data_dict[key] = extract_h5_data(item)
-    return data_dict
+            result[key] = _h5_to_dict(item)  # recursive step
+    return result
 
 
-def map_data_dict(data_dict: dict):
+def map_datadict(data_dict: dict):
     """
     Maps experimental data to standardized arrays using a provided schema.
 
@@ -189,7 +191,7 @@ def extract_mapped_data(path: str):
 
     datadict = extract_h5_data(path, schema=True)
     schema = datadict.get("schema")
-    x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
+    x_data, y_data, sweeps, datadict_map = map_datadict(datadict)
     return x_data, y_data, sweeps, datadict_map, schema
 
 
@@ -202,7 +204,7 @@ def get_data_and_info(path=None, datadict=None):
 
     # Get schema and map data
     schema = datadict.get("schema")
-    x_data, y_data, sweeps, datadict_map = map_data_dict(datadict)
+    x_data, y_data, sweeps, datadict_map = map_datadict(datadict)
 
     # Get metadata on x_data and y_data
     x_info = param_info_from_schema(
