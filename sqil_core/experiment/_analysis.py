@@ -123,3 +123,9 @@ class AnalysisResult:
         self.save_figures(dir_path)
         self.save_fits(dir_path)
         self.save_extra_data(dir_path)
+
+    def update(self, new_anal_res: AnalysisResult):
+        self.updated_params.update(new_anal_res.updated_params)
+        self.figures.update(new_anal_res.figures)
+        self.fits.update(new_anal_res.fits)
+        self.extra_data.update(new_anal_res.extra_data)

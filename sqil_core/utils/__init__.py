@@ -34,7 +34,6 @@ from ._plot import (
 )
 from ._read import (
     extract_h5_data,
-    extract_mapped_data,
     get_data_and_info,
     get_measurement_id,
     map_datadict,
@@ -42,6 +41,7 @@ from ._read import (
     read_qpu,
     read_yaml,
 )
+from ._utils import make_iterable
 
 __all__ = [
     # Analysis
@@ -81,10 +81,11 @@ __all__ = [
     # Read
     "extract_h5_data",
     "map_datadict",
-    "extract_mapped_data",
     "read_json",
     "read_yaml",
     "read_qpu",
     "get_measurement_id",
     "get_data_and_info",
+    # Utils
+    "make_iterable",
 ]
