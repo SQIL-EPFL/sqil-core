@@ -19,6 +19,8 @@ from ._formatter import (
 from ._read import extract_h5_data, get_data_and_info, map_datadict, read_json
 
 if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+
     from sqil_core.fit._core import FitResult
     from sqil_core.utils import ParamDict
 
@@ -127,8 +129,9 @@ def guess_plot_dimension(
 
 
 def finalize_plot(
-    fig,
-    title,
+    fig: Figure,
+    title: str,
+    qu_id: str,
     fit_res: FitResult = None,
     qubit_params: ParamDict = {},
     updated_params: dict = {},
@@ -182,6 +185,8 @@ def finalize_plot(
         y_pos = -0.01
 
     # Add text to the plot
+    if not title.endswith(qu_id):
+        title += f" @ {qu_id}"
     fig.suptitle(f"{title}\n" + update_params_str)
     if fit_res:
         fig.text(0.02, y_pos, f"Model: {fit_res.model_name} - {fit_res.quality()}")
