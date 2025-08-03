@@ -516,3 +516,21 @@ def get_peaks(x_data, y_data, prominence: float | None = None, sort=True):
         peak_magnitudes = peak_magnitudes[sorted_indices]
 
     return peak_freqs, peak_magnitudes
+
+
+def amplitude_to_power_dBm(amplitude, offset_dBm=10):
+    """Converts amplitude to power and adds an offset (SHFQC range)
+
+    Parameters
+    ----------
+    amplitude : float.
+        Amplitude
+    offset_dBm : float (optional)
+        Power offset added to the amplitude (SHFQC range). By default 10.
+
+    Returns
+    -------
+    float
+        Power [dBm]
+    """
+    return offset_dBm + 20 * np.log10(amplitude)

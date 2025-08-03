@@ -1,4 +1,5 @@
 from ._analysis import (
+    amplitude_to_power_dBm,
     compute_fft,
     compute_snr_peaked,
     estimate_linear_background,
@@ -57,6 +58,7 @@ __all__ = [
     "find_first_minima_idx",
     "compute_fft",
     "get_peaks",
+    "amplitude_to_power_dBm",
     # Const
     "PARAM_METADATA",
     "ONE_TONE_PARAMS",
