@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from typing import TYPE_CHECKING
 
@@ -137,7 +138,7 @@ def get_data_and_info(path=None, datadict=None):
     if path is None and datadict is None:
         raise Exception("At least one of `path` and `datadict` must be specified.")
 
-    if path is not None:
+    if datadict is None and path is not None:
         datadict = extract_h5_data(path, get_metadata=True)
 
     # Get schema and map data
@@ -155,7 +156,11 @@ def get_data_and_info(path=None, datadict=None):
 
     data_res, info_res, dict_res = {}, {}, {}
     for qu_id in qu_ids:
-        qu_datadict = datadict[qu_id] if qu_id is not None else datadict
+        if qu_id is not None:
+            qu_datadict = {**datadict[qu_id], "metadata": {"schema": schema}}
+        else:
+            qu_datadict = datadict
+
         x_data, y_data, sweeps, datadict_map = mapped_data[qu_id]
 
         # Get metadata on x_data and y_data
@@ -178,6 +183,13 @@ def get_data_and_info(path=None, datadict=None):
     if list(data_res.keys()) == [None]:
         return data_res[None], info_res[None], dict_res[None]
     return data_res, info_res, dict_res
+
+
+def is_multi_qubit_datadict(datadict):
+    # Check that all the keys are "q<NUMBER>", e.g. "q0", "q1", ...
+    pattern = re.compile(r"^q\d+$|metadata")
+    all_keys_match = all(pattern.match(key) for key in datadict)
+    return all_keys_match
 
 
 def read_json(path: str) -> dict:

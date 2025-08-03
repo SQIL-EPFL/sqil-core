@@ -36,6 +36,7 @@ from ._read import (
     extract_h5_data,
     get_data_and_info,
     get_measurement_id,
+    is_multi_qubit_datadict,
     map_datadict,
     read_json,
     read_qpu,
@@ -86,6 +87,7 @@ __all__ = [
     "read_qpu",
     "get_measurement_id",
     "get_data_and_info",
+    "is_multi_qubit_datadict",
     # Utils
     "make_iterable",
 ]
