@@ -8,7 +8,12 @@ from matplotlib.gridspec import GridSpec
 
 from sqil_core.fit import transform_data
 
-from ._analysis import remove_linear_background, remove_offset, soft_normalize
+from ._analysis import (
+    amplitude_to_power_dBm,
+    remove_linear_background,
+    remove_offset,
+    soft_normalize,
+)
 from ._const import PARAM_METADATA
 from ._formatter import (
     ParamInfo,
@@ -301,6 +306,21 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
 
     fig.tight_layout()
     return fig, axs
+
+
+def add_power_axis(ax, power_offset=10, n_ticks=6):
+    # Get ticks
+    amp_ticks = np.linspace(*ax.get_ylim(), num=n_ticks)
+    power_ticks = amplitude_to_power_dBm(amp_ticks, power_offset)
+    # Add power axis
+    ax_pow = ax.twinx()
+    ax_pow.set_ylim(ax.get_ylim())
+    # Set new ticks
+    ax.set_yticks(amp_ticks)
+    ax_pow.set_yticks(amp_ticks)
+    ax_pow.set_yticklabels([f"{p:.1f}" for p in power_ticks])
+    ax_pow.set_ylabel("Power [dBm]")
+    ax_pow.grid(False)
 
 
 def plot_projection_IQ(path=None, datadict=None, proj_data=None, full_output=False):

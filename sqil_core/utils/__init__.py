@@ -24,6 +24,7 @@ from ._formatter import (
     param_info_from_schema,
 )
 from ._plot import (
+    add_power_axis,
     build_title,
     finalize_plot,
     get_x_id_by_plot_dim,
@@ -81,6 +82,7 @@ __all__ = [
     "plot_mag_phase",
     "plot_projection_IQ",
     "finalize_plot",
+    "add_power_axis",
     # Read
     "extract_h5_data",
     "map_datadict",
