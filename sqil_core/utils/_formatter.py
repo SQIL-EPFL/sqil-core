@@ -187,7 +187,7 @@ class ParamInfo:
     def name_and_unit(self, latex=True):
         unit = f"[{self.rescaled_unit}]" if self.unit or self.scale != 1 else ""
         if unit == "":
-            return unit
+            return self.name
         return self.name + rf" ${unit}$" if latex else rf" {unit}"
 
     @property
