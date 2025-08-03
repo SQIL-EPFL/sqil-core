@@ -1,4 +1,4 @@
-from ._analysis import AnalysisResult
+from ._analysis import AnalysisResult, multi_qubit_handler
 from ._events import after_experiment, before_experiment
 from ._experiment import ExperimentHandler
 from ._utils import bind_instrument_qubit

@@ -232,7 +232,7 @@ class ExperimentHandler(ABC):
                         for qu_id in qu_ids:
                             sweep_values = sweep_grid[qu_id][sweep_idx]
                             tmp = dict(zip(sweep_keys, sweep_values))
-                            qubit.update(**tmp)
+                            self.qpu[qu_id].update(**tmp)
                     # Create the experiment (required to update params)
                     seq = self.sequence(*args, **kwargs)
                     compiled_exp = compile_experiment(self.zi_session, seq)
@@ -278,9 +278,9 @@ class ExperimentHandler(ABC):
                 anal_res = cast(AnalysisResult, anal_res)
                 anal_res.save_all(storage_path_local)
                 # Update QPU
-                if is_laboneq_exp and not kwargs.get("no_update", False):
+                if not kwargs.get("no_update", False):
                     for qu_id in anal_res.updated_params.keys():
-                        qubit = self.qpu.quantum_element_by_uid(qu_id)
+                        qubit = self.qpu[qu_id]
                         qubit.update(**anal_res.updated_params[qu_id])
                 # writer.save_text("analysis.md", anal_res)
                 plt.show()
