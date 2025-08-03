@@ -177,9 +177,10 @@ class ExperimentHandler(ABC):
             for instrument in self.instruments:
                 del instrument
 
-    def run_with_plottr(self, *args, qu_ids=["q0"], **kwargs):
+    def run_with_plottr(self, *args, qu_ids=["q0"], pulse_sheet=False, **kwargs):
         # Sanitize inputs
         qu_ids = make_iterable(qu_ids)
+        run_kwargs = {**kwargs, "qu_ids": qu_ids, "pulse_sheet": pulse_sheet}
 
         # Before experiment
         logger.info("Before exp")
@@ -221,7 +222,7 @@ class ExperimentHandler(ABC):
                 data_to_save = {qu_id: {} for qu_id in qu_ids}
 
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
-                seq = self.sequence(*args, **kwargs)
+                seq = self.sequence(*args, **run_kwargs)
                 # Detect if the sequence created a laboneq experiment
                 is_laboneq_exp = type(seq) == LaboneQExperiment
 
@@ -234,9 +235,12 @@ class ExperimentHandler(ABC):
                             tmp = dict(zip(sweep_keys, sweep_values))
                             self.qpu[qu_id].update(**tmp)
                     # Create the experiment (required to update params)
-                    seq = self.sequence(*args, **kwargs)
+                    seq = self.sequence(*args, **run_kwargs)
                     compiled_exp = compile_experiment(self.zi_session, seq)
-                    # pulse_sheet(self.zi_setup, compiled_exp, self.exp_name)
+                    if pulse_sheet:
+                        create_pulse_sheet(
+                            self.zi_setup, compiled_exp, self.exp_name, qu_ids
+                        )
                     before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
                     after_sequence.send(sender=self)
@@ -273,7 +277,7 @@ class ExperimentHandler(ABC):
 
         # Run analysis script
         try:
-            anal_res = self.analyze(storage_path_local, *args, **kwargs)
+            anal_res = self.analyze(storage_path_local, *args, **run_kwargs)
             if type(anal_res) == AnalysisResult:
                 anal_res = cast(AnalysisResult, anal_res)
                 anal_res.save_all(storage_path_local)
@@ -321,7 +325,7 @@ class ExperimentHandler(ABC):
         n_points: int = None,
         step: float = None,
         scale: str = "linear",
-        qu_uid="q0",
+        qu_id="q0",
     ):
         """
         Generates a sweep of values around a specified center, either numerically or by referencing
@@ -342,7 +346,7 @@ class ExperimentHandler(ABC):
         scale : {'linear', 'log'}, default 'linear'
             Whether to generate the sweep on a linear or logarithmic scale.
             For logarithmic sweeps, all generated values must be > 0.
-        qu_uid : str, default "q0"
+        qu_id : str, default "q0"
             Qubit identifier used to resolve `center` if it is a parameter name.
 
         Returns
@@ -367,10 +371,10 @@ class ExperimentHandler(ABC):
         """
 
         if isinstance(center, str):
-            value = self.qubit_value(param_id=center, qu_uid=qu_uid)
+            value = self.qubit_value(param_id=center, qu_id=qu_id)
             if value is None:
                 raise AttributeError(
-                    f"No attribute {center} in qubit {qu_uid} parameters."
+                    f"No attribute {center} in qubit {qu_id} parameters."
                 )
             center = value
 
@@ -412,9 +416,9 @@ class ExperimentHandler(ABC):
             else:
                 return np.logspace(np.log10(start), np.log10(stop), n_points)
 
-    def qubit_value(self, param_id, qu_uid="q0"):
+    def qubit_value(self, param_id, qu_id="q0"):
         """Get a qubit parameter value from the QPU."""
-        params = self.qpu.quantum_element_by_uid(qu_uid).parameters
+        params = self.qpu[qu_id].parameters
         return attrs.asdict(params).get(param_id)
 
 
@@ -518,9 +522,9 @@ def get_plottr_path(writer: DDH5Writer, root_path):
 from laboneq.simple import OutputSimulator
 
 
-def pulse_sheet(device_setup, compiled_exp, name):
+def create_pulse_sheet(device_setup, compiled_exp, name, qu_ids=["q0"]):
     start = 0
-    end = 0.15e-6
+    end = 10e-6
     colors = [
         "tab:blue",
         "tab:orange",
@@ -530,79 +534,89 @@ def pulse_sheet(device_setup, compiled_exp, name):
         "tab:brown",
     ]
 
-    # Get physical channel references via the logical signals
-    drive_iq_port = device_setup.logical_signal_by_uid("q0/drive").physical_channel
-    measure_iq_port = device_setup.logical_signal_by_uid("q0/measure").physical_channel
-    acquire_port = device_setup.logical_signal_by_uid("q0/acquire").physical_channel
+    fig, axs = plt.subplots(2, 1, figsize=(20, 5))
+    for idx, qu_id in enumerate(qu_ids):
+        # Get physical channel references via the logical signals
+        drive_iq_port = device_setup.logical_signal_by_uid("q0/drive").physical_channel
+        measure_iq_port = device_setup.logical_signal_by_uid(
+            "q0/measure"
+        ).physical_channel
+        acquire_port = device_setup.logical_signal_by_uid("q0/acquire").physical_channel
 
-    # Get waveform snippets from the simulation
-    simulation = OutputSimulator(compiled_exp)
+        # Get waveform snippets from the simulation
+        simulation = OutputSimulator(compiled_exp)
 
-    drive_snippet = simulation.get_snippet(
-        drive_iq_port, start=start, output_length=end
-    )
+        drive_snippet = simulation.get_snippet(
+            drive_iq_port, start=start, output_length=end
+        )
 
-    measure_snippet = simulation.get_snippet(
-        measure_iq_port, start=start, output_length=end
-    )
+        measure_snippet = simulation.get_snippet(
+            measure_iq_port, start=start, output_length=end
+        )
 
-    acquire_snippet = simulation.get_snippet(
-        acquire_port, start=start, output_length=end
-    )
+        acquire_snippet = simulation.get_snippet(
+            acquire_port, start=start, output_length=end
+        )
 
-    fig = plt.figure(figsize=(15, 5))
-    plt.plot(
-        drive_snippet.time * 1e6,
-        drive_snippet.wave.real,
-        color=colors[0],
-        label="Qubit I",
-    )
-    plt.fill_between(
-        drive_snippet.time * 1e6, drive_snippet.wave.real, color=colors[0], alpha=0.6
-    )
-    plt.plot(
-        drive_snippet.time * 1e6,
-        drive_snippet.wave.imag,
-        color=colors[1],
-        label="Qubit Q",
-    )
-    plt.fill_between(
-        drive_snippet.time * 1e6, drive_snippet.wave.imag, color=colors[1], alpha=0.6
-    )
+        axs[idx].plot(
+            drive_snippet.time * 1e6,
+            drive_snippet.wave.real,
+            color=colors[0],
+            label="Qubit I",
+        )
+        axs[idx].fill_between(
+            drive_snippet.time * 1e6,
+            drive_snippet.wave.real,
+            color=colors[0],
+            alpha=0.6,
+        )
+        axs[idx].plot(
+            drive_snippet.time * 1e6,
+            drive_snippet.wave.imag,
+            color=colors[1],
+            label="Qubit Q",
+        )
+        axs[idx].fill_between(
+            drive_snippet.time * 1e6,
+            drive_snippet.wave.imag,
+            color=colors[1],
+            alpha=0.6,
+        )
 
-    plt.plot(
-        measure_snippet.time * 1e6,
-        measure_snippet.wave.real,
-        color=colors[2],
-        label="Readout I",
-    )
-    plt.fill_between(
-        measure_snippet.time * 1e6,
-        measure_snippet.wave.real,
-        color=colors[2],
-        alpha=0.6,
-    )
-    plt.plot(
-        measure_snippet.time * 1e6,
-        measure_snippet.wave.imag,
-        color=colors[3],
-        label="Readout Q",
-    )
-    plt.fill_between(
-        measure_snippet.time * 1e6,
-        measure_snippet.wave.imag,
-        color=colors[3],
-        alpha=0.6,
-    )
-    plt.plot(
-        acquire_snippet.time * 1e6,
-        acquire_snippet.wave.real,
-        color=colors[4],
-        label="acquire start",
-    )
+        axs[idx].plot(
+            measure_snippet.time * 1e6,
+            measure_snippet.wave.real,
+            color=colors[2],
+            label="Readout I",
+        )
+        axs[idx].fill_between(
+            measure_snippet.time * 1e6,
+            measure_snippet.wave.real,
+            color=colors[2],
+            alpha=0.6,
+        )
+        axs[idx].plot(
+            measure_snippet.time * 1e6,
+            measure_snippet.wave.imag,
+            color=colors[3],
+            label="Readout Q",
+        )
+        axs[idx].fill_between(
+            measure_snippet.time * 1e6,
+            measure_snippet.wave.imag,
+            color=colors[3],
+            alpha=0.6,
+        )
+        axs[idx].plot(
+            acquire_snippet.time * 1e6,
+            acquire_snippet.wave.real,
+            color=colors[4],
+            label="acquire start",
+        )
 
-    plt.legend()
-    plt.xlabel(r"Time($\mu s$)")
-    plt.ylabel("Amplitude")
-    plt.title(name)
+        axs[idx].legend()
+        axs[idx].set_xlabel(r"Time($\mu s$)")
+        axs[idx].set_ylabel("Amplitude")
+        axs[idx].set_title(f"{name} - {qu_id}")
+
     plt.show()
