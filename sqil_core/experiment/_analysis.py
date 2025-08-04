@@ -211,13 +211,11 @@ def multi_qubit_handler(single_qubit_handler):
 
         # Check if full_datadict is multi qubit
         is_multi_qubit = is_multi_qubit_datadict(full_datadict)
-        print(is_multi_qubit, full_datadict.keys())
 
         if is_multi_qubit:
             if qu_id is None:  # no qu_id is specified => process all qubits
                 db_metadata = full_datadict.get("metadata", {})
                 db_schema = db_metadata.get("schema")
-                print("*** No ID -> multi")
                 for qid in full_datadict.keys():
                     fun_kwargs["qu_id"] = qid
                     fun_kwargs["datadict"] = {
@@ -228,10 +226,8 @@ def multi_qubit_handler(single_qubit_handler):
                     anal_res_tot.update(anal_res_qu)
                     return anal_res_tot
             else:  # qu_id is specified => process single qubit
-                print("*** ID specified -> single")
                 datadict = full_datadict[qu_id]
         else:  # full_datadict is NOT multi qubit => it's already single qubit
-            print("*** Already single -> single")
             datadict = full_datadict
 
         fun_kwargs["datadict"] = datadict

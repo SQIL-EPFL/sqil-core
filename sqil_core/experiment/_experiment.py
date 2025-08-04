@@ -188,6 +188,7 @@ class ExperimentHandler(ABC):
 
         # Map input parameters index to their name
         params_map, _ = map_inputs(self.sequence)
+        qubit_order = {qu_id: idx for idx, qu_id in enumerate(qu_ids)}
 
         # Get information on sweeps
         sweeps: dict = kwargs.get("sweeps", None)
@@ -207,6 +208,7 @@ class ExperimentHandler(ABC):
         db_path_local = self.setup["storage"]["db_path_local"]
 
         # TODO: dynamically assign self.exp_name to class name if not provided
+        compiled_exp = None
         with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
             # Get the path to the folder where the data will be stored
             storage_path = get_plottr_path(writer, db_path)
@@ -221,10 +223,12 @@ class ExperimentHandler(ABC):
             for sweep_idx in range(sweep_len) or [None]:
                 data_to_save = {qu_id: {} for qu_id in qu_ids}
 
+                # TODO: Handle a priori
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
-                seq = self.sequence(*args, **run_kwargs)
+                # seq = self.sequence(*args, **run_kwargs)
                 # Detect if the sequence created a laboneq experiment
-                is_laboneq_exp = type(seq) == LaboneQExperiment
+                is_laboneq_exp = True
+                # is_laboneq_exp = type(seq) == LaboneQExperiment
 
                 if is_laboneq_exp:
                     # Reset to the first value of every sweep,
@@ -235,12 +239,13 @@ class ExperimentHandler(ABC):
                             tmp = dict(zip(sweep_keys, sweep_values))
                             self.qpu[qu_id].update(**tmp)
                     # Create the experiment (required to update params)
-                    seq = self.sequence(*args, **run_kwargs)
-                    compiled_exp = compile_experiment(self.zi_session, seq)
-                    if pulse_sheet:
-                        create_pulse_sheet(
-                            self.zi_setup, compiled_exp, self.exp_name, qu_ids
-                        )
+                    if sweep_keys != ["index"] or compiled_exp is None:
+                        seq = self.sequence(*args, **run_kwargs)
+                        compiled_exp = compile_experiment(self.zi_session, seq)
+                        if pulse_sheet:
+                            create_pulse_sheet(
+                                self.zi_setup, compiled_exp, self.exp_name, qu_ids
+                            )
                     before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
                     after_sequence.send(sender=self)
@@ -256,9 +261,11 @@ class ExperimentHandler(ABC):
                 nested_datadict = unflatten_dict(datadict)
                 for qu_id in qu_ids:
                     datadict_keys = nested_datadict[qu_id].keys()
-                    for key, value in params_map.items():
-                        if key in datadict_keys:
-                            data_to_save[qu_id][key] = args[value]
+                    for p_name, p_idx in params_map.items():
+                        if p_name in datadict_keys:
+                            data_to_save[qu_id][p_name] = args[p_idx][
+                                qubit_order[qu_id]
+                            ]
                 # Add sweeps to the data to save
                 if sweeps is not None:
                     for qu_id in qu_ids:
