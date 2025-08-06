@@ -100,6 +100,7 @@ PARAM_METADATA = {
         "unit": "s",
         "scale": 1e6,
     },
+    "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
 }
 
 ONE_TONE_PARAMS = np.array(

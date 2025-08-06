@@ -134,7 +134,7 @@ def guess_plot_dimension(
 
 
 def finalize_plot(
-    fig: Figure,
+    fig: Figure | None,
     title: str,
     qu_id: str,
     fit_res: FitResult = None,
@@ -164,6 +164,9 @@ def finalize_plot(
     relevant_params : list, optional
         List of parameter IDs considered relevant for display under "Experiment".
     """
+    if fig is None:
+        return
+
     # Make a summary of relevant experimental parameters
     exp_params_keys = get_relevant_exp_parameters(
         qubit_params, relevant_params, [info.id for info in sweep_info]
@@ -366,6 +369,7 @@ def plot_projection_IQ(path=None, datadict=None, proj_data=None, full_output=Fal
     # Get y_unit
     y_unit = f" [{y_info.rescaled_unit}]" if y_info.unit else ""
 
+    fig = None
     set_plot_style(plt)
 
     if len(sweeps) == 0:
