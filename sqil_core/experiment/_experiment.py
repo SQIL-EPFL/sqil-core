@@ -203,6 +203,9 @@ class ExperimentHandler(ABC):
         # Create the plotter datadict (database) using the inferred schema
         db_schema = {**self.db_schema, **sweep_schema}
         datadict = build_plottr_dict(db_schema, qu_ids=qu_ids)
+        data_keys = [
+            key for key, _ in datadict.data_items() if key not in datadict.axes()
+        ]
         # Get local and server storage folders
         db_path = self.setup["storage"]["db_path"]
         db_path_local = self.setup["storage"]["db_path_local"]
@@ -249,21 +252,24 @@ class ExperimentHandler(ABC):
                     before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
                     after_sequence.send(sender=self)
-                    # Save data for multiple qubits
-                    for qu_id in qu_ids:
-                        raw_data = result[qu_id].result.data
-                        data_to_save[qu_id]["data"] = raw_data
+                    for data_key in data_keys:
+                        data_key_corrected = data_key
+                        if data_key.split("/")[-1] == "data" and data_key not in result:
+                            data_key_corrected = data_key.split("/")[0]
+                        raw_data = result[data_key_corrected].result.data
+                        data_to_save[data_key] = raw_data
                 else:
                     # TODO: handle results for different instrumets
                     data_to_save["data"] = seq
 
                 # Add parameters to the data to save
                 nested_datadict = unflatten_dict(datadict)
+                nested_data_to_save = unflatten_dict(data_to_save)
                 for qu_id in qu_ids:
                     datadict_keys = nested_datadict[qu_id].keys()
                     for p_name, p_idx in params_map.items():
                         if p_name in datadict_keys:
-                            data_to_save[qu_id][p_name] = args[p_idx][
+                            nested_data_to_save[qu_id][p_name] = args[p_idx][
                                 qubit_order[qu_id]
                             ]
                 # Add sweeps to the data to save
@@ -271,10 +277,10 @@ class ExperimentHandler(ABC):
                     for qu_id in qu_ids:
                         for i, key in enumerate(sweep_keys):
                             sweep_value = sweep_grid[qu_id][sweep_idx][i]
-                            data_to_save[qu_id][f"sweep{i}"] = sweep_value
+                            nested_data_to_save[qu_id][f"sweep{i}"] = sweep_value
 
                 # Save data using plottr
-                writer.add_data(**flatten_dict(data_to_save))
+                writer.add_data(**flatten_dict(nested_data_to_save))
 
             after_experiment.send()
 
@@ -477,7 +483,7 @@ def build_plottr_dict(db_schema, qu_ids):
     axes = {qu_id: [] for qu_id in qu_ids}
     db = {qu_id: {} for qu_id in qu_ids}
 
-    data_key = "data"
+    data_keys = []
     data_unit = ""
 
     for qu_id in qu_ids:
@@ -487,9 +493,10 @@ def build_plottr_dict(db_schema, qu_ids):
                 db[qu_id][key] = dict(unit=unit)
                 axes[qu_id].append(f"{qu_id}/{key}")
             elif value.get("role") == "data":
-                data_key = key
+                data_keys.append(key)
                 data_unit = value.get("unit", "")
-        db[qu_id][data_key] = dict(axes=axes[qu_id], unit=data_unit)
+        for data_key in data_keys:
+            db[qu_id][data_key] = dict(axes=axes[qu_id], unit=data_unit)
 
     datadict = DataDict(**flatten_dict(db))
 
