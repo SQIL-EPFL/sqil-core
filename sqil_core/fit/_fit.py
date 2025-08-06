@@ -1104,6 +1104,7 @@ def transform_data(
     """
     Transforms complex-valued data using various transformation methods, including
     optimization-based alignment, real/imaginary extraction, amplitude, and phase.
+    Works with both 1D and 2D data.
 
     Parameters
     ----------
@@ -1154,6 +1155,10 @@ def transform_data(
     >>> print(transformed, params, residuals)
     """
 
+    # Save original shape for reshaping output
+    original_shape = data.shape
+    flattened_data = data.flatten()
+
     def transform(data, x0, y0, phi):
         return (data - x0 - 1.0j * y0) * np.exp(1.0j * phi)
 
@@ -1161,8 +1166,6 @@ def transform_data(
         return data * np.exp(-1.0j * phi) + x0 + 1.0j * y0
 
     def opt_transform(data):
-        """Finds optimal transformation parameters."""
-
         def transform_err(x):
             return np.sum((transform(data, x[0], x[1], x[2]).imag) ** 2)
 
@@ -1200,33 +1203,38 @@ def transform_data(
 
     # Compute parameters if needed
     if transform_type == "optm" and params is None:
-        params = opt_transform(data)
+        params = opt_transform(flattened_data)
 
     # Apply transformation
     if transform_type in ["optm", "trrt"]:
-        transformed_data = transform(data, *params).real
-        residual = transform(data, *params).imag
+        transformed_flat = transform(flattened_data, *params).real
+        residual_flat = transform(flattened_data, *params).imag
     elif transform_type == "real":
-        transformed_data = data.real
-        residual = data.imag
+        transformed_flat = flattened_data.real
+        residual_flat = flattened_data.imag
     elif transform_type == "imag":
-        transformed_data = data.imag
-        residual = data.real
+        transformed_flat = flattened_data.imag
+        residual_flat = flattened_data.real
     elif transform_type == "ampl":
-        transformed_data = np.abs(data)
-        residual = np.unwrap(np.angle(data))
+        transformed_flat = np.abs(flattened_data)
+        residual_flat = np.unwrap(np.angle(flattened_data))
         if deg:
-            residual = np.degrees(residual)
+            residual_flat = np.degrees(residual_flat)
     elif transform_type == "angl":
-        transformed_data = np.unwrap(np.angle(data))
-        residual = np.abs(data)
+        transformed_flat = np.unwrap(np.angle(flattened_data))
+        residual_flat = np.abs(flattened_data)
         if deg:
-            transformed_data = np.degrees(transformed_data)
+            transformed_flat = np.degrees(transformed_flat)
 
-    inv_transform_fun = lambda data: _inv_transform(data, *params)
+    # Reshape results
+    transformed_data = transformed_flat.reshape(original_shape)
+    residual = residual_flat.reshape(original_shape)
+
+    # Inverse transformation function
+    inv_transform_fun = lambda d: _inv_transform(d.flatten(), *params).reshape(d.shape)
 
     if full_output:
-        return np.array(transformed_data), inv_transform_fun, params, residual
+        return transformed_data, inv_transform_fun, params, residual
     if inv_transform:
-        return np.array(transformed_data), inv_transform_fun
-    return np.array(transformed_data)
+        return transformed_data, inv_transform_fun
+    return transformed_data
