@@ -1,5 +1,4 @@
 import os
-import pickle
 import sys
 from typing import cast
 
@@ -45,7 +44,7 @@ class InstrumentServer:
         if setup_path:
             self._setup_hash = _hash_file(self._setup_path)
             logger.info(f"Setup path: {self._setup_path}")
-            logger.info(f"Setup hash: {str(self.setup_hash)}")
+            logger.info(f"Setup hash: {self.setup_hash!s}")
 
     def serve(self) -> None:
         self._expose()
@@ -145,9 +144,7 @@ def start_instrument_server(setup_path: str = ""):
     return server
 
 
-def connect_instruments(
-    instrument_dict: dict | None,
-) -> dict[str, Instrument]:
+def connect_instruments(instrument_dict: dict | None) -> dict[str, Instrument]:
     if not instrument_dict:
         return {}
 
@@ -171,7 +168,7 @@ def connect_instruments(
             )
         except Exception as e:
             logger.error(
-                f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
+                f"Failed to connect to {config.get('name', instrument_id)}: {e!s}"
             )
             sys.exit(-1)
     return instance_dict

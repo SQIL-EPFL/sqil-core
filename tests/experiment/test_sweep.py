@@ -26,7 +26,6 @@ def handler():
 
 
 class TestSweepAround:
-
     def test_should_sweep_linearly_with_n_points(self, handler):
         result = handler.sweep_around(center=5.0, span=1.0, n_points=5)
         expected = np.linspace(4.0, 6.0, 5)

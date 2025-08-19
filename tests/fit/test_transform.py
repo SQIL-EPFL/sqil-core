@@ -5,7 +5,6 @@ from sqil_core.fit import transform_data
 
 
 class TestTransformData:
-
     @pytest.fixture
     def complex_data(self):
         return np.array([1 + 1j, 2 + 2j, 3 + 3j])

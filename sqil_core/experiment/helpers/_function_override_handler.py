@@ -1,7 +1,6 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from contextlib import contextmanager
 from types import MethodType
-from typing import Callable
 
 
 class FunctionOverrideHandler(ABC):
@@ -107,5 +106,4 @@ class FunctionOverrideHandler(ABC):
         """
         if func_name in self._functions:
             return self._functions[func_name](*args, **kwargs)
-        else:
-            raise AttributeError(f"Function '{func_name}' not found in Instrument.")
+        raise AttributeError(f"Function '{func_name}' not found in Instrument.")

@@ -1,30 +1,20 @@
 from __future__ import annotations
 
-import copy
 import itertools
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, cast
+from collections.abc import Callable
+from typing import cast
 
 import attrs
 import matplotlib.pyplot as plt
 import numpy as np
-from laboneq import serializers, workflow
-from laboneq.dsl.quantum import TransmonParameters
+from laboneq import serializers
 from laboneq.dsl.quantum.qpu import QPU
-from laboneq.dsl.quantum.quantum_element import QuantumElement
 from laboneq.dsl.session import Session
-from laboneq.simple import DeviceSetup
-from laboneq.simple import Experiment as LaboneQExperiment
+from laboneq.simple import DeviceSetup, Experiment as LaboneQExperiment
 from laboneq.workflow.tasks import compile_experiment, run_experiment
-from laboneq_applications.analysis.resonator_spectroscopy import analysis_workflow
-from laboneq_applications.experiments.options import TuneUpWorkflowOptions
-from laboneq_applications.tasks.parameter_updating import (
-    temporary_modify,
-    update_qubits,
-)
-from numpy.typing import ArrayLike
 from qcodes import Instrument as QCodesInstrument
 
 from sqil_core.config_log import logger
@@ -38,7 +28,6 @@ from sqil_core.experiment._events import (
 )
 from sqil_core.experiment.data.plottr import DataDict, DDH5Writer
 from sqil_core.experiment.helpers._labone_wrappers import w_save
-from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
 from sqil_core.experiment.instruments.server import (
     connect_instruments,
     link_instrument_server,
@@ -132,13 +121,10 @@ class ExperimentHandler(ABC):
             logger.warning(
                 f"Cannot find QPU file name {qpu_filename} in {db_path_local}"
             )
-            logger.warning(f" -> Creating a new QPU file")
+            logger.warning(" -> Creating a new QPU file")
             self.qpu = generate_qpu(self.zi_setup)
             os.makedirs(db_path_local, exist_ok=True)
-            w_save(
-                self.qpu,
-                os.path.join(db_path_local, qpu_filename),
-            )
+            w_save(self.qpu, os.path.join(db_path_local, qpu_filename))
 
     # Move to server
     def _setup_instruments(self):
@@ -156,7 +142,6 @@ class ExperimentHandler(ABC):
     @abstractmethod
     def sequence(self, *args, **kwargs):
         """Experimental sequence defined by the user"""
-        pass
 
     @abstractmethod
     def analyze(self, path, *args, **kwargs):
@@ -168,8 +153,7 @@ class ExperimentHandler(ABC):
 
             if db_type == "plottr":
                 return self.run_with_plottr(*args, **kwargs)
-            else:
-                return self.run_raw(*args, **kwargs)
+            return self.run_raw(*args, **kwargs)
 
         finally:
             # Close and delete QCodes instances to avoid connection issues in following experiments
@@ -239,7 +223,7 @@ class ExperimentHandler(ABC):
                     if sweep_idx is not None:
                         for qu_id in qu_ids:
                             sweep_values = sweep_grid[qu_id][sweep_idx]
-                            tmp = dict(zip(sweep_keys, sweep_values))
+                            tmp = dict(zip(sweep_keys, sweep_values, strict=False))
                             self.qpu[qu_id].update(**tmp)
                     # Create the experiment (required to update params)
                     if sweep_keys != ["index"] or compiled_exp is None:
@@ -306,10 +290,7 @@ class ExperimentHandler(ABC):
 
         w_save(self.qpu, os.path.join(storage_path_local, "qpu_new.json"))
         qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
-        w_save(
-            self.qpu,
-            os.path.join(db_path_local, qpu_filename),
-        )
+        w_save(self.qpu, os.path.join(db_path_local, qpu_filename))
 
         # Copy the local folder to the server
         copy_folder(storage_path_local, storage_path)
@@ -413,21 +394,17 @@ class ExperimentHandler(ABC):
         if scale == "linear":
             if step is not None:
                 return np.arange(start, stop + step / 2, step)
-            else:
-                return np.linspace(start, stop, n_points)
+            return np.linspace(start, stop, n_points)
 
-        else:  # scale == "log"
-            if step is not None:
-                # Compute approximate number of points from step in log space
-                log_start = np.log10(start)
-                log_stop = np.log10(stop)
-                num_steps = (
-                    int(np.floor((log_stop - log_start) / np.log10(1 + step / start)))
-                    + 1
-                )
-                return np.logspace(log_start, log_stop, num=num_steps)
-            else:
-                return np.logspace(np.log10(start), np.log10(stop), n_points)
+        if step is not None:
+            # Compute approximate number of points from step in log space
+            log_start = np.log10(start)
+            log_stop = np.log10(stop)
+            num_steps = (
+                int(np.floor((log_stop - log_start) / np.log10(1 + step / start))) + 1
+            )
+            return np.logspace(log_start, log_stop, num=num_steps)
+        return np.logspace(np.log10(start), np.log10(stop), n_points)
 
     def qubit_value(self, param_id, qu_id="q0"):
         """Get a qubit parameter value from the QPU."""

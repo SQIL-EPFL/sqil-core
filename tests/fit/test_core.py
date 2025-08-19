@@ -12,7 +12,6 @@ from sqil_core.fit._core import (
 
 
 class TestComputeNrmse:
-
     def test_should_return_zero_for_perfect_fit(self):
         y = np.array([1.0, 2.0, 3.0, 4.0])
         residuals = np.zeros_like(y)
@@ -57,7 +56,6 @@ class TestComputeNrmse:
 
 
 class TestComputeAIC:
-
     def test_should_return_expected_value_for_known_input(self):
         residuals = np.array([1.0, -1.0, 1.0, -1.0])
         n_params = 2
@@ -151,7 +149,6 @@ class TestComputeChi2:
 
 
 class TestComputeAdjustedStandardErrors:
-
     def test_basic_usage_with_precomputed_red_chi2(self):
         pcov = np.array([[0.04, 0], [0, 0.09]])
         residuals = np.array([0.1, -0.2, 0.05])

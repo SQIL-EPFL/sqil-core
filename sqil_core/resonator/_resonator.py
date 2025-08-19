@@ -15,7 +15,7 @@ from sqil_core.fit import (
     get_best_fit,
 )
 from sqil_core.utils import estimate_linear_background, format_number
-from sqil_core.utils._plot import reset_plot_style, set_plot_style
+from sqil_core.utils._plot import set_plot_style
 
 
 @fit_output
@@ -303,9 +303,7 @@ def S11_reflection(
     >>> plt.title("S11 Reflection Coefficient with Magnitude Background")
     >>> plt.show()
     """
-    if mag_bg is None:
-        mag_bg = 1
-    elif np.isscalar(mag_bg) and np.isnan(mag_bg):
+    if mag_bg is None or np.isscalar(mag_bg) and np.isnan(mag_bg):
         mag_bg = 1
 
     env = a * mag_bg * np.exp(1j * alpha) * np.exp(2j * np.pi * (freq - freq[0]) * tau)
@@ -387,9 +385,7 @@ def S21_hanger(
     >>> plt.title("S21 Transmission Coefficient with Magnitude Background")
     >>> plt.show()
     """
-    if mag_bg is None:
-        mag_bg = 1
-    elif np.isscalar(mag_bg) and np.isnan(mag_bg):
+    if mag_bg is None or np.isscalar(mag_bg) and np.isnan(mag_bg):
         mag_bg = 1
 
     env = a * mag_bg * np.exp(1j * alpha) * np.exp(2j * np.pi * (freq - freq[0]) * tau)
@@ -437,9 +433,7 @@ def S21_transmission(
         Complex-valued S21 transmission array over the specified frequency range.
     """
 
-    if mag_bg is None:
-        mag_bg = 1
-    elif np.isscalar(mag_bg) and np.isnan(mag_bg):
+    if mag_bg is None or np.isscalar(mag_bg) and np.isnan(mag_bg):
         mag_bg = 1
 
     env = a * np.exp(1j * alpha) * np.exp(2j * np.pi * (freq - freq[0]) * tau)
@@ -958,7 +952,7 @@ def print_resonator_params(fit_params, measurement):
         kappa_int = fr / Q_int
         kappa_tot = fr / Q_tot
 
-        table_data.append(["fr", f"{format_number(fr, 6, unit="Hz", latex=False)}"])
+        table_data.append(["fr", f"{format_number(fr, 6, unit='Hz', latex=False)}"])
         table_data.append(["Re[Q_ext]", f"{np.real(Q_ext):.0f}"])
         table_data.append(["Q_int", f"{Q_int:.0f}"])
         table_data.append(["Q_tot", f"{Q_tot:.0f}"])
@@ -975,7 +969,7 @@ def print_resonator_params(fit_params, measurement):
     elif measurement == "transmission":
         a, alpha, tau, Q_tot, fr = fit_params
         kappa_tot = fr / Q_tot
-        table_data.append(["fr", f"{format_number(fr, 6, unit="Hz", latex=False)}"])
+        table_data.append(["fr", f"{format_number(fr, 6, unit='Hz', latex=False)}"])
         table_data.append(["Q_tot", f"{Q_tot:.0f}"])
         table_data.append(
             ["kappa_tot", format_number(kappa_tot, 4, unit="Hz", latex=False)]

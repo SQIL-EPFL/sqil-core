@@ -37,23 +37,77 @@ mkdocs-material = "^9.5.48"
 mkdocstrings-python = "^1.12.2"
 pytest = "^8.3.4"
 mkdocs-jupyter = "^0.25.1"
+ruff = "^0.12.7"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 88
-target-version = ["py310"]
-exclude = '''
-/(
-    \.git
-    | \.venv
-    | build
-    | dist
-)/
-'''
+# [tool.black]
+# line-length = 88
+# target-version = ["py310"]
+# exclude = '''
+# /(
+#     \.git
+#     | \.venv
+#     | build
+#     | dist
+# )/
+# '''
 
-[tool.isort]
-profile = "black"
-known_first_party = ["sqil-core"]
+# [tool.isort]
+# profile = "black"
+# known_first_party = ["sqil-core"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+exclude = [".git", ".venv", "build", "dist"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+ignore = ["COM812", "ISC001"]
+extend-select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "C90",
+    "N",
+    "UP",
+    "YTT",
+    # "ANN",
+    "B",
+    "A",
+    "DJ",
+    "EM",
+    "ERA",
+    "EXE",
+    "ICN",
+    "ISC",
+    "PIE",
+    "PL",
+    "PT",
+    "PTH",
+    "RSE",
+    "RET",
+    "SIM",
+    "SLF",
+    "TCH",
+    "TID",
+    "T20",
+    "ARG",
+    "PGH",
+    "TRY",
+    "DTZ",
+    "RUF",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sqil-core"]
+combine-as-imports = true

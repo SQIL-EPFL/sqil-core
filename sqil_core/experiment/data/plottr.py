@@ -19,16 +19,17 @@ import os
 import shutil
 import time
 import uuid
+from collections.abc import Collection
 from enum import Enum
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Collection, Dict, Optional, Type, Union
+from typing import Any
 
 import h5py
 import numpy as np
-from plottr import QtCore, QtGui, QtWidgets, Signal, Slot
+from plottr import QtCore, QtWidgets, Signal, Slot
 from plottr.data.datadict import DataDict, DataDictBase, is_meta_key
-from plottr.node import Node, NodeWidget, emitGuiUpdate, updateGuiFromNode, updateOption
+from plottr.node import Node, NodeWidget, updateOption
 from qcodes.utils import NumpyJSONEncoder
 
 __author__ = "Wolfgang Pfaff"
@@ -133,7 +134,7 @@ def add_cur_time_attr(
 # elementary reading/writing
 
 
-def _data_file_path(file: Union[str, Path], init_directory: bool = False) -> Path:
+def _data_file_path(file: str | Path, init_directory: bool = False) -> Path:
     """Get the full filepath of the data file.
     If `init_directory` is True, then create the parent directory."""
 
@@ -148,10 +149,10 @@ def _data_file_path(file: Union[str, Path], init_directory: bool = False) -> Pat
 
 def datadict_to_hdf5(
     datadict: DataDict,
-    path: Union[str, Path],
+    path: str | Path,
     groupname: str = "data",
     append_mode: AppendMode = AppendMode.new,
-    file_timeout: Optional[float] = None,
+    file_timeout: float | None = None,
 ) -> None:
     """Write a DataDict to DDH5
 
@@ -228,7 +229,6 @@ def datadict_to_hdf5(
 
 
 def init_file(f: h5py.File, groupname: str = "data") -> None:
-
     if groupname in f:
         del f[groupname]
         f.flush()
@@ -242,13 +242,13 @@ def init_file(f: h5py.File, groupname: str = "data") -> None:
 
 
 def datadict_from_hdf5(
-    path: Union[str, Path],
+    path: str | Path,
     groupname: str = "data",
-    startidx: Union[int, None] = None,
-    stopidx: Union[int, None] = None,
+    startidx: int | None = None,
+    stopidx: int | None = None,
     structure_only: bool = False,
     ignore_unequal_lengths: bool = True,
-    file_timeout: Optional[float] = None,
+    file_timeout: float | None = None,
 ) -> DataDict:
     """Load a DataDict from file.
 
@@ -285,9 +285,8 @@ def datadict_from_hdf5(
 
             if stopidx is None or stopidx > min(lens):
                 stopidx = min(lens)
-        else:
-            if stopidx is None or stopidx > lens[0]:
-                stopidx = lens[0]
+        elif stopidx is None or stopidx > lens[0]:
+            stopidx = lens[0]
 
         for attr in grp.attrs:
             if is_meta_key(attr):
@@ -295,9 +294,7 @@ def datadict_from_hdf5(
 
         for k in keys:
             ds = grp[k]
-            entry: Dict[str, Union[Collection[Any], np.ndarray]] = dict(
-                values=np.array([]),
-            )
+            entry: dict[str, Collection[Any] | np.ndarray] = dict(values=np.array([]))
 
             if "axes" in ds.attrs:
                 entry["axes"] = deh5ify(ds.attrs["axes"]).tolist()
@@ -326,8 +323,8 @@ def datadict_from_hdf5(
 
 
 def all_datadicts_from_hdf5(
-    path: Union[str, Path], file_timeout: Optional[float] = None, **kwargs: Any
-) -> Dict[str, Any]:
+    path: str | Path, file_timeout: float | None = None, **kwargs: Any
+) -> dict[str, Any]:
     """
     Loads all the DataDicts contained on a single HDF5 file. Returns a dictionary with the group names as keys and
     the DataDicts as the values of that key.
@@ -368,9 +365,9 @@ class FileOpener:
 
     def __init__(
         self,
-        path: Union[Path, str],
+        path: Path | str,
         mode: str = "r",
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         test_delay: float = 0.1,
     ):
         self.path = Path(path)
@@ -385,7 +382,7 @@ class FileOpener:
             self.timeout = timeout
         self.test_delay = test_delay
 
-        self.file: Optional[h5py.File] = None
+        self.file: h5py.File | None = None
 
     def __enter__(self) -> h5py.File:
         self.file = self.open_when_unlocked()
@@ -393,9 +390,9 @@ class FileOpener:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        exc_traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: TracebackType | None,
     ) -> None:
         try:
             assert self.file is not None
@@ -437,7 +434,6 @@ class FileOpener:
 
 
 class DDH5LoaderWidget(NodeWidget):
-
     def __init__(self, node: Node):
         super().__init__(node=node)
         assert self.node is not None
@@ -471,7 +467,6 @@ class DDH5LoaderWidget(NodeWidget):
 
 
 class DDH5Loader(Node):
-
     nodeName = "DDH5Loader"
     uiClass = DDH5LoaderWidget
     useUi = True
@@ -479,7 +474,7 @@ class DDH5Loader(Node):
     setProcessOptions = Signal(str, str)
 
     def __init__(self, name: str):
-        self._filepath: Optional[str] = None
+        self._filepath: str | None = None
         self._groupname: str = "data"
 
         super().__init__(name)
@@ -495,7 +490,7 @@ class DDH5Loader(Node):
         self.setProcessOptions.connect(self.loadingWorker.setPathAndGroup)
 
     @property
-    def filepath(self) -> Optional[str]:
+    def filepath(self) -> str | None:
         return self._filepath
 
     @filepath.setter
@@ -514,10 +509,7 @@ class DDH5Loader(Node):
 
     # Data processing #
 
-    def process(
-        self, dataIn: Optional[DataDictBase] = None
-    ) -> Optional[Dict[str, Any]]:
-
+    def process(self, dataIn: DataDictBase | None = None) -> dict[str, Any] | None:
         # TODO: maybe needs an optional way to read only new data from file? -- can make that an option
 
         # this is the flow when process is called due to some trigger
@@ -532,9 +524,9 @@ class DDH5Loader(Node):
         return None
 
     @Slot(object)
-    def onThreadComplete(self, data: Optional[DataDict]) -> None:
+    def onThreadComplete(self, data: DataDict | None) -> None:
         if data is None:
-            return None
+            return
 
         title = f"{self.filepath}"
         data.add_meta("title", title)
@@ -548,20 +540,17 @@ class DDH5Loader(Node):
 
 
 class _Loader(QtCore.QObject):
-
     nRetries = 5
     retryDelay = 0.01
 
     dataLoaded = Signal(object)
 
-    def __init__(self, filepath: Optional[str], groupname: Optional[str]) -> None:
+    def __init__(self, filepath: str | None, groupname: str | None) -> None:
         super().__init__()
         self.filepath = filepath
         self.groupname = groupname
 
-    def setPathAndGroup(
-        self, filepath: Optional[str], groupname: Optional[str]
-    ) -> None:
+    def setPathAndGroup(self, filepath: str | None, groupname: str | None) -> None:
         self.filepath = filepath
         self.groupname = groupname
 
@@ -575,7 +564,7 @@ class _Loader(QtCore.QObject):
         return True
 
 
-class DDH5Writer(object):
+class DDH5Writer:
     """Context manager for writing data to DDH5.
     Based on typical needs in taking data in an experimental physics lab.
 
@@ -604,12 +593,12 @@ class DDH5Writer(object):
     def __init__(
         self,
         datadict: DataDict,
-        basedir: Union[str, Path] = ".",
+        basedir: str | Path = ".",
         groupname: str = "data",
-        name: Optional[str] = None,
+        name: str | None = None,
         filename: str = "data",
-        filepath: Optional[Union[str, Path]] = None,
-        file_timeout: Optional[float] = None,
+        filepath: str | Path | None = None,
+        file_timeout: float | None = None,
     ):
         """Constructor for :class:`.DDH5Writer`"""
 
@@ -623,7 +612,7 @@ class DDH5Writer(object):
         self.groupname = groupname
         self.filename = Path(filename)
 
-        self.filepath: Optional[Path] = None
+        self.filepath: Path | None = None
         if filepath is not None:
             self.filepath = Path(filepath)
 
@@ -636,7 +625,7 @@ class DDH5Writer(object):
             self.filepath = _data_file_path(self.data_file_path(), True)
         logger.info(f"Data location: {self.filepath}")
 
-        nrecords: Optional[int] = self.datadict.nrecords()
+        nrecords: int | None = self.datadict.nrecords()
         if nrecords is not None and nrecords > 0:
             datadict_to_hdf5(
                 self.datadict,
@@ -649,9 +638,9 @@ class DDH5Writer(object):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        exc_traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: TracebackType | None,
     ) -> None:
         assert self.filepath is not None
         with FileOpener(self.filepath, "a", timeout=self.file_timeout) as f:
@@ -689,7 +678,7 @@ class DDH5Writer(object):
         os.makedirs(f"{self.basedir}/utils", exist_ok=True)
         # if setting.json exist, read the json file to a python dictionary
         if os.path.isfile(f"{self.basedir}/utils/setting.json") == True:
-            with open(f"{self.basedir}/utils/setting.json", "r") as f:
+            with open(f"{self.basedir}/utils/setting.json") as f:
                 d = json.load(f)
         else:  # if setting.json doesn't exist make a empty python dictionary
             d = {}
@@ -753,14 +742,14 @@ class DDH5Writer(object):
 
     # convenience methods for saving things in the same directory as the ddh5 file
 
-    def add_tag(self, tags: Union[str, Collection[str]]) -> None:
+    def add_tag(self, tags: str | Collection[str]) -> None:
         assert self.filepath is not None
         if isinstance(tags, str):
             tags = [tags]
         for tag in tags:
             open(self.filepath.parent / f"{tag}.tag", "x").close()
 
-    def backup_file(self, paths: Union[str, Collection[str]]) -> None:
+    def backup_file(self, paths: str | Collection[str]) -> None:
         assert self.filepath is not None
         if isinstance(paths, str):
             paths = [paths]

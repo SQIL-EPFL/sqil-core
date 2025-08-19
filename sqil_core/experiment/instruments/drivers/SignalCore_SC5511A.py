@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Fri Mar 19 14:11:31 2021
 
@@ -9,9 +8,7 @@ A simple driver for SignalCore SC5511A to be used with QCoDes, transferred from 
 
 import ctypes
 import logging
-from typing import Any, Dict, Optional
-
-import yaml
+from typing import Any
 
 # from helpers.customized_drivers.sc5511a import * #is this actually required?
 from qcodes import Instrument
@@ -484,7 +481,7 @@ class SignalCore_SC5511A(Instrument):
         self._dll.sc5511a_close_device(self._handle)
         return device_temp
 
-    def get_idn(self) -> Dict[str, Optional[str]]:
+    def get_idn(self) -> dict[str, str | None]:
         logging.info(__name__ + " : Getting device info")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
@@ -495,12 +492,12 @@ class SignalCore_SC5511A(Instrument):
 
         def date_decode(date_int: int):
             date_str = f"{date_int:032b}"
-            yr = f"20{int(date_str[:8],2)}"
-            month = f"{int(date_str[16:24],2)}"
-            day = f"{int(date_str[8:16],2)}"
+            yr = f"20{int(date_str[:8], 2)}"
+            month = f"{int(date_str[16:24], 2)}"
+            day = f"{int(date_str[8:16], 2)}"
             return f"{month}/{day}/{yr}"
 
-        IDN: Dict[str, Optional[str]] = {
+        IDN: dict[str, str | None] = {
             "vendor": "SignalCore",
             "model": "SC5511A",
             "serial_number": self._serial_number.value.decode("utf-8"),

@@ -3,14 +3,13 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from sqil_core.fit import FitResult, fit_circle_algebraic, fit_skewed_lorentzian
+from sqil_core.fit import FitResult
 from sqil_core.resonator._resonator import (
     S11_reflection,
     S21_hanger,
     S21_transmission,
     quick_fit,
 )
-from sqil_core.utils import estimate_linear_background
 
 
 class TestQuickFit:
@@ -202,9 +201,5 @@ class TestQuickFit:
     def test_should_thow_error_for_invalid_measurement_type(self, mock_data):
         freq, data = mock_data
         with pytest.raises(Exception) as excinfo:
-            quick_fit(
-                freq,
-                data["reflection"],
-                measurement="invalid_type",
-            )
+            quick_fit(freq, data["reflection"], measurement="invalid_type")
         assert "Invalid measurement type" in str(excinfo.value)

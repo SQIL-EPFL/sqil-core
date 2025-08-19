@@ -1,10 +1,7 @@
-import pytest
-
-from sqil_core.utils._utils import *
+from sqil_core.utils import fill_gaps, make_iterable
 
 
 class TestFillGaps:
-
     def test_fill_gaps_basic(self):
         primary_list = [1, None, 3, None, 5]
         fallback_list = [10, 20, 30, 40, 50]
@@ -44,13 +41,7 @@ class TestFillGaps:
     def test_primary_larger_than_fallback(self):
         primary_list = [1, None, 3, None, 5]
         fallback_list = [10, 20, 30]
-        expected_result = [
-            1,
-            20,
-            3,
-            None,
-            5,
-        ]
+        expected_result = [1, 20, 3, None, 5]
         assert fill_gaps(primary_list, fallback_list) == expected_result
 
     def test_fallback_larger_than_primary(self):

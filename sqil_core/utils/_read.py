@@ -13,8 +13,6 @@ from laboneq import serializers
 
 from sqil_core.utils._formatter import param_info_from_schema
 
-from ._const import _EXP_UNIT_MAP, PARAM_METADATA
-
 if TYPE_CHECKING:
     from laboneq.dsl.quantum.qpu import QPU
 

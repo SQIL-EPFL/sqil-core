@@ -44,7 +44,7 @@ from ._read import (
     read_qpu,
     read_yaml,
 )
-from ._utils import make_iterable
+from ._utils import fill_gaps, make_iterable
 
 __all__ = [
     # Analysis
