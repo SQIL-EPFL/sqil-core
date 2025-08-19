@@ -39,17 +39,13 @@ jobs:
       run: |
         poetry run pip install PyQt5
 
-    - name: Check code formatting with Black
+    - name: Check code formatting and imports with Ruff
       run: |
-        poetry run black --check .  # Check if the code is formatted correctly with Black
-      continue-on-error: false  # Fail the job if Black finds unformatted code
-
-    - name: Check imports with isort
-      run: |
-        poetry run isort --check-only .  # Check if the imports are sorted correctly
-      continue-on-error: false  # Fail the job if isort finds unsorted imports
+        poetry run ruff check .
+      continue-on-error: false  # Fail the job if Ruff finds issues
       env:
-        CI: true  # Prevent isort from modifying files during the check
+        CI: true
+
 
     - name: Run tests with pytest
       run: |
