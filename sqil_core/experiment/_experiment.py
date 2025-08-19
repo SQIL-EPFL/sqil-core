@@ -67,8 +67,6 @@ class ExperimentHandler(ABC):
 
     def __init__(
         self,
-        params: dict = {},
-        param_dict_path: str = "",
         setup_path: str = "",
         emulation=False,
         server=False,
@@ -161,8 +159,10 @@ class ExperimentHandler(ABC):
             for instrument in self.instruments:
                 del instrument
 
-    def run_with_plottr(self, *args, qu_ids=["q0"], pulse_sheet=False, **kwargs):
+    def run_with_plottr(self, *args, qu_ids=None, pulse_sheet=False, **kwargs):
         # Sanitize inputs
+        if qu_ids is None:
+            qu_ids = ["q0"]
         qu_ids = make_iterable(qu_ids)
         run_kwargs = {**kwargs, "qu_ids": qu_ids, "pulse_sheet": pulse_sheet}
 
@@ -259,7 +259,7 @@ class ExperimentHandler(ABC):
                 # Add sweeps to the data to save
                 if sweeps is not None:
                     for qu_id in qu_ids:
-                        for i, key in enumerate(sweep_keys):
+                        for i, _ in enumerate(sweep_keys):
                             sweep_value = sweep_grid[qu_id][sweep_idx][i]
                             nested_data_to_save[qu_id][f"sweep{i}"] = sweep_value
 
@@ -275,7 +275,7 @@ class ExperimentHandler(ABC):
         # Run analysis script
         try:
             anal_res = self.analyze(storage_path_local, *args, **run_kwargs)
-            if type(anal_res) == AnalysisResult:
+            if type(anal_res) is AnalysisResult:
                 anal_res = cast(AnalysisResult, anal_res)
                 anal_res.save_all(storage_path_local)
                 # Update QPU
@@ -299,7 +299,7 @@ class ExperimentHandler(ABC):
         before_experiment.send(sender=self)
 
         seq = self.sequence(*args, **kwargs)
-        is_laboneq_exp = type(seq) == LaboneQExperiment
+        is_laboneq_exp = type(seq) is LaboneQExperiment
         result = None
 
         if is_laboneq_exp:
@@ -427,7 +427,7 @@ def parse_sweeps(sweeps, qu_ids):
     # Build sweep_map of shape { sweep_key: { qu_id: values, ... }, ...}
     sweep_map = {}
     for key, value in sweeps.items():
-        if type(value) == dict:
+        if type(value) is dict:
             # Check if there is a sweep for each qubit used
             if not set(qu_ids).issubset(value.keys()):
                 raise KeyError(
@@ -483,7 +483,7 @@ def build_plottr_dict(db_schema, qu_ids):
     return datadict
 
 
-import inspect
+import inspect  # noqa: E402
 
 
 def map_inputs(func):
@@ -510,10 +510,13 @@ def get_plottr_path(writer: DDH5Writer, root_path):
     return os.path.join(root_path, *last_two_parts)
 
 
-from laboneq.simple import OutputSimulator
+from laboneq.simple import OutputSimulator  # noqa: E402
 
 
-def create_pulse_sheet(device_setup, compiled_exp, name, qu_ids=["q0"]):
+def create_pulse_sheet(device_setup, compiled_exp, name, qu_ids=None):
+    if qu_ids is None:
+        qu_ids = ["q0"]
+
     start = 0
     end = 10e-6
     colors = [

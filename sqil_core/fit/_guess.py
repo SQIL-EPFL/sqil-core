@@ -200,7 +200,6 @@ def decaying_oscillations_guess(x_data, y_data, num_init=10):
     """Generate robust initial guesses for decaying oscillation parameters."""
     x_data = np.asarray(x_data)
     y_data = np.asarray(y_data)
-    dx = np.mean(np.diff(x_data))
 
     # Oscillations params
     A, y0_candidates, phi_candidates, T = oscillations_guess(x_data, y_data, num_init)

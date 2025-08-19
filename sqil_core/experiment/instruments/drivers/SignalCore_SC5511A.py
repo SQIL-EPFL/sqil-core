@@ -433,12 +433,12 @@ class SignalCore_SC5511A(Instrument):
 
     def get_ext_ref_lock():
         # prints whether or not an external reference is detected
-        error_code, OPERATE = SC1.get_operate_status()
+        error_code, OPERATE = SC1.get_operate_status()  # noqa: F821
         if OPERATE["ext_ref_detect"] == 0:
             print("There is no external reference detected")
         if OPERATE["ext_ref_detect"] == 1:
             print("An external reference has been detected")
-        _error_handler(error_code)
+        _error_handler(error_code)  # noqa: F821
         return OPERATE["ext_ref_detect"]
 
     def do_set_auto_level_disable(self, enable):

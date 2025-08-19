@@ -53,20 +53,20 @@ class FitResult:
         params,
         std_err,
         fit_output,
-        metrics={},
+        metrics=None,
         predict=None,
         param_names=None,
         model_name=None,
-        metadata={},
+        metadata=None,
     ):
         self.params = params
         self.std_err = std_err
         self.output = fit_output
-        self.metrics = metrics
+        self.metrics = metrics or {}
         self.predict = predict or self._no_prediction
         self.param_names = param_names or list(range(len(params)))
         self.model_name = model_name
-        self.metadata = metadata
+        self.metadata = metadata or {}
 
         self.params_by_name = dict(zip(self.param_names, self.params, strict=False))
 
@@ -339,9 +339,11 @@ def fit_input(fit_func):
 
         # Check if the user passed parameters that are not supported by the fit fun
         if (guess is not None) and ("guess" not in func_params):
-            warnings.warn("The fit function doesn't allow any initial guess.")
+            warnings.warn(
+                "The fit function doesn't allow any initial guess.", stacklevel=2
+            )
         if (bounds is not None) and ("bounds" not in func_params):
-            warnings.warn("The fit function doesn't allow any bounds.")
+            warnings.warn("The fit function doesn't allow any bounds.", stacklevel=2)
         if (fixed_params is not None) and (guess is None):
             raise ValueError("Using fixed_params requires an initial guess.")
 
@@ -469,12 +471,14 @@ def compute_adjusted_standard_errors(
         if np.allclose(residuals, 0, atol=1e-10):
             warnings.warn(
                 "Covariance matrix could not be estimated due to an almost perfect fit. "
-                "Standard errors are undefined but may not be necessary in this case."
+                "Standard errors are undefined but may not be necessary in this case.",
+                stacklevel=2,
             )
         else:
             warnings.warn(
                 "Covariance matrix could not be estimated. This could be due to poor model fit "
-                "or numerical instability. Review the data or model configuration."
+                "or numerical instability. Review the data or model configuration.",
+                stacklevel=2,
             )
         return None
 
@@ -576,7 +580,8 @@ def compute_chi2(residuals, n_params=None, cov_rescaled=True, sigma: np.ndarray 
     dof = len(residuals) - n_params  # degrees of freedom (N - p)
     if dof <= 0:
         warnings.warn(
-            "Degrees of freedom (dof) is non-positive. This may indicate overfitting or insufficient data."
+            "Degrees of freedom (dof) is non-positive. This may indicate overfitting or insufficient data.",
+            stacklevel=3,
         )
         red_chi2 = np.nan
     else:
@@ -645,7 +650,9 @@ def compute_nrmse(residuals: np.ndarray, y_data: np.ndarray) -> float:
         y_abs_span = np.max(np.abs(y_data)) - np.min(np.abs(y_data))
         if y_abs_span == 0:
             warnings.warn(
-                "y_data has zero span in magnitude. NRMSE is undefined.", RuntimeWarning
+                "y_data has zero span in magnitude. NRMSE is undefined.",
+                RuntimeWarning,
+                stacklevel=3,
             )
             return np.nan
         rmse = np.linalg.norm(residuals) / np.sqrt(n)
@@ -653,7 +660,11 @@ def compute_nrmse(residuals: np.ndarray, y_data: np.ndarray) -> float:
     else:
         y_span = np.max(y_data) - np.min(y_data)
         if y_span == 0:
-            warnings.warn("y_data has zero span. NRMSE is undefined.", RuntimeWarning)
+            warnings.warn(
+                "y_data has zero span. NRMSE is undefined.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
             return np.nan
         rss = np.sum(residuals**2)
         nrmse = np.sqrt(rss / n) / y_span
@@ -943,7 +954,9 @@ def _format_lmfit(result: ModelResult):
     independent_var = (
         independent_var.pop() if independent_var else result.model.independent_vars[0]
     )
-    fit_function = lambda x: result.eval(**{independent_var: x})
+
+    def fit_function(x):
+        return result.eval(**{independent_var: x})
 
     return {
         "params": params,

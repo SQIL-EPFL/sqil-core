@@ -1,9 +1,8 @@
-from abc import ABC
 from contextlib import contextmanager
 from types import MethodType
 
 
-class FunctionOverrideHandler(ABC):
+class FunctionOverrideHandler:
     """
     A base class that allows functions to be overridden, restored, and temporarily replaced.
 

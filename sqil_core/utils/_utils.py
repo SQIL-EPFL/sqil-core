@@ -48,7 +48,7 @@ def fill_gaps(primary_list: list, fallback_list: list) -> list:
     result = primary_list
     fallback_list = fallback_list[0 : len(primary_list)]
     for i in range(len(fallback_list)):
-        if result[i] == None:
+        if result[i] is None:
             result[i] = fallback_list[i]
 
     return result
@@ -58,8 +58,8 @@ def make_iterable(obj) -> Iterable:
     """
     Ensures that the given object is an iterable.
 
-    If the input object is already an iterable (excluding strings), it is returned as-is.
-    Otherwise, it is wrapped in a list to make it iterable.
+    If the input object is already an iterable (excluding strings), it is returned
+    as-is. Otherwise, it is wrapped in a list to make it iterable.
 
     Parameters
     ----------
@@ -69,8 +69,8 @@ def make_iterable(obj) -> Iterable:
     Returns
     -------
     iterable : Iterable
-        An iterable version of the input object. If the input is not already an iterable,
-        it is returned as a single-element list.
+        An iterable version of the input object. If the input is not already an
+        iterable, it is returned as a single-element list.
 
     Examples
     --------
@@ -99,8 +99,8 @@ def has_at_least_one(lst: list, value) -> bool:
     lst : list
         The list to search.
     value : Any
-        The value to look for in the list. If `None`, the function checks for the presence
-        of `None` using identity comparison.
+        The value to look for in the list. If `None`, the function checks for the
+        presence of `None` using identity comparison.
 
     Returns
     -------

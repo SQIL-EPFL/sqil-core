@@ -1,17 +1,3 @@
-"""plottr.data.datadict_storage
-
-Provides file-storage tools for the DataDict class.
-
-.. note::
-    Any function in this module that interacts with a ddh5 file, will create a lock file while it is using the file.
-    The lock file has the following format: ~<file_name>.lock. The file lock will get deleted even if the program
-    crashes. If the process is suddenly stopped however, we cannot guarantee that the file lock will be deleted.
-"""
-
-"""Added by Taketo
-I changed DDH5_Writer module 'data_folder'.
-Now each measurement folder will be named by run number, exp_name and time.
-"""
 import datetime
 import json
 import logging
@@ -31,6 +17,21 @@ from plottr import QtCore, QtWidgets, Signal, Slot
 from plottr.data.datadict import DataDict, DataDictBase, is_meta_key
 from plottr.node import Node, NodeWidget, updateOption
 from qcodes.utils import NumpyJSONEncoder
+
+"""plottr.data.datadict_storage
+
+Provides file-storage tools for the DataDict class.
+
+.. note::
+    Any function in this module that interacts with a ddh5 file, will create a lock file while it is using the file.
+    The lock file has the following format: ~<file_name>.lock. The file lock will get deleted even if the program
+    crashes. If the process is suddenly stopped however, we cannot guarantee that the file lock will be deleted.
+"""
+
+"""Added by Taketo
+I changed DDH5_Writer module 'data_folder'.
+Now each measurement folder will be named by run number, exp_name and time.
+"""
 
 __author__ = "Wolfgang Pfaff"
 __license__ = "MIT"
@@ -76,7 +77,7 @@ def h5ify(obj: Any) -> Any:
         if not all_string:
             obj = np.array(obj)
 
-    if type(obj) == np.ndarray and obj.dtype.kind == "U":
+    if type(obj) is np.ndarray and obj.dtype.kind == "U":
         return np.char.encode(obj, encoding="utf8")
 
     return obj
@@ -88,10 +89,10 @@ def deh5ify(obj: Any) -> Any:
     :param obj: Input object.
     :return: Object
     """
-    if type(obj) == bytes:
+    if type(obj) is bytes:
         return obj.decode()
 
-    if type(obj) == np.ndarray and obj.dtype.kind == "S":
+    if type(obj) is np.ndarray and obj.dtype.kind == "S":
         return np.char.decode(obj)
 
     return obj
@@ -664,7 +665,7 @@ class DDH5Writer:
         """
         """
         Comment by Taketo
-        I changed the naming discipline. 
+        I changed the naming discipline.
         The folder name format:
         ''<basedir>/YYYY-MM-DD/<run_num>-<name>_<ID>''.
         """
@@ -677,7 +678,7 @@ class DDH5Writer:
         # make utils folder if not existing
         os.makedirs(f"{self.basedir}/utils", exist_ok=True)
         # if setting.json exist, read the json file to a python dictionary
-        if os.path.isfile(f"{self.basedir}/utils/setting.json") == True:
+        if os.path.isfile(f"{self.basedir}/utils/setting.json"):
             with open(f"{self.basedir}/utils/setting.json") as f:
                 d = json.load(f)
         else:  # if setting.json doesn't exist make a empty python dictionary

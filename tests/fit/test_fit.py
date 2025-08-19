@@ -95,7 +95,7 @@ class TestFitLorentzian:
         with pytest.warns(RuntimeWarning):
             res = fit_lorentzian(self.x, y)
 
-            params = (
+            _ = (
                 res.params
                 if isinstance(res.params, dict)
                 else dict(zip(res.param_names, res.params, strict=False))
@@ -194,7 +194,7 @@ class TestFitOscillations:
     def test_flat_signal(self):
         y = np.ones_like(self.x) * 5
         with pytest.raises(TypeError):
-            res = fit_oscillations(self.x, y)
+            fit_oscillations(self.x, y)
 
     def test_outlier_robustness(self):
         A, T, phi, y0 = 3, 2.5, 0.4, 0.8

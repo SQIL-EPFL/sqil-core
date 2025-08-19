@@ -114,7 +114,7 @@ def fit_two_lorentzians_shared_x0(
             guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
         )
 
-    if bounds == None:
+    if bounds is None:
         bounds = [[None] * len(guess), [None] * len(guess)]
     if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
         lower, upper = bounds
@@ -255,7 +255,7 @@ def fit_two_gaussians_shared_x0(
             guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
         )
 
-    if bounds == None:
+    if bounds is None:
         bounds = [[None] * len(guess), [None] * len(guess)]
     if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
         lower, upper = bounds
@@ -563,7 +563,7 @@ def fit_decaying_oscillations(
                 if fit_res.metrics["nrmse"] < best_nrmse:
                     best_fit, best_popt = fit_res.output, fit_res.params
                     best_nrmse = fit_res.metrics["nrmse"]
-            except:
+            except Exception:
                 if best_fit is None:
 
                     def _decaying_osc_res(p, x, y):
@@ -736,7 +736,7 @@ def fit_oscillations(
                 if fit_res.metrics["nrmse"] < best_nrmse:
                     best_fit, best_popt = fit_res.output, fit_res.params
                     best_nrmse = fit_res.metrics["nrmse"]
-            except:
+            except Exception:
                 if best_fit is None:
 
                     def _oscillations_res(p, x, y):
@@ -990,9 +990,9 @@ def _compute_circle_fit_metrics(x_data, y_data, xc, yc, r0):
     residuals = r_data - r0
 
     # Calculate R-squared (R²)
-    ssr = np.sum(residuals**2)
-    sst = np.sum((r_data - np.mean(r_data)) ** 2)
-    r2 = 1 - (ssr / sst) if sst > 0 else 0
+    # ssr = np.sum(residuals**2)
+    # sst = np.sum((r_data - np.mean(r_data)) ** 2)
+    # r2 = 1 - (ssr / sst) if sst > 0 else 0
 
     # Compute RMSE
     rmse = np.sqrt(np.mean(residuals**2))
@@ -1223,7 +1223,8 @@ def transform_data(
     residual = residual_flat.reshape(original_shape)
 
     # Inverse transformation function
-    inv_transform_fun = lambda d: _inv_transform(d.flatten(), *params).reshape(d.shape)
+    def inv_transform_fun(d):
+        return _inv_transform(d.flatten(), *params).reshape(d.shape)
 
     if full_output:
         return transformed_data, inv_transform_fun, params, residual
