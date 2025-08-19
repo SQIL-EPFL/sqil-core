@@ -94,4 +94,5 @@ __all__ = [
     "is_multi_qubit_datadict",
     # Utils
     "make_iterable",
+    "fill_gaps",
 ]

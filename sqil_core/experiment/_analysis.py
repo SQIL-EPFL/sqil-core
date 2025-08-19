@@ -60,10 +60,10 @@ class AnalysisResult:
 
     def __init__(
         self,
-        updated_params: dict[str, dict] = {},
-        figures: dict[str, Figure] = {},
-        fits: dict[str, FitResult] = {},
-        extra_data: dict[str, np.ndarray] = {},
+        updated_params: dict[str, dict] = None,
+        figures: dict[str, Figure] = None,
+        fits: dict[str, FitResult] = None,
+        extra_data: dict[str, np.ndarray] = None,
     ):
         self.updated_params = updated_params or {}
         self.figures = figures or {}
@@ -122,7 +122,7 @@ class AnalysisResult:
                 # Overwrite if already exists
                 if key in grp:
                     del grp[key]
-            grp.create_dataset(key, data=array)
+                grp.create_dataset(key, data=array)
 
     def save_all(self, dir_path: str):
         self.add_exp_info_to_figures(dir_path)

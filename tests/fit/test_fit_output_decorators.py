@@ -1,8 +1,9 @@
+import numpy as np
 import pytest
 import scipy.optimize as spopt
 from lmfit import Model, Parameters
 
-from sqil_core.fit._core import *
+from sqil_core.fit import FitResult, fit_output
 
 TRUE_A, TRUE_X0, TRUE_GAMMA = 10, 5, 2
 
@@ -60,11 +61,11 @@ class TestFitOutputDecorator:
         for res in [None, 1, "s", [1, 2], ([1, 2], [3, 4])]:
 
             @fit_output
-            def fit():
+            def fit(res):
                 return res
 
             with pytest.raises(TypeError):
-                assert isinstance(fit(), FitResult)
+                assert isinstance(fit(res), FitResult)
 
     def test_accepts_tuple_with_metadata(self):
         @fit_output
@@ -122,7 +123,7 @@ class TestFitOutputDecorator:
         res = fit()
         assert isinstance(res, FitResult)
         # The filed with @ is removed
-        assert res.metadata.get("@doubled_errors", None) == None
+        assert res.metadata.get("@doubled_errors", None) is None
         # And is replaced by the computed value
         assert res.metadata["doubled_errors"] == res.std_err * 2
 
@@ -227,7 +228,7 @@ class TestFitOutputDecorator:
             return (res, {"predict": _lorentzian})
 
         res = fit(x, y)
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             assert isinstance(res.predict(x), FitResult)
 
     def test_predict_from_lmfit(self, fit_data):

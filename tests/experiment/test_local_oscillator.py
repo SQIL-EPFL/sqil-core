@@ -105,7 +105,7 @@
 #         config_without_address = self.mock_config.copy()
 #         del config_without_address["address"]
 #         with self.assertRaises(ValueError) as context:
-#             LocalOscillator("test_id", config=config_without_address, config_path=None)
+#            LocalOscillator("test_id", config=config_without_address, config_path=None)
 #         self.assertIn("Missing 'address'", str(context.exception))
 
 #     def test_connect_should_instantiate_correct_driver_for_rohdeschwarz_sgs(self):
@@ -270,7 +270,7 @@
 #         self.mock_event_handler.reset_mock()
 
 #         lo.unregister()
-#         self.mock_event_handler.unregister_local_oscillator.assert_called_once_with(lo)
+#        self.mock_event_handler.unregister_local_oscillator.assert_called_once_with(lo)
 
 #         lo.register()
 #         self.mock_event_handler.register_local_oscillator.assert_called_once_with(lo)

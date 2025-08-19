@@ -100,7 +100,7 @@ def build_title(title: str, path: str, params: list[str]) -> str:
 
 
 def guess_plot_dimension(
-    f: np.ndarray, sweep: np.ndarray | list = [], threshold_2D=10
+    f: np.ndarray, sweep: np.ndarray | list = None, threshold_2D=10
 ) -> tuple[list[1, 1.5, 2] | np.ndarray]:
     """Guess if the plot should be a 1D line, a collection of 1D lines (1.5D),
     or a 2D color plot.
@@ -120,6 +120,9 @@ def guess_plot_dimension(
         The plot dimension ('1', '1.5' or '2') and the vector that should be used as the x
         axis in the plot.
     """
+    if sweep is None:
+        sweep = []
+
     if len(sweep) > threshold_2D:
         return "2"
     if len(f.shape) == 2 and len(sweep.shape) == 1:
@@ -132,10 +135,10 @@ def finalize_plot(
     title: str,
     qu_id: str,
     fit_res: FitResult = None,
-    qubit_params: ParamDict = {},
-    updated_params: dict = {},
-    sweep_info={},
-    relevant_params=[],
+    qubit_params: ParamDict = None,
+    updated_params: dict = None,
+    sweep_info=None,
+    relevant_params=None,
 ):
     """
     Annotates a matplotlib figure with experiment parameters, fit quality, and title.
@@ -160,6 +163,15 @@ def finalize_plot(
     """
     if fig is None:
         return
+
+    if qubit_params is None:
+        qubit_params = {}
+    if updated_params is None:
+        updated_params = {}
+    if sweep_info is None:
+        sweep_info = {}
+    if relevant_params is None:
+        relevant_params = []
 
     # Make a summary of relevant experimental parameters
     exp_params_keys = get_relevant_exp_parameters(
