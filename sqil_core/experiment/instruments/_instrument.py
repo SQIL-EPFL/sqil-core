@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
 
 import Pyro5.server
-from blinker import NamedSignal
 
-from sqil_core.config_log import logger
 from sqil_core.experiment._events import (
     after_experiment,
     after_sequence,
     before_experiment,
     before_sequence,
-    one_time_listener,
 )
 from sqil_core.experiment.helpers._function_override_handler import (
     FunctionOverrideHandler,
@@ -87,7 +84,6 @@ class Instrument(FunctionOverrideHandler, ABC):
     @abstractmethod
     def _default_connect(self, *args, **kwargs):
         """Default `connect` implementation (must be overridden)."""
-        pass
 
     def setup(self, *args, **kwargs):
         """Calls the overridden or default `setup` method."""
@@ -96,7 +92,6 @@ class Instrument(FunctionOverrideHandler, ABC):
     @abstractmethod
     def _default_setup(self, *args, **kwargs):
         """Default `setup` implementation (must be overridden)."""
-        pass
 
     def disconnect(self, *args, **kwargs):
         """Calls the overridden or default `disconnect` method."""

@@ -6,7 +6,6 @@ from sqil_core.fit._models import gaussian, lorentzian, oscillations, skewed_lor
 
 
 class TestEstimatePeak:
-
     def test_peak_detection_gaussian(self):
         x = np.linspace(0, 10, 200)
         y = gaussian(x, A=10, x0=5, sigma=0.5, y0=1)
@@ -90,7 +89,6 @@ class TestEstimatePeak:
 
 
 class TestOscillationsGuess:
-
     def test_pure_cosine(self):
         x = np.linspace(0, 10, 500)
         y = oscillations(x, A=3, T=2, phi=0.5, y0=1)
@@ -131,7 +129,7 @@ class TestOscillationsGuess:
 
         A, y0_candidates, phi_candidates, T = oscillations_guess(x, y)
 
-        assert A == pytest.approx(0.0)
+        assert pytest.approx(0.0) == A
         assert all(y0 == pytest.approx(1.0) for y0 in y0_candidates)
         assert T > 0  # fallback value based on range
         assert all(0 <= phi < T for phi in phi_candidates)

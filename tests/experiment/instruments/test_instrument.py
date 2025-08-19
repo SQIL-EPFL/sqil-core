@@ -34,7 +34,6 @@ CONFIG = {
 
 
 class TestInstrument:
-
     def test_should_instantiate_instrument_with_correct_properties(self):
         instrument = GoogooMeter(id="1", config=CONFIG)
 
@@ -89,10 +88,7 @@ class TestInstrument:
         control = GoogooMeter(id="0", config=CONFIG)
         assert control.setup() == "Class default setup"
 
-        config = {
-            **CONFIG,
-            "set_goo": lambda self: "Custom default goo",
-        }
+        config = {**CONFIG, "set_goo": lambda self: "Custom default goo"}
         instrument = GoogooMeter(id="1", config=config)
         assert instrument.set_goo() == "Class default goo"
 

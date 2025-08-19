@@ -1,15 +1,14 @@
 import json
 import os
-import tempfile
-from pathlib import Path
 
+import h5py
+import numpy as np
 import pytest
 
-from sqil_core.utils._read import *
+from sqil_core.utils import extract_h5_data, read_json
 
 
 class TestExtractH5Data:
-
     test_data = {
         "array1": [1, 2, 3, 4],
         "array2": [5.5, 6.6, 7.7, 8.8],
@@ -32,7 +31,7 @@ class TestExtractH5Data:
                 data_group.create_dataset(key, data=value)
 
         # Yield the file path for the tests to use
-        yield str(temp_file_path)
+        return str(temp_file_path)
 
     def test_read_all_data(self, temp_h5_file):
         data = extract_h5_data(temp_h5_file, None)

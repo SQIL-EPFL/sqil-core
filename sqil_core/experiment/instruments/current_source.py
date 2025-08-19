@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-import yaml
 from qcodes.instrument_drivers.yokogawa import YokogawaGS200
 
 from sqil_core.config_log import logger
@@ -84,7 +83,7 @@ class SqilYokogawaGS200(CurrentSource):
         # Set current mode
         if self.device.source_mode() != "CURR":
             self.turn_off()
-            logger.info(f" -> Source mode: current")
+            logger.info(" -> Source mode: current")
             self.device.source_mode("CURR")
         # Voltage limit
         v_lim = self.config.get("voltage_limit", 5)
@@ -102,7 +101,7 @@ class SqilYokogawaGS200(CurrentSource):
     def ramp_current(self, value, step=None, step_delay=None) -> None:
         step, step_delay = self._wrap_step_and_delay(step, step_delay)
         logger.info(
-            f"Ramping current to {format_number(value, 5, unit="A", latex=False)} on {self.name}"
+            f"Ramping current to {format_number(value, 5, unit='A', latex=False)} on {self.name}"
         )
         self.device.ramp_current(value, step, step_delay)
 

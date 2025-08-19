@@ -68,7 +68,7 @@ class FitResult:
         self.model_name = model_name
         self.metadata = metadata
 
-        self.params_by_name = dict(zip(self.param_names, self.params))
+        self.params_by_name = dict(zip(self.param_names, self.params, strict=False))
 
     def __repr__(self):
         return (
@@ -199,7 +199,7 @@ def fit_output(fit_func):
         if raw_fit_output is None:
             raise TypeError("Fit didn't coverge, result is None")
         # Scipy tuple (curve_fit, leastsq)
-        elif _is_scipy_tuple(raw_fit_output):
+        if _is_scipy_tuple(raw_fit_output):
             formatted = _format_scipy_tuple(raw_fit_output, y_data, has_sigma=has_sigma)
 
         # Scipy least squares
@@ -257,11 +257,11 @@ def fit_output(fit_func):
 
         return FitResult(
             params=sqil_dict.get("params", []),
-            std_err=sqil_dict.get("std_err", None),
+            std_err=sqil_dict.get("std_err"),
             fit_output=raw_fit_output,
             metrics=sqil_dict.get("metrics", {}),
-            predict=sqil_dict.get("predict", None),
-            param_names=sqil_dict.get("param_names", None),
+            predict=sqil_dict.get("predict"),
+            param_names=sqil_dict.get("param_names"),
             model_name=model_name,
             metadata=filtered_metadata,
         )
@@ -781,11 +781,7 @@ def _format_scipy_tuple(result, y_data=None, has_sigma=False):
             std_err = compute_adjusted_standard_errors(
                 pcov, residuals, cov_rescaled=has_sigma, red_chi2=red_chi2
             )
-    return {
-        "params": popt,
-        "std_err": std_err,
-        "metrics": metrics,
-    }
+    return {"params": popt, "std_err": std_err, "metrics": metrics}
 
 
 def _format_scipy_least_squares(result, y_data=None, has_sigma=False):
@@ -994,7 +990,7 @@ def _get_covariance_from_scipy_optimize_result(
         # Handle different types of hess_inv
         if isinstance(hess_inv, np.ndarray):
             return hess_inv
-        elif hasattr(hess_inv, "todense"):
+        if hasattr(hess_inv, "todense"):
             return hess_inv.todense()
 
     if hasattr(result, "hess") and result.hess is not None:

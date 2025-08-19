@@ -1,7 +1,3 @@
-from contextlib import contextmanager
-from types import MethodType
-from typing import Callable
-
 import pytest
 
 from sqil_core.experiment.helpers._function_override_handler import (
@@ -15,10 +11,7 @@ class ClassWithFunctions(FunctionOverrideHandler):
 
     def __init__(self):
         super().__init__()
-        self._default_functions = {
-            "foo": self._default_foo,
-            "bar": self._default_bar,
-        }
+        self._default_functions = {"foo": self._default_foo, "bar": self._default_bar}
         self._functions = self._default_functions.copy()
 
     def _default_foo(self):

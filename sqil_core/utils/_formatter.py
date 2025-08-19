@@ -15,9 +15,7 @@ def _cut_to_significant_digits(number, n):
         return 0  # Zero has no significant digits
     d = Decimal(str(number))
     shift = d.adjusted()  # Get the exponent of the number
-    rounded = d.scaleb(-shift).quantize(
-        Decimal("1e-{0}".format(n - 1)), rounding=ROUND_DOWN
-    )
+    rounded = d.scaleb(-shift).quantize(Decimal(f"1e-{n - 1}"), rounding=ROUND_DOWN)
     return float(rounded.scaleb(shift))
 
 
@@ -58,8 +56,7 @@ def format_number(
     base = float(base) * 10 ** (int(exponent) % 3)
     exponent = (int(exponent) // 3) * 3
     # Apply precision to the base
-    if precision < 3:
-        precision = 3
+    precision = max(precision, 3)
     base_precise = _cut_to_significant_digits(
         base, precision + 1
     )  # np.round(base, precision - (int(exponent) % 3))
@@ -201,7 +198,7 @@ class ParamInfo:
     @property
     def symbol_and_value(self, latex=True):
         sym = f"${self.symbol}$" if latex else self.symbol
-        equal = f"$=$" if latex else " = "
+        equal = "$=$" if latex else " = "
         val = format_number(self.value, self.precision, self.unit, latex=latex)
         return f"{sym}{equal}{val}"
 

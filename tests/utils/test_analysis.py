@@ -1,11 +1,18 @@
 import numpy as np
 import pytest
 
-from sqil_core.utils._analysis import *
+from sqil_core.utils import (
+    compute_snr_peaked,
+    estimate_linear_background,
+    find_first_minima_idx,
+    line_between_2_points,
+    linear_interpolation,
+    remove_linear_background,
+    soft_normalize,
+)
 
 
 class TestEstimateLinearBackground:
-
     @pytest.fixture
     def synthetic_data(self):
         """Fixture to generate synthetic data for tests."""
@@ -121,7 +128,6 @@ class TestEstimateLinearBackground:
 
 
 class TestRemoveLinearBackground:
-
     @pytest.fixture
     def synthetic_data(self):
         """Fixture to generate synthetic data for tests."""
@@ -165,7 +171,6 @@ class TestRemoveLinearBackground:
 
 
 class TestLinearInterpolation:
-
     def test_scalar_interpolation(self):
         result = linear_interpolation(3, 2, 4, 6, 8)
         assert np.isclose(result, 5.0)
@@ -206,7 +211,6 @@ class TestLinearInterpolation:
 
 
 class TestLineBetween2Points:
-
     def test_standard_case(self):
         slope, intercept = line_between_2_points(1, 2, 3, 4)
         assert intercept == 1.0
@@ -269,7 +273,6 @@ class TestSoftNormalize:
 
 
 class TestComputeSNRPeaked:
-
     @pytest.fixture
     def synthetic_data(self):
         np.random.seed(13)
@@ -316,7 +319,6 @@ class TestComputeSNRPeaked:
 
 
 class TestFindFirstMinimaIdx:
-
     @pytest.fixture
     def simple_data(self):
         return np.array([3, 2, 4, 1, 5])
@@ -371,6 +373,6 @@ class TestFindFirstMinimaIdx:
         idx = find_first_minima_idx(np.array([2, 2]))
         assert idx is None
 
-    def test_should_return_minimum_in_middle_of_plateau(self):
-        data = np.array([5, 3, 3, 3, 4])
-        idx = find_first_minima_idx
+    # def test_should_return_minimum_in_middle_of_plateau(self):
+    #     data = np.array([5, 3, 3, 3, 4])
+    #     idx = find_first_minima_idx

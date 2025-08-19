@@ -40,7 +40,6 @@ def fit_function(x_data, y_data, guess=None, bounds=None, fixed_params=None):
 
 # Test class for the decorator
 class TestFitInputDecorator:
-
     @pytest.mark.parametrize(
         "guess, bounds, fixed_params, expected_lower_bounds, expected_upper_bounds",
         [

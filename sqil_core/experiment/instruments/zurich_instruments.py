@@ -1,5 +1,5 @@
 from laboneq.dsl.quantum import QPU
-from laboneq.simple import DeviceSetup, Session
+from laboneq.simple import DeviceSetup
 
 from sqil_core.experiment.instruments import Instrument
 

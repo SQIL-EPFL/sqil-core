@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import warnings
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
 
-import sqil_core.fit._models as _models
+from sqil_core.fit import _models
 from sqil_core.utils._utils import fill_gaps, has_at_least_one, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
@@ -367,10 +367,7 @@ def fit_decaying_exp(
         _models.decaying_exp, x, y, p0=guess, bounds=bounds, full_output=True
     )
 
-    return res, {
-        "param_names": ["A", "tau", "y0"],
-        "predict": _models.decaying_exp,
-    }
+    return res, {"param_names": ["A", "tau", "y0"], "predict": _models.decaying_exp}
 
 
 @fit_input
@@ -724,12 +721,7 @@ def fit_oscillations(
     @fit_output
     def _curve_fit_osc(x_data, y_data, p0, bounds):
         return curve_fit(
-            _models.oscillations,
-            x_data,
-            y_data,
-            p0,
-            bounds=bounds,
-            full_output=True,
+            _models.oscillations, x_data, y_data, p0, bounds=bounds, full_output=True
         )
 
     # Try multiple initializations

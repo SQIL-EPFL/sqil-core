@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-import yaml
 from qcodes.instrument_drivers.rohde_schwarz import RohdeSchwarzSGS100A
 from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
@@ -18,22 +17,18 @@ class LocalOscillatorBase(Instrument, ABC):
     @abstractmethod
     def set_frequency(self, value) -> None:
         """Set the frequency of the local oscillator."""
-        pass
 
     @abstractmethod
     def set_power(self, value) -> None:
         """Set the power of the local oscillator."""
-        pass
 
     @abstractmethod
     def turn_on(self) -> None:
         """Turn the local oscillator on."""
-        pass
 
     @abstractmethod
     def turn_off(self) -> None:
         """Turn the local oscillator off."""
-        pass
 
 
 class SqilRohdeSchwarzSGS100A(LocalOscillatorBase):
@@ -186,13 +181,13 @@ class LocalOscillator(LocalOscillatorBase):
 
     def set_frequency(self, value) -> None:
         logger.info(
-            f"Setting frequency to {format_number(value, 5, unit="Hz", latex=False)} for {self.name}"
+            f"Setting frequency to {format_number(value, 5, unit='Hz', latex=False)} for {self.name}"
         )
         self.instrument.set_frequency(value)
 
     def set_power(self, value) -> None:
         logger.info(
-            f"Setting power to {format_number(value, 4, unit="dB", latex=False)} for {self.name}"
+            f"Setting power to {format_number(value, 4, unit='dB', latex=False)} for {self.name}"
         )
         self.instrument.set_power(value)
 

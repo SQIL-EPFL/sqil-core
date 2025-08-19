@@ -15,13 +15,8 @@ from ._analysis import (
     soft_normalize,
 )
 from ._const import PARAM_METADATA
-from ._formatter import (
-    ParamInfo,
-    format_number,
-    get_relevant_exp_parameters,
-    param_info_from_schema,
-)
-from ._read import extract_h5_data, get_data_and_info, map_datadict, read_json
+from ._formatter import ParamInfo, format_number, get_relevant_exp_parameters
+from ._read import get_data_and_info, read_json
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -64,7 +59,7 @@ def get_x_id_by_plot_dim(exp_id: str, plot_dim: str, sweep_param_id: str | None)
         if plot_dim == "1":
             return sweep_param_id or "ro_freq"
         return "ro_freq"
-    elif exp_id == "CW_twotone" or exp_id == "pulsed_twotone":
+    if exp_id == "CW_twotone" or exp_id == "pulsed_twotone":
         if plot_dim == "1":
             return sweep_param_id or "qu_freq"
         return "qu_freq"
@@ -93,7 +88,7 @@ def build_title(title: str, path: str, params: list[str]) -> str:
     dic = read_json(f"{path}/param_dict.json")
     title += " with "
     for idx, param in enumerate(params):
-        if not (param in PARAM_METADATA.keys()) or not (param in dic):
+        if param not in PARAM_METADATA.keys() or param not in dic:
             title += f"{param} = ? & "
             continue
         meta = PARAM_METADATA[param]
@@ -106,7 +101,7 @@ def build_title(title: str, path: str, params: list[str]) -> str:
 
 def guess_plot_dimension(
     f: np.ndarray, sweep: np.ndarray | list = [], threshold_2D=10
-) -> tuple[list["1", "1.5", "2"] | np.ndarray]:
+) -> tuple[list[1, 1.5, 2] | np.ndarray]:
     """Guess if the plot should be a 1D line, a collection of 1D lines (1.5D),
     or a 2D color plot.
 
@@ -127,10 +122,9 @@ def guess_plot_dimension(
     """
     if len(sweep) > threshold_2D:
         return "2"
-    elif len(f.shape) == 2 and len(sweep.shape) == 1:
+    if len(f.shape) == 2 and len(sweep.shape) == 1:
         return "1.5"
-    else:
-        return "1"
+    return "1"
 
 
 def finalize_plot(
@@ -177,7 +171,7 @@ def finalize_plot(
     # Make a summary of the updated qubit parameters
     updated_params_info = {k: ParamInfo(k, v) for k, v in updated_params.items()}
     update_params_str = ",   ".join(
-        [updated_params_info[id].symbol_and_value for id in updated_params_info.keys()]
+        [updated_params_info[id].symbol_and_value for id in updated_params_info]
     )
 
     # Find appropriate y_position to print text
@@ -275,11 +269,7 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
         sweep0_scaled = sweeps[0] * sweep0_info.scale
 
         c0 = axs[0].pcolormesh(
-            x_data_scaled,
-            sweep0_scaled,
-            mag,
-            shading="auto",
-            cmap="PuBu",
+            x_data_scaled, sweep0_scaled, mag, shading="auto", cmap="PuBu"
         )
         if raw:
             fig.colorbar(c0, ax=axs[0])
@@ -290,11 +280,7 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
         axs[0].set_ylabel(sweep0_info.name_and_unit)
 
         c1 = axs[1].pcolormesh(
-            x_data_scaled,
-            sweep0_scaled,
-            phase,
-            shading="auto",
-            cmap="PuBu",
+            x_data_scaled, sweep0_scaled, phase, shading="auto", cmap="PuBu"
         )
         if raw:
             fig.colorbar(c1, ax=axs[1])
