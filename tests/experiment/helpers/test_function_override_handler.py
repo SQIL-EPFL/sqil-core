@@ -35,9 +35,9 @@ class TestFunctionOverrideHandler:
         result1 = obj.call("foo")
         assert result1 == "custom foo"
         result2 = obj.call("foo")
-        assert (
-            result2 == "custom foo"
-        ), "The 'foo' function should be overridden permanently."
+        assert result2 == "custom foo", (
+            "The 'foo' function should be overridden permanently."
+        )
 
     def test_should_override_and_allow_parameters(self, obj):
         def complex_foo(self, message, number=0):
@@ -66,9 +66,9 @@ class TestFunctionOverrideHandler:
 
         obj.restore_function("foo")
         result = obj.call("foo")
-        assert (
-            result == "default foo"
-        ), "The 'foo' function should be restored to its default implementation."
+        assert result == "default foo", (
+            "The 'foo' function should be restored to its default implementation."
+        )
 
     def test_should_raise_error_if_function_to_restore_does_not_exist(self, obj):
         with pytest.raises(AttributeError):
@@ -80,15 +80,16 @@ class TestFunctionOverrideHandler:
 
         with obj.temporary_override("foo", temp_foo):
             result = obj.call("foo")
-            assert (
-                result == "temporary foo"
-            ), "The 'foo' function should be temporarily overridden."
+            assert result == "temporary foo", (
+                "The 'foo' function should be temporarily overridden."
+            )
 
         # After the context, it should restore to the default
         result = obj.call("foo")
-        assert (
-            result == "default foo"
-        ), "The 'foo' function should revert back to its default after the context manager."
+        assert result == "default foo", (
+            "The 'foo' function should revert back to "
+            "its default after the context manager."
+        )
 
     def test_should_raise_error_if_function_to_temporary_override_does_not_exist(
         self, obj
@@ -113,12 +114,12 @@ class TestFunctionOverrideHandler:
         result_foo = obj.call("foo")
         result_bar = obj.call("bar")
 
-        assert (
-            result_foo == "default foo"
-        ), "The 'foo' function should be restored to its default implementation."
-        assert (
-            result_bar == "default bar"
-        ), "The 'bar' function should be restored to its default implementation."
+        assert result_foo == "default foo", (
+            "The 'foo' function should be restored to its default implementation."
+        )
+        assert result_bar == "default bar", (
+            "The 'bar' function should be restored to its default implementation."
+        )
 
     def test_should_raise_error_if_calling_non_existent_function(self, obj):
         with pytest.raises(AttributeError):

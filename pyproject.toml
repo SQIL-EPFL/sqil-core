@@ -71,42 +71,9 @@ skip-magic-trailing-comma = false
 line-ending = "lf"
 
 [tool.ruff.lint]
+select = ["F", "E", "Q", "I", "B", "W"]
 ignore = ["COM812", "ISC001"]
-extend-select = [
-    "F",
-    "E",
-    "W",
-    "I",
-    "C90",
-    "N",
-    "UP",
-    "YTT",
-    # "ANN",
-    "B",
-    "A",
-    "DJ",
-    "EM",
-    "ERA",
-    "EXE",
-    "ICN",
-    "ISC",
-    "PIE",
-    "PL",
-    "PT",
-    "PTH",
-    "RSE",
-    "RET",
-    "SIM",
-    "SLF",
-    "TCH",
-    "TID",
-    "T20",
-    "ARG",
-    "PGH",
-    "TRY",
-    "DTZ",
-    "RUF",
-]
+extend-select = []
 
 [tool.ruff.lint.isort]
 known-first-party = ["sqil-core"]
