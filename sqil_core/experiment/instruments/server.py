@@ -23,9 +23,9 @@ _instrument_classes = {
 @pyro.expose
 class InstrumentServer:
     """
-    Instruments server. Configures the instruments once and distributes instrument instances to other modules.
-    Providing the path of the setup file is not required, but it allows to detect changes in the setup file that
-    require the server to restart.
+    Instruments server. Configures the instruments once and distributes instrument
+    instances to other modules. Providing the path of the setup file is not required,
+    but it allows to detect changes in the setup file that require the server to restart
     The server is available at PYRO:SERVER@localhost:9090.
     """
 
@@ -123,7 +123,8 @@ def unlink_instrument_server(server: pyro.Proxy, **instruments: pyro.Proxy) -> N
 
 def start_instrument_server(setup_path: str = ""):
     """Start a new instruments server using the provided setup file.
-    If the path to the setup file is not provided it will be guessedby readig ./config.yaml.
+    If the path to the setup file is not provided it will be guessedby readig
+    ./config.yaml.
     """
     if not setup_path:
         config = read_yaml("config.yaml")

@@ -145,7 +145,8 @@ class ParamInfo:
         name (str): full name of the parameter (e.g. Readout frequency)
         symbol (str): symbol of the parameter in Latex notation (e.g. f_{RO})
         unit (str): base unit of measurement (e.g. Hz)
-        scale (int): the scale that should be generally applied to raw data (e.g. 1e-9 to take raw Hz to GHz)
+        scale (int): the scale that should be generally applied to raw data
+        (e.g. 1e-9 to take raw Hz to GHz)
     """
 
     def __init__(self, id, value=None, metadata=None):

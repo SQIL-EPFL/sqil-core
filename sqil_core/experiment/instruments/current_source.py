@@ -22,12 +22,14 @@ class CurrentSource(Instrument, ABC):
         delay = self.config.get("ramp_step_dealy", None)
         if step is None:
             logger.warning(
-                f"No ramp step found for {self.name}, using default value of {self._default_ramp_step}"
+                f"No ramp step found for {self.name}, using default value of "
+                f"{self._default_ramp_step}"
             )
         self.ramp_step = step or self._default_ramp_step
         if delay is None:
             logger.warning(
-                f"No ramp step delay found for {self.name}, using default value of {self._default_ramp_step_delay}"
+                f"No ramp step delay found for {self.name}, using default value of "
+                f"{self._default_ramp_step_delay}"
             )
         self.ramp_step_delay = delay or self._default_ramp_step_delay
 
@@ -64,7 +66,8 @@ class CurrentSource(Instrument, ABC):
         step_delay = step_delay or self.ramp_step_delay
         if step is None or step_delay is None:
             raise ValueError(
-                f"Missing ramp_step ({step}) or ramp_step_delay ({step_delay}) for {self.name}."
+                f"Missing ramp_step ({step}) or ramp_step_delay ({step_delay}) "
+                f"for {self.name}."
             )
         return step, step_delay
 
@@ -100,9 +103,8 @@ class SqilYokogawaGS200(CurrentSource):
 
     def ramp_current(self, value, step=None, step_delay=None) -> None:
         step, step_delay = self._wrap_step_and_delay(step, step_delay)
-        logger.info(
-            f"Ramping current to {format_number(value, 5, unit='A', latex=False)} on {self.name}"
-        )
+        pretty_curr = format_number(value, 5, unit="A", latex=False)
+        logger.info(f"Ramping current to {pretty_curr} on {self.name}")
         self.device.ramp_current(value, step, step_delay)
 
     def turn_on(self) -> None:

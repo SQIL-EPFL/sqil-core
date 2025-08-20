@@ -20,14 +20,16 @@ def fill_gaps(primary_list: list, fallback_list: list) -> list:
     Parameters
     ----------
     primary_list : list
-        A list of values where some elements may be `None`, which will be replaced by values from `fallback_list`.
+        A list of values where some elements may be `None`, which will be replaced by
+        values from `fallback_list`.
     fallback_list : list
         A list of values used to fill gaps in `primary_list`.
 
     Returns
     -------
     result : list
-        A new list where `None` values in `primary_list` are replaced by corresponding values from `fallback_list`.
+        A new list where `None` values in `primary_list` are replaced by corresponding
+        values from `fallback_list`.
 
     Examples
     --------

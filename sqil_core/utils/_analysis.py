@@ -70,7 +70,7 @@ def estimate_linear_background(
     >>> data = 3 * x + 2 + np.random.normal(0, 1, size=(100,))
     >>> coefficients = estimate_linear_background(x, data, points_cut=0.2)
     >>> print("Estimated coefficients:", coefficients)
-    """
+    """  # noqa: E501
     is1D = len(data.shape) == 1
     points = data.shape[0] if is1D else data.shape[1]
     cut = int(points * points_cut)
@@ -126,8 +126,9 @@ def linear_interpolation(
     """
     Performs linear interpolation to estimate the value of y at a given x.
 
-    This function computes the interpolated y-value for a given x using two known points (x1, y1) and (x2, y2)
-    on a straight line. It supports both scalar and array inputs for x, enabling vectorized operations.
+    This function computes the interpolated y-value for a given x using two known
+    points (x1, y1) and (x2, y2) on a straight line. It supports both scalar and array
+    inputs for x, enabling vectorized operations.
 
     Parameters
     ----------
@@ -171,9 +172,9 @@ def line_between_2_points(
     """
     Computes the equation of a line passing through two points.
 
-    Given two points (x1, y1) and (x2, y2), this function returns the y-intercept and slope of the line
-    connecting them. If x1 and x2 are the same, the function returns y1 as the intercept and a slope of 0
-    to avoid division by zero.
+    Given two points (x1, y1) and (x2, y2), this function returns the y-intercept and
+    slope of the line connecting them. If x1 and x2 are the same, the function returns
+    y1 as the intercept and a slope of 0 to avoid division by zero.
 
     Parameters
     ----------
@@ -195,7 +196,8 @@ def line_between_2_points(
 
     Notes
     -----
-    - If x1 and x2 are the same, the function assumes a vertical line and returns a slope of 0.
+    - If x1 and x2 are the same, the function assumes a vertical line and returns a
+    slope of 0.
     - The returned y-intercept is based on y1 for consistency in edge cases.
 
     Examples
@@ -351,7 +353,7 @@ def compute_snr_peaked(
     >>> fwhm = 2.0
     >>> snr = compute_snr_peaked(x_data, y_data, x0, fwhm)
     >>> print(snr)
-    """
+    """  # noqa: E501
 
     # Signal strength at x0
     signal = y_data[np.argmin(np.abs(x_data - x0))]
@@ -365,7 +367,8 @@ def compute_snr_peaked(
     # Check if there are enough data points for noise estimation
     if len(noise_data) < min_points:
         Warning(
-            f"Only {len(noise_data)} points found in the noise region. Consider reducing noise_region_factor."
+            f"Only {len(noise_data)} points found in the noise region. "
+            "Consider reducing noise_region_factor."
         )
 
     # Compute noise standard deviation
@@ -417,7 +420,8 @@ def find_first_minima_idx(data):
 
 def compute_fft(x_data, y_data):
     """
-    Computes the Fast Fourier Transform (FFT) of a signal and returns the positive frequency spectrum.
+    Computes the Fast Fourier Transform (FFT) of a signal and returns the positive
+    frequency spectrum.
 
     Parameters
     ----------
@@ -435,8 +439,10 @@ def compute_fft(x_data, y_data):
 
     Notes
     -----
-    - The signal is centered by subtracting its mean before computing the FFT, which removes the DC component.
-    - Only the positive frequency half of the FFT spectrum is returned, assuming a real-valued input signal.
+    - The signal is centered by subtracting its mean before computing the FFT, which
+    removes the DC component.
+    - Only the positive frequency half of the FFT spectrum is returned, assuming
+    a real-valued input signal.
     - If `y_data` is complex, returned FFT values still reflect magnitude only.
     - The input `x_data` must be uniformly spaced for the frequency axis to be accurate.
 

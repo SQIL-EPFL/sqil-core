@@ -96,7 +96,8 @@ def map_datadict(datadict: dict):
     qu_ids = metadata.get("qu_ids")
     if schema is None:
         print(
-            "Cannot automatically read data: no database schema was provided by the experiment."
+            "Cannot automatically read data: no database schema was "
+            "provided by the experiment."
         )
 
     # Handle data with only one unspecified qubit

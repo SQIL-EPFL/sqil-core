@@ -17,16 +17,16 @@ class ZI_Instrument(Instrument):
         if not self._generate_setup:
             raise NotImplementedError(
                 "get_setup is not implemented in your setup file.\n"
-                + "You should define it as part of the zi section of your instruments dictionary.\n"
-                + "instruments['zi']['generate_setup']"
+                + "You should define it as part of the zi section of your instruments "
+                "dictionary.\n" + "instruments['zi']['generate_setup']"
             )
 
         self._generate_qpu = config.get("generate_qpu", None)
         if not self._generate_qpu:
             raise NotImplementedError(
                 "get_qpu is not implemented in your setup file.\n"
-                + "You should define it as part of the zi section of your instruments dictionary.\n"
-                + "instruments['zi']['generate_qpu']"
+                + "You should define it as part of the zi section of your instruments "
+                "dictionary.\n" + "instruments['zi']['generate_qpu']"
             )
 
     def generate_setup(self, *params, **kwargs) -> DeviceSetup:
