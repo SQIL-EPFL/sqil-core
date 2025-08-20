@@ -180,15 +180,13 @@ class LocalOscillator(LocalOscillatorBase):
         self.turn_off()
 
     def set_frequency(self, value) -> None:
-        logger.info(
-            f"Setting frequency to {format_number(value, 5, unit='Hz', latex=False)} for {self.name}"
-        )
+        pretty_freq = format_number(value, 5, unit="Hz", latex=False)
+        logger.info(f"Setting frequency to {pretty_freq} for {self.name}")
         self.instrument.set_frequency(value)
 
     def set_power(self, value) -> None:
-        logger.info(
-            f"Setting power to {format_number(value, 4, unit='dB', latex=False)} for {self.name}"
-        )
+        pretty_power = format_number(value, 4, unit="dB", latex=False)
+        logger.info(f"Setting power to {pretty_power} for {self.name}")
         self.instrument.set_power(value)
 
     def turn_on(self) -> None:

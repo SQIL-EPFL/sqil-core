@@ -4,19 +4,22 @@ from types import MethodType
 
 class FunctionOverrideHandler:
     """
-    A base class that allows functions to be overridden, restored, and temporarily replaced.
+    A base class that allows functions to be overridden, restored, and temporarily
+    replaced.
 
     Attributes
     ----------
     _default_functions : dict
         A dictionary storing the default functions of the object.
     _functions : dict
-        A dictionary storing the current functions, which may include overridden versions.
+        A dictionary storing the current functions, which may include overridden
+        versions.
     """
 
     def __init__(self):
         """
-        Initializes the handler with empty dictionaries for default and overridden functions.
+        Initializes the handler with empty dictionaries for default and overridden
+        functions.
         """
         self._default_functions = {}
         self._functions = {}

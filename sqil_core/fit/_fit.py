@@ -69,7 +69,7 @@ def fit_lorentzian(
         - Standard errors (`std_err`).
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
-    """
+    """  # noqa: E501
 
     x, y = x_data, y_data
 
@@ -206,7 +206,7 @@ def fit_gaussian(
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the FWHM.
-    """
+    """  # noqa: E501
 
     x, y = x_data, y_data
 
@@ -424,7 +424,7 @@ def fit_qubit_relaxation_qp(
         - Standard errors (`std_err`).
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
-    """
+    """  # noqa: E501
 
     # Use a single exponential fit for initial parameter guesses
     from scipy.optimize import curve_fit
@@ -504,7 +504,8 @@ def fit_decaying_oscillations(
     y_data : np.ndarray
         Dependent variable array representing the measured signal.
     guess : list[float] or None, optional
-        Initial parameter estimates [A, tau, y0, phi, T]. Missing values are automatically filled.
+        Initial parameter estimates [A, tau, y0, phi, T]. Missing values are
+        automatically filled.
     bounds : list[tuple[float]] or tuple, optional
         Lower and upper bounds for parameters during fitting, by default no bounds.
     num_init : int, optional
@@ -519,7 +520,7 @@ def fit_decaying_oscillations(
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the pi_time and its standard error.
-    """
+    """  # noqa: E501
     # Default intial guess if not provided
     if has_at_least_one(guess, None):
         guess = fill_gaps(guess, decaying_oscillations_guess(x_data, y_data, num_init))
@@ -682,7 +683,8 @@ def fit_oscillations(
     y_data : np.ndarray
         Dependent variable array representing the measured signal.
     guess : list[float] or None, optional
-        Initial parameter estimates [A, y0, phi, T]. Missing values are automatically filled.
+        Initial parameter estimates [A, y0, phi, T]. Missing values are automatically
+        filled.
     bounds : list[tuple[float]] or tuple, optional
         Lower and upper bounds for parameters during fitting, by default no bounds.
     num_init : int, optional
@@ -783,7 +785,8 @@ def fit_oscillations(
 
 @fit_output
 def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
-    """Fits a circle in the xy plane and returns the radius and the position of the center.
+    """Fits a circle in the xy plane and returns the radius and the position of the
+    center.
 
     Reference: https://arxiv.org/abs/1410.3365
     This function uses an algebraic method to fit a circle to the provided data points.
@@ -937,7 +940,8 @@ def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
 
     xc = -A_vec[1] / (2.0 * A_vec[0])
     yc = -A_vec[2] / (2.0 * A_vec[0])
-    # the term *sqrt term corrects for the constraint, because it may be altered due to numerical inaccuracies during calculation
+    # the term *sqrt term corrects for the constraint, because it may be altered due to
+    # numerical inaccuracies during calculation
     r0 = (
         1.0
         / (2.0 * np.absolute(A_vec[0]))
@@ -1036,7 +1040,7 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
     --------
     >>> fit_result = fit_skewed_lorentzian(x_data, y_data)
     >>> fit_result.summary()
-    """
+    """  # noqa: E501
     A1a = np.minimum(y_data[0], y_data[-1])
     A3a = -np.max(y_data)
     fra = x_data[np.argmin(y_data)]
@@ -1120,11 +1124,12 @@ def transform_data(
         If True, phase transformations return values in degrees (default: True).
 
     inv_transform : bool, optional
-        If true returns transformed data and the function to perform the inverse transform.
+        If true returns transformed data and the function to perform the inverse
+        transform.
 
     full_output : bool, optional
-        If True, returns transformed data, the function to perform the inverse transform,
-        transformation parameters, and residuals.
+        If True, returns transformed data, the function to perform the inverse
+        transform, transformation parameters, and residuals.
 
     Returns
     -------

@@ -154,7 +154,8 @@ class ExperimentHandler(ABC):
             return self.run_raw(*args, **kwargs)
 
         finally:
-            # Close and delete QCodes instances to avoid connection issues in following experiments
+            # Close and delete QCodes instances to avoid connection issues in
+            # following experiments
             QCodesInstrument.close_all()
             for instrument in self.instruments:
                 del instrument
@@ -322,17 +323,19 @@ class ExperimentHandler(ABC):
         qu_id="q0",
     ):
         """
-        Generates a sweep of values around a specified center, either numerically or by referencing
-        a qubit parameter.
+        Generates a sweep of values around a specified center, either numerically or by
+        referencing a qubit parameter.
 
         Parameters
         ----------
         center : str or float
-            Center of the sweep. If a string, it's interpreted as the name of a qubit parameter
-            and resolved via `qubit_value`. If a float, used directly.
+            Center of the sweep. If a string, it's interpreted as the name of a qubit
+            parameter and resolved via `qubit_value`. If a float, used directly.
         span : float or tuple of float
-            If a float, sweep will extend symmetrically by `span` on both sides of `center`.
-            If a tuple `(left, right)`, creates an asymmetric sweep: `center - left` to `center + right`.
+            If a float, sweep will extend symmetrically by `span` on both sides of
+            `center`.
+            If a tuple `(left, right)`, creates an asymmetric sweep: `center - left` to
+            `center + right`.
         n_points : int, optional
             Number of points in the sweep. Specify exactly one of `n_points` or `step`.
         step : float, optional
@@ -359,9 +362,10 @@ class ExperimentHandler(ABC):
 
         Notes
         -----
-        - For log scale and `step`-based sweeps, the step is interpreted in multiplicative terms,
-          and an approximate number of points is derived.
-        - Sweep boundaries are inclusive when using `step`, thanks to the `+ step / 2` adjustment.
+        - For log scale and `step`-based sweeps, the step is interpreted in
+            multiplicative terms, and an approximate number of points is derived.
+        - Sweep boundaries are inclusive when using `step`, thanks to the `+ step / 2`
+            adjustment.
         """
 
         if isinstance(center, str):
@@ -431,14 +435,16 @@ def parse_sweeps(sweeps, qu_ids):
             # Check if there is a sweep for each qubit used
             if not set(qu_ids).issubset(value.keys()):
                 raise KeyError(
-                    f"Sweep qubit ids ({value.keys()} do not match the qubits currently in use ({qu_ids})"
+                    f"Sweep qubit ids ({value.keys()} do not match the qubits "
+                    f"currently in use ({qu_ids})"
                 )
             # Build sweep by qubit dict
             sweep_map[key] = {qu_id: value[qu_id] for qu_id in qu_ids}
             # Check if all the sweeps have the same length
             if len(set([len(v) for v in sweep_map[key].values()])) != 1:
                 raise ValueError(
-                    f"The sweep values of `{key}` must have the same length for each qubit."
+                    f"The sweep values of `{key}` must have the same length for each "
+                    "qubit."
                 )
         else:
             sweep_map[key] = {qu_id: value for qu_id in qu_ids}

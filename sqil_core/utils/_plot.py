@@ -112,13 +112,14 @@ def guess_plot_dimension(
     sweep : Union[np.ndarray, List], optional
         Sweep variable, by default []
     threshold_2D : int, optional
-        Threshold of sweeping parameters after which the data is considered, by default 10
+        Threshold of sweeping parameters after which the data is considered,
+        by default 10
 
     Returns
     -------
     Tuple[Union['1', '1.5', '2'], np.ndarray]
-        The plot dimension ('1', '1.5' or '2') and the vector that should be used as the x
-        axis in the plot.
+        The plot dimension ('1', '1.5' or '2') and the vector that should be used as the
+        x-axis in the plot.
     """
     if sweep is None:
         sweep = []
@@ -210,21 +211,25 @@ def finalize_plot(
 
 def plot_mag_phase(path=None, datadict=None, raw=False):
     """
-    Plot the magnitude and phase of complex measurement data from an db path or in-memory dictionary.
+    Plot the magnitude and phase of complex measurement data from an db path or
+    in-memorydictionary.
 
-    This function generates either a 1D or 2D plot of the magnitude and phase of complex data,
-    depending on the presence of sweep parameters. It supports normalization and background
-    subtraction.
+    This function generates either a 1D or 2D plot of the magnitude and phase of complex
+    data, depending on the presence of sweep parameters. It supports normalization and
+    background subtraction.
 
     Parameters
     ----------
     path : str or None, optional
-        Path to the folder containing measurement data. Required if `datadict` is not provided.
+        Path to the folder containing measurement data. Required if `datadict` is not
+        provided.
     datadict : dict or None, optional
-        Pre-loaded data dictionary with schema, typically extracted using `extract_h5_data`.
+        Pre-loaded data dictionary with schema, typically extracted using
+        `extract_h5_data`.
         Required if `path` is not provided.
     raw : bool, default False
-        If True, skip normalization and background subtraction for 2D plots. Useful for viewing raw data.
+        If True, skip normalization and background subtraction for 2D plots. Useful for
+        viewing raw data.
 
     Returns
     -------
@@ -326,14 +331,17 @@ def add_power_axis(ax, power_offset=10, n_ticks=6):
 
 def plot_projection_IQ(path=None, datadict=None, proj_data=None, full_output=False):
     """
-    Plots the real projection of complex I/Q data versus the x-axis and the full IQ plane.
+    Plots the real projection of complex I/Q data versus the x-axis and the full IQ
+    plane.
 
     Parameters
     ----------
     path : str, optional
-        Path to the HDF5 file containing the data. Required if `datadict` is not provided.
+        Path to the HDF5 file containing the data. Required if `datadict` is not
+        provided.
     datadict : dict, optional
-        Pre-loaded data dictionary with schema, typically extracted using `extract_h5_data`.
+        Pre-loaded data dictionary with schema, typically extracted using
+        `extract_h5_data`.
         Required if `path` is not provided.
     proj_data : np.ndarray, optional
         Precomputed projected data (real part of transformed complex values).
@@ -356,8 +364,10 @@ def plot_projection_IQ(path=None, datadict=None, proj_data=None, full_output=Fal
 
     Notes
     -----
-    This function supports only 1D datasets. If sweep dimensions are detected, no plot is created.
-    The projection is performed using a data transformation routine (e.g., PCA or rotation).
+    This function supports only 1D datasets. If sweep dimensions are detected, no plot
+    is created.
+    The projection is performed using a data transformation routine (e.g., PCA or
+    rotation).
     """
 
     all_data, all_info, _ = get_data_and_info(path=path, datadict=datadict)
