@@ -13,7 +13,11 @@ import numpy as np
 from laboneq import serializers
 from laboneq.dsl.quantum.qpu import QPU
 from laboneq.dsl.session import Session
-from laboneq.simple import DeviceSetup, Experiment as LaboneQExperiment
+from laboneq.simple import (
+    DeviceSetup,
+    Experiment as LaboneQExperiment,
+    show_pulse_sheet,
+)
 from laboneq.workflow.tasks import compile_experiment, run_experiment
 from qcodes import Instrument as QCodesInstrument
 
@@ -231,8 +235,22 @@ class ExperimentHandler(ABC):
                         seq = self.sequence(*args, **run_kwargs)
                         compiled_exp = compile_experiment(self.zi_session, seq)
                         if pulse_sheet:
+                            end_time = (
+                                pulse_sheet
+                                if type(pulse_sheet) in (int, float)
+                                else None
+                            )
                             create_pulse_sheet(
-                                self.zi_setup, compiled_exp, self.exp_name, qu_ids
+                                self.zi_setup,
+                                compiled_exp,
+                                self.exp_name,
+                                end=end_time,
+                                qu_ids=qu_ids,
+                            )
+                            show_pulse_sheet(
+                                f"{storage_path_local}/pulsesheet",
+                                compiled_exp,
+                                interactive=False,
                             )
                     before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
@@ -519,12 +537,11 @@ def get_plottr_path(writer: DDH5Writer, root_path):
 from laboneq.simple import OutputSimulator  # noqa: E402
 
 
-def create_pulse_sheet(device_setup, compiled_exp, name, qu_ids=None):
+def create_pulse_sheet(device_setup, compiled_exp, name, end=10e-6, qu_ids=None):
     if qu_ids is None:
         qu_ids = ["q0"]
 
     start = 0
-    end = 10e-6
     colors = [
         "tab:blue",
         "tab:orange",
