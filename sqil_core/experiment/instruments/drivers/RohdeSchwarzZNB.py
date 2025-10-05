@@ -1217,7 +1217,7 @@ class RohdeSchwarzZNBBase(VisaInstrument):
         self.update_display_on()
         if reset_channels:
             self.rf_off()
-        self.connect_message()
+        # self.connect_message() # Removed connect message - andrea
 
     def display_grid(self, rows: int, cols: int) -> None:
         """
