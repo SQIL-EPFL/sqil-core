@@ -55,11 +55,13 @@ def format_number(
     # Make exponent a multiple of 3
     base = float(base) * 10 ** (int(exponent) % 3)
     exponent = (int(exponent) // 3) * 3
+    exp_name = _EXP_UNIT_MAP.get(exponent, None)
+    # If the exponent value is not mapped to a name
+    if exp_name is None:
+        return exp_form
     # Apply precision to the base
     precision = max(precision, 3)
-    base_precise = _cut_to_significant_digits(
-        base, precision + 1
-    )  # np.round(base, precision - (int(exponent) % 3))
+    base_precise = _cut_to_significant_digits(base, precision + 1)
     base_precise = np.round(
         base_precise, precision - len(str(base_precise).split(".")[0])
     )
@@ -68,7 +70,7 @@ def format_number(
 
     # Build string
     if unit:
-        res = f"{base_precise}{'~' if latex else ' '}{_EXP_UNIT_MAP[exponent]}{unit}"
+        res = f"{base_precise}{'~' if latex else ' '}{exp_name}{unit}"
     else:
         res = f"{base_precise}" + (f" x 10^{{{exponent}}}" if exponent != 0 else "")
     return f"${res}$" if latex else res
@@ -190,10 +192,9 @@ class ParamInfo:
 
     @property
     def rescaled_unit(self):
-        # if self.unit == "":
-        #     return self.unit
         exponent = -(int(f"{self.scale:.0e}".split("e")[1]) // 3) * 3
-        unit = f"{_EXP_UNIT_MAP[exponent]}{self.unit}"
+        exp_name = _EXP_UNIT_MAP.get(exponent, "")
+        unit = f"{exp_name}{self.unit}"
         return unit
 
     @property
