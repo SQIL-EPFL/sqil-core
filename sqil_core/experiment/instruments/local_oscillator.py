@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from qcodes.instrument import find_or_create_instrument
 from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
 from sqil_core.config_log import logger
@@ -42,11 +43,11 @@ class SqilSignalCoreSC5511A(LocalOscillatorBase):
     """
 
     def _default_connect(self, *args, **kwargs):
-        logger.info(f"Connecting to {self.name} ({self.model})")
-        return SignalCore_SC5511A(self.name, self.address)
+        logger.debug(f"Connecting to {self.name} ({self.model})")
+        return find_or_create_instrument(SignalCore_SC5511A, self.name, self.address)
 
     def _default_disconnect(self, *args, **kwargs):
-        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        logger.debug(f"Disconnecting from {self.name} ({self.model})")
         self.turn_off()
 
     def _default_setup(self, *args, **kwargs):
@@ -81,11 +82,11 @@ class SqilSignalCoreSC5521A(LocalOscillatorBase):
     """
 
     def _default_connect(self, *args, **kwargs):
-        logger.info(f"Connecting to {self.name} ({self.model})")
-        return SC5521A(self.name)
+        logger.debug(f"Connecting to {self.name} ({self.model})")
+        return find_or_create_instrument(SC5521A, self.name)
 
     def _default_disconnect(self, *args, **kwargs):
-        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        logger.debug(f"Disconnecting from {self.name} ({self.model})")
         self.turn_off()
 
     def _default_setup(self, *args, **kwargs):
@@ -147,18 +148,18 @@ class LocalOscillator(LocalOscillatorBase):
 
     def set_frequency(self, value) -> None:
         pretty_freq = format_number(value, 5, unit="Hz", latex=False)
-        logger.info(f"Setting frequency to {pretty_freq} for {self.name}")
+        logger.debug(f"Setting frequency to {pretty_freq} for {self.name}")
         self.instrument.set_frequency(value)
 
     def set_power(self, value) -> None:
         pretty_power = format_number(value, 4, unit="dB", latex=False)
-        logger.info(f"Setting power to {pretty_power} for {self.name}")
+        logger.debug(f"Setting power to {pretty_power} for {self.name}")
         self.instrument.set_power(value)
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
+        logger.debug(f"Turning on {self.name}")
         self.instrument.turn_on()
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
+        logger.debug(f"Turning off {self.name}")
         self.instrument.turn_off()
