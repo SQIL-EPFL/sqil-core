@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Literal
 
 from numpy import exp
+from qcodes.instrument import find_or_create_instrument
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
@@ -76,11 +77,11 @@ class VNA(Instrument, ABC):
             self.set_averages(int(1 / value))
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
+        logger.debug(f"Turning on {self.name}")
         self.instrument.turn_on()
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
+        logger.debug(f"Turning off {self.name}")
         self.instrument.turn_off()
 
 
@@ -93,18 +94,23 @@ class SqilRohdeSchwarzZNA26(VNA):
     """
 
     def _default_connect(self, *args, **kwargs):
-        logger.info(f"Connecting to {self.name} ({self.model})")
-        return RohdeSchwarzZNBBase(
-            self.name, self.address, init_s_params=False, reset_channels=False
+        logger.debug(f"Connecting to {self.name} ({self.model})")
+        return find_or_create_instrument(
+            RohdeSchwarzZNBBase,
+            self.name,
+            self.address,
+            init_s_params=False,
+            reset_channels=False,
         )
 
     def _default_disconnect(self, *args, **kwargs):
-        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        logger.debug(f"Disconnecting from {self.name} ({self.model})")
         self.device.close()
 
     def _default_setup(self, *args, **kwargs):
         logger.info(f"Setting up {self.name}")
         self.turn_off()
+        logger.info(" -> Turned off")
 
         chan = ZNBChannel(
             self.device,
@@ -114,11 +120,13 @@ class SqilRohdeSchwarzZNA26(VNA):
             existing_trace_to_bind_to="Trc1",
         )
         self.device.channels.append(chan)
+        logger.info(" -> Added channel CHMEAS")
 
         self.device.cont_meas_on()
         self.device.display_single_window()
 
         self.set_power(-60)
+        logger.info(" -> Power = -60 dBm")
 
     def set_frequency_range(self, start, stop, n_points) -> None:
         self.device.channels.CHMEAS.start(start)

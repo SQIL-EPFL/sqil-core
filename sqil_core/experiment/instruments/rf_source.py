@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from qcodes.instrument import find_or_create_instrument
 from qcodes.instrument_drivers.rohde_schwarz import RohdeSchwarzSGS100A
 
 from sqil_core.config_log import logger
@@ -44,17 +45,19 @@ class SqilRohdeSchwarzSGS100A(RfSource):
     """
 
     def _default_connect(self, *args, **kwargs):
-        logger.info(f"Connecting to {self.name} ({self.model})")
-        return RohdeSchwarzSGS100A(self.name, self.address)
+        logger.debug(f"Connecting to {self.name} ({self.model})")
+        return find_or_create_instrument(RohdeSchwarzSGS100A, self.name, self.address)
 
     def _default_disconnect(self, *args, **kwargs):
-        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        logger.debug(f"Disconnecting from {self.name} ({self.model})")
         self.device.close()
 
     def _default_setup(self, *args, **kwargs):
         logger.info(f"Setting up {self.name}")
         self.turn_off()
+        logger.info(" -> Turned off")
         self.set_power(-60)
+        logger.info(" -> Power = -60 dBm")
 
     def set_frequency(self, value) -> None:
         self.device.frequency(value)
