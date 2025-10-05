@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 
-from qcodes.instrument_drivers.yokogawa import YokogawaGS200
+from qcodes.instrument import find_or_create_instrument
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
+from sqil_core.experiment.instruments.drivers.Yokogawa_GS200 import YokogawaGS200
 from sqil_core.utils._formatter import format_number
 
 
@@ -54,11 +55,11 @@ class CurrentSource(Instrument, ABC):
         pass
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
+        logger.debug(f"Turning on {self.name}")
         self.instrument.turn_on()
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
+        logger.debug(f"Turning off {self.name}")
         self.instrument.turn_off()
 
     def _wrap_step_and_delay(self, step, step_delay):
@@ -74,11 +75,11 @@ class CurrentSource(Instrument, ABC):
 
 class SqilYokogawaGS200(CurrentSource):
     def _default_connect(self, *args, **kwargs):
-        logger.info(f"Connecting to {self.name} ({self.model})")
-        return YokogawaGS200(self.name, self.address)
+        logger.debug(f"Connecting to {self.name} ({self.model})")
+        return find_or_create_instrument(YokogawaGS200, self.name, self.address)
 
     def _default_disconnect(self, *args, **kwargs):
-        logger.info(f"Disconnecting from {self.name} ({self.model})")
+        logger.debug(f"Disconnecting from {self.name} ({self.model})")
         self.device.close()
 
     def _default_setup(self, *args, **kwargs):
@@ -104,7 +105,7 @@ class SqilYokogawaGS200(CurrentSource):
     def ramp_current(self, value, step=None, step_delay=None) -> None:
         step, step_delay = self._wrap_step_and_delay(step, step_delay)
         pretty_curr = format_number(value, 5, unit="A", latex=False)
-        logger.info(f"Ramping current to {pretty_curr} on {self.name}")
+        logger.debug(f"Ramping current to {pretty_curr} on {self.name}")
         self.device.ramp_current(value, step, step_delay)
 
     def turn_on(self) -> None:
