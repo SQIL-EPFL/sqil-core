@@ -1,6 +1,7 @@
 import numpy as np
 
 _EXP_UNIT_MAP = {
+    -18: "a",
     -15: "p",
     -12: "f",
     -9: "n",
@@ -12,6 +13,7 @@ _EXP_UNIT_MAP = {
     9: "G",
     12: "T",
     15: "P",
+    18: "E",
 }
 
 PARAM_METADATA = {
