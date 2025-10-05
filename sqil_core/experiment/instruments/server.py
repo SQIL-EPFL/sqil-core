@@ -9,6 +9,8 @@ from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
 from sqil_core.experiment.instruments.current_source import current_source_factory
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
+from sqil_core.experiment.instruments.rf_source import rf_source_factory
+from sqil_core.experiment.instruments.vna import vna_factory
 from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
 from sqil_core.utils._read import read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module, _hash_file
@@ -17,6 +19,8 @@ _instrument_classes = {
     "LO": LocalOscillator,
     "ZI": ZI_Instrument,
     "CS": current_source_factory,
+    "RF": rf_source_factory,
+    "VNA": vna_factory,
 }
 
 
