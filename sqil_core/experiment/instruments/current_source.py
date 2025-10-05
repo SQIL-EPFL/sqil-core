@@ -20,7 +20,7 @@ class CurrentSource(Instrument, ABC):
 
         # Get additional parameters
         step = self.config.get("ramp_step", None)
-        delay = self.config.get("ramp_step_dealy", None)
+        delay = self.config.get("ramp_step_delay", None)
         if step is None:
             logger.warning(
                 f"No ramp step found for {self.name}, using default value of "
