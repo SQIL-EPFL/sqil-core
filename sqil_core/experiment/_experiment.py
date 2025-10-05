@@ -162,7 +162,10 @@ class ExperimentHandler(ABC):
             # following experiments
             QCodesInstrument.close_all()
             for instrument in self.instruments:
-                del instrument
+                try:
+                    instrument.disconnect()
+                finally:
+                    del instrument
 
     def run_with_plottr(self, *args, qu_ids=None, pulse_sheet=False, **kwargs):
         # Sanitize inputs
@@ -211,25 +214,25 @@ class ExperimentHandler(ABC):
             old_qubits = self.qpu.copy_quantum_elements()
             serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
 
-            # TODO: for index sweep don't recompile laboneq
             for sweep_idx in range(sweep_len) or [None]:
                 data_to_save = {qu_id: {} for qu_id in qu_ids}
+
+                # Reset to the first value of every sweep,
+                # then override current sweep value for all qubits
+                if sweep_idx is not None:
+                    for qu_id in qu_ids:
+                        sweep_values = sweep_grid[qu_id][sweep_idx]
+                        tmp = dict(zip(sweep_keys, sweep_values, strict=False))
+                        self.qpu[qu_id].update(**tmp)
 
                 # TODO: Handle a priori
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
                 # seq = self.sequence(*args, **run_kwargs)
                 # Detect if the sequence created a laboneq experiment
-                is_laboneq_exp = True
+                is_laboneq_exp = False
                 # is_laboneq_exp = type(seq) == LaboneQExperiment
 
                 if is_laboneq_exp:
-                    # Reset to the first value of every sweep,
-                    # then override current sweep value for all qubits
-                    if sweep_idx is not None:
-                        for qu_id in qu_ids:
-                            sweep_values = sweep_grid[qu_id][sweep_idx]
-                            tmp = dict(zip(sweep_keys, sweep_values, strict=False))
-                            self.qpu[qu_id].update(**tmp)
                     # Create the experiment (required to update params)
                     if sweep_keys != ["index"] or compiled_exp is None:
                         seq = self.sequence(*args, **run_kwargs)
@@ -262,8 +265,13 @@ class ExperimentHandler(ABC):
                         raw_data = result[data_key_corrected].result.data
                         data_to_save[data_key] = raw_data
                 else:
-                    # TODO: handle results for different instrumets
-                    data_to_save["data"] = seq
+                    before_sequence.send(sender=self)
+                    # TODO: multiple qubit support
+                    data_to_save["q0/data"] = self.sequence(*args, **run_kwargs)
+                    for p_name, p_idx in params_map.items():
+                        if p_name in datadict.keys():
+                            data_to_save[f"q0/{p_name}"] = args[p_idx]
+                    after_sequence.send(sender=self)
 
                 # Add parameters to the data to save
                 nested_datadict = unflatten_dict(datadict)
