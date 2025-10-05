@@ -209,7 +209,7 @@ def finalize_plot(
         fig.text(0.4, y_pos, "Experiment:   " + params_str, ha="left")
 
 
-def plot_mag_phase(path=None, datadict=None, raw=False):
+def plot_mag_phase(path=None, datadict=None, raw=False, transpose=False, plot=None):
     """
     Plot the magnitude and phase of complex measurement data from an db path or
     in-memorydictionary.
@@ -230,6 +230,8 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
     raw : bool, default False
         If True, skip normalization and background subtraction for 2D plots. Useful for
         viewing raw data.
+    transpose: bool, default False
+        Transposes the plot, swapping x and y axis.
 
     Returns
     -------
@@ -260,7 +262,10 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
     set_plot_style(plt)
 
     if len(sweeps) == 0:  # 1D plot
-        fig, axs = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
+        if plot is None:
+            fig, axs = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
+        else:
+            fig, axs = plot
 
         axs[0].plot(x_data_scaled, np.abs(y_data_scaled), "o")
         axs[0].set_ylabel("Magnitude" + y_unit)
@@ -273,7 +278,12 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
         axs[1].set_xlabel(x_info.name_and_unit)
         axs[1].set_ylabel("Phase [rad]")
     else:  # 2D plot
-        fig, axs = plt.subplots(1, 2, figsize=(24, 12), sharex=True, sharey=True)
+        if plot is not None:
+            fig, axs = plot
+        elif not transpose:
+            fig, axs = plt.subplots(1, 2, figsize=(24, 12), sharex=True, sharey=True)
+        else:
+            fig, axs = plt.subplots(2, 1, figsize=(20, 16), sharex=True, sharey=True)
 
         # Process mag and phase
         mag, phase = np.abs(y_data), np.unwrap(np.angle(y_data))
@@ -285,6 +295,12 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
         sweep0_info = sweep_info[0]
         sweep0_scaled = sweeps[0] * sweep0_info.scale
 
+        if transpose:
+            x_data_scaled = x_data_scaled[0, :]
+            x_data_scaled, sweep0_scaled = sweep0_scaled, x_data_scaled
+            mag, phase = mag.T, phase.T
+            x_info, sweep0_info = sweep0_info, x_info
+
         c0 = axs[0].pcolormesh(
             x_data_scaled, sweep0_scaled, mag, shading="auto", cmap="PuBu"
         )
@@ -293,8 +309,11 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
             axs[0].set_title("Magnitude" + y_unit)
         else:
             axs[0].set_title("Magnitude (normalized)")
-        axs[0].set_xlabel(x_info.name_and_unit)
+        if not transpose:
+            axs[0].set_xlabel(x_info.name_and_unit)
         axs[0].set_ylabel(sweep0_info.name_and_unit)
+        if transpose:
+            axs[0].tick_params(labelbottom=True)
 
         c1 = axs[1].pcolormesh(
             x_data_scaled, sweep0_scaled, phase, shading="auto", cmap="PuBu"
@@ -305,6 +324,8 @@ def plot_mag_phase(path=None, datadict=None, raw=False):
         else:
             axs[1].set_title("Phase (normalized)")
         axs[1].set_xlabel(x_info.name_and_unit)
+        if transpose:
+            axs[1].set_ylabel(sweep0_info.name_and_unit)
         axs[1].tick_params(labelleft=True)
         axs[1].xaxis.set_tick_params(
             which="both", labelleft=True
