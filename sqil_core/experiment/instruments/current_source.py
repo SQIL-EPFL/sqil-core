@@ -89,7 +89,7 @@ class SqilYokogawaGS200(CurrentSource):
             logger.info(" -> Source mode: current")
             self.device.source_mode("CURR")
         # Voltage limit
-        v_lim = self.config.get("voltage_limit", 5)
+        v_lim = self.config.get("voltage_limit", 1)
         logger.info(f" -> Voltage limit {v_lim} V")
         self.device.voltage_limit(v_lim)
         # Current range
