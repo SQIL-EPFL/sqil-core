@@ -102,6 +102,10 @@ class ExperimentHandler(ABC):
             clear_signal(after_experiment)
         instrument_instances = connect_instruments(instrument_dict)
 
+        # Get the generate QPU function
+        generate_qpu = self.setup.get("generate_qpu")
+        generate_qpu_args = []
+
         # Create Zurich Instruments session
         zi = cast(ZI_Instrument, instrument_instances.get("zi", None))
         if zi is not None:
@@ -109,12 +113,16 @@ class ExperimentHandler(ABC):
             # self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect(do_emulation=self.emulation)
-            self._load_qpu(zi.generate_qpu)
+            generate_qpu = zi.generate_qpu
+            generate_qpu_args = zi.setup
+
+        # Load QPU
+        self._load_qpu(generate_qpu, generate_qpu_args)
 
         self.instruments = Instruments(instrument_instances)
         self._setup_instruments()
 
-    def _load_qpu(self, generate_qpu: Callable):
+    def _load_qpu(self, generate_qpu: Callable, generate_qpu_args: list):
         qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
         db_path_local = self.setup["storage"]["db_path_local"]
         try:
@@ -124,7 +132,7 @@ class ExperimentHandler(ABC):
                 f"Cannot find QPU file name {qpu_filename} in {db_path_local}"
             )
             logger.warning(" -> Creating a new QPU file")
-            self.qpu = generate_qpu(self.zi_setup)
+            self.qpu = generate_qpu(*generate_qpu_args)
             os.makedirs(db_path_local, exist_ok=True)
             w_save(self.qpu, os.path.join(db_path_local, qpu_filename))
 
