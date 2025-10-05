@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 
-from qcodes.instrument_drivers.rohde_schwarz import RohdeSchwarzSGS100A
 from qcodes_contrib_drivers.drivers.SignalCore.SignalCore import SC5521A
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
+from sqil_core.experiment.instruments.rf_source import SqilRohdeSchwarzSGS100A
 from sqil_core.utils._formatter import format_number
 
 from .drivers.SignalCore_SC5511A import SignalCore_SC5511A
@@ -29,40 +29,6 @@ class LocalOscillatorBase(Instrument, ABC):
     @abstractmethod
     def turn_off(self) -> None:
         """Turn the local oscillator off."""
-
-
-class SqilRohdeSchwarzSGS100A(LocalOscillatorBase):
-    """
-    Frequency:
-        [1 MHz, 20 GHz], resolution 0.001 Hz
-    Power:
-        [-120 dB, 25 dB], resolution 0.01 dB
-    """
-
-    def _default_connect(self, *args, **kwargs):
-        logger.info(f"Connecting to {self.name} ({self.model})")
-        return RohdeSchwarzSGS100A(self.name, self.address)
-
-    def _default_disconnect(self, *args, **kwargs):
-        logger.info(f"Disconnecting from {self.name} ({self.model})")
-        self.turn_off()
-
-    def _default_setup(self, *args, **kwargs):
-        logger.info(f"Setting up {self.name}")
-        self.turn_off()
-        self.set_power(-60)
-
-    def set_frequency(self, value) -> None:
-        self.device.frequency(value)
-
-    def set_power(self, value) -> None:
-        self.device.power(value)
-
-    def turn_on(self) -> None:
-        self.device.on()
-
-    def turn_off(self) -> None:
-        self.device.off()
 
 
 class SqilSignalCoreSC5511A(LocalOscillatorBase):
@@ -149,7 +115,7 @@ class LocalOscillator(LocalOscillatorBase):
             self._device_class = SqilRohdeSchwarzSGS100A
         elif model == "SignalCore_SC5511A":
             self._device_class = SqilSignalCoreSC5511A
-        elif model == "SC5521A":
+        elif model == "SignalCore_SC5521A":
             self._device_class = SqilSignalCoreSC5521A
         else:
             raise ValueError(f"Unsupported model: {model}")
