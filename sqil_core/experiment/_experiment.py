@@ -20,6 +20,7 @@ from laboneq.simple import (
 )
 from laboneq.workflow.tasks import compile_experiment, run_experiment
 from qcodes import Instrument as QCodesInstrument
+from tqdm.auto import tqdm
 
 from sqil_core.config_log import logger
 from sqil_core.experiment._analysis import AnalysisResult
@@ -222,7 +223,8 @@ class ExperimentHandler(ABC):
             old_qubits = self.qpu.copy_quantum_elements()
             serializers.save(self.qpu, os.path.join(storage_path_local, "qpu_old.json"))
 
-            for sweep_idx in range(sweep_len) or [None]:
+            bar = tqdm(range(sweep_len), desc="Sweep") if sweep_len else [None]
+            for sweep_idx in bar:
                 data_to_save = {qu_id: {} for qu_id in qu_ids}
 
                 # Reset to the first value of every sweep,
