@@ -118,6 +118,31 @@ PARAM_METADATA = {
     "ef_T2": {"name": "T2", "symbol": "T_2", "unit": "s", "scale": 1e6},
     "ef_T2_star": {"name": "T2*", "symbol": "T_2^*", "unit": "s", "scale": 1e6},
     "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
+    # CW
+    "readout_power": {
+        "name": "Readout power",
+        "symbol": "P_{RO}",
+        "unit": "dBm",
+        "scale": 1,
+    },
+    "drive_power": {
+        "name": "Drive power",
+        "symbol": "P_{d}",
+        "unit": "dBm",
+        "scale": 1,
+    },
+    "readout_acquire_bandwith": {
+        "name": "Readout bandwidth",
+        "symbol": "BW_{RO}",
+        "unit": "",
+        "scale": 1,
+    },
+    "readout_acquire_averages": {
+        "name": "Readout averages",
+        "symbol": "AVG_{RO}",
+        "unit": "",
+        "scale": 1,
+    },
 }
 
 ONE_TONE_PARAMS = np.array(
