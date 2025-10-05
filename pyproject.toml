@@ -26,6 +26,7 @@ plottr = "^0.14.0"
 mpld3 = "^0.5.10"
 laboneq = "^2.57.0"
 laboneq-applications = "^2.11.0"
+tqdm = "^4.67.1"
 
 
 [tool.poetry.group.dev.dependencies]
