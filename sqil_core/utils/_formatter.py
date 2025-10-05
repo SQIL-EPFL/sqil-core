@@ -240,6 +240,11 @@ def enrich_qubit_params(qubit) -> ParamDict:
 def get_relevant_exp_parameters(
     qubit_params: ParamDict, exp_param_ids: list, sweep_ids: list, only_keys=True
 ):
+    # If current is not null, add it to relevant parameters
+    current_info = qubit_params.get("current", None)
+    if current_info is not None and current_info.value is not None:
+        exp_param_ids.append("current")
+
     # Filter out sweeps
     filtered = [id for id in exp_param_ids if id not in sweep_ids]
 
