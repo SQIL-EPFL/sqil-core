@@ -1,37 +1,9 @@
-# repos:
-#   - repo: https://github.com/psf/black
-#     rev: 24.10.0
-#     hooks:
-#       - id: black
-#         language_version: python3
-
-#   - repo: https://github.com/pre-commit/mirrors-isort
-#     rev: v6.1.0
-#     hooks:
-#       - id: isort
-#         language_version: python3
-
-# repos:
-# - repo: https://github.com/astral-sh/ruff-pre-commit
-#   # Ruff version.
-#   rev: v0.14.0
-#   hooks:
-#     # Run the linter.
-#     - id: ruff-check
-#       args: [--fix]
-#     # Run the formatter.
-#     - id: ruff-format
-#     - id: ruff-check
-
-
-
 repos:
   # isort: import sorting
   - repo: https://github.com/PyCQA/isort
     rev: 6.1.0
     hooks:
       - id: isort
-        name: isort (import sorting)
         args: ["--profile=black"]
 
   # Black: format code
@@ -39,11 +11,3 @@ repos:
     rev: 24.10.0
     hooks:
       - id: black
-        name: black (code formatter)
-
-  # Ruff: check lint errors
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.0
-    hooks:
-      - id: ruff
-        args: ["--fix"]
