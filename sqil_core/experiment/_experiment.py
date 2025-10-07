@@ -114,8 +114,7 @@ class ExperimentHandler(ABC):
             # self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect(do_emulation=self.emulation)
-            generate_qpu = zi.generate_qpu
-            generate_qpu_args = zi.setup
+            generate_qpu_args = [self.zi_setup]
 
         # Load QPU
         self._load_qpu(generate_qpu, generate_qpu_args)
@@ -239,12 +238,19 @@ class ExperimentHandler(ABC):
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
                 # seq = self.sequence(*args, **run_kwargs)
                 # Detect if the sequence created a laboneq experiment
-                is_laboneq_exp = False
+                is_laboneq_exp = True  # FIXME: IT"S EASY JUST FIX
                 # is_laboneq_exp = type(seq) == LaboneQExperiment
 
                 if is_laboneq_exp:
                     # Create the experiment (required to update params)
-                    if sweep_keys != ["index"] or compiled_exp is None:
+                    # TODO: rewrite this wtf
+                    if (
+                        not (
+                            sweep_keys not in ["index", "current"]
+                            and compiled_exp is not None
+                        )
+                        or compiled_exp is None
+                    ):
                         seq = self.sequence(*args, **run_kwargs)
                         compiled_exp = compile_experiment(self.zi_session, seq)
                         if pulse_sheet:
