@@ -12,4 +12,5 @@ def w_save(obj, path):
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 
-"maybe I need to add something here1"
+x = "maybe I need to add something here1"
+y = x(  )
