@@ -14,3 +14,6 @@ def w_save(obj, path):
 
 with open("test", "r", encoding="utf-8") as f:
     pass
+
+with open("test", "r", encoding="utf-8") as f:
+    pass
