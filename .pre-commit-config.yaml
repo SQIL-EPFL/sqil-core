@@ -1,24 +1,12 @@
-# repos:
-#   - repo: https://github.com/psf/black
-#     rev: 24.10.0
-#     hooks:
-#       - id: black
-#         language_version: python3
-
-#   - repo: https://github.com/pre-commit/mirrors-isort
-#     rev: v5.9.3
-#     hooks:
-#       - id: isort
-#         language_version: python3
-
 repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.12.9
-  hooks:
-    # Run the linter.
-    - id: ruff-check
-      args: [--fix]
-    # Run the formatter.
-    - id: ruff-format
-    - id: ruff-check
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.9.3
+    hooks:
+      - id: isort
+        language_version: python3

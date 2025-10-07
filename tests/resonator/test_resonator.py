@@ -147,19 +147,19 @@ class TestQuickFit:
 
             # Check the positional or keyword arguments for fr and Q_tot
             if len(call_args) >= 4:  # If passed as positional args
-                assert call_args[3] == guess_fr, (
-                    "fr was changed before phase_vs_freq fit"
-                )
-                assert call_args[2] == guess_Q_tot, (
-                    "Q_tot was changed before phase_vs_freq fit"
-                )
+                assert (
+                    call_args[3] == guess_fr
+                ), "fr was changed before phase_vs_freq fit"
+                assert (
+                    call_args[2] == guess_Q_tot
+                ), "Q_tot was changed before phase_vs_freq fit"
             else:  # If passed as keyword args
-                assert call_kwargs.get("fr") == guess_fr, (
-                    "fr was changed before phase_vs_freq fit"
-                )
-                assert call_kwargs.get("Q_tot") == guess_Q_tot, (
-                    "Q_tot was changed before phase_vs_freq fit"
-                )
+                assert (
+                    call_kwargs.get("fr") == guess_fr
+                ), "fr was changed before phase_vs_freq fit"
+                assert (
+                    call_kwargs.get("Q_tot") == guess_Q_tot
+                ), "Q_tot was changed before phase_vs_freq fit"
 
     @patch("sqil_core.resonator._resonator.fit_lorentzian")
     @patch("sqil_core.resonator._resonator.fit_skewed_lorentzian")
