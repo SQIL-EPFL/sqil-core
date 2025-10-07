@@ -6,19 +6,53 @@
 #         language_version: python3
 
 #   - repo: https://github.com/pre-commit/mirrors-isort
-#     rev: v5.9.3
+#     rev: v6.1.0
 #     hooks:
 #       - id: isort
 #         language_version: python3
 
+# repos:
+# - repo: https://github.com/astral-sh/ruff-pre-commit
+#   # Ruff version.
+#   rev: v0.14.0
+#   hooks:
+#     # Run the linter.
+#     - id: ruff-check
+#       args: [--fix]
+#     # Run the formatter.
+#     - id: ruff-format
+#     - id: ruff-check
+
+
+
 repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.12.9
-  hooks:
-    # Run the linter.
-    - id: ruff-check
-      args: [--fix]
-    # Run the formatter.
-    - id: ruff-format
-    - id: ruff-check
+  # Ruff: fix safe issues first
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.4
+    hooks:
+      - id: ruff
+        name: ruff (auto-fix safe issues)
+        args: ["--fix"]
+
+  # isort: import sorting (after Ruff removed unused ones)
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (import sorting)
+        args: ["--profile=black"]
+
+  # Black: format code
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: black (code formatter)
+
+  # Ruff: check again — fail if any lint errors remain
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.4
+    hooks:
+      - id: ruff
+        name: ruff (final check)
+        args: ["--exit-non-zero-on-fix"]
