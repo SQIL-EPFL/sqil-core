@@ -58,7 +58,7 @@ def format_number(
     exp_name = _EXP_UNIT_MAP.get(exponent, None)
     # If the exponent value is not mapped to a name
     if exp_name is None:
-        return exp_form
+        return f"{exp_form} {unit}" if unit else exp_form
     # Apply precision to the base
     precision = max(precision, 3)
     base_precise = _cut_to_significant_digits(base, precision + 1)
