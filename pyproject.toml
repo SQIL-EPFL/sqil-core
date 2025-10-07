@@ -36,35 +36,72 @@ mkdocs-material = "^9.5.48"
 mkdocstrings-python = "^1.12.2"
 pytest = "^8.3.4"
 mkdocs-jupyter = "^0.25.1"
-ruff = "^0.12.9"
+isort = "^6.1.0"
+ruff = "^0.14.0"
+black = "^24.10.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | build
+    | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+known_first_party = ["sqil-core"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-exclude = [
-    ".git", ".venv", "build", "dist", "*.ipynb",
-    "sqil_core/experiment/instruments/drivers/SignalCore_SC5511A.py",
-    "sqil_core/experiment/data/plottr.py"
-]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "lf"
 
 [tool.ruff.lint]
-select = ["F", "E", "Q", "I", "B", "W"]
-ignore = ["COM812", "ISC001"]
-extend-select = []
+select = [
+    "F",  # pyflakes — undefined names, unused imports, etc.
+    "B",  # flake8-bugbear — common bugs
+    "E9", # syntax/runtime errors
+    "UP", # pyupgrade — outdated syntax
+    "S",  # security issues (bandit)
+]
 
-[tool.ruff.lint.isort]
-known-first-party = ["sqil-core"]
-combine-as-imports = true
+# Explicitly ignore all stylistic rule families
+ignore = [
+    "E",   # pycodestyle formatting errors
+    "W",   # pycodestyle warnings
+    "C90", # complexity
+    "N",   # naming conventions
+    "D",   # docstrings
+    "ANN", # type annotation style
+    "Q",   # quotes
+    "COM", # commas
+    "ISC", # string concatenation
+    "TID", # tidy imports
+    "T20", # print statements
+]
 
-[tool.ruff.lint.pycodestyle]
-max-doc-length = 1000
+# Optional: exclude common directories
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+    "sqil_core/experiment/instruments/drivers/RohdeSchwarzZNB.py",
+    "sqil_core/experiment/instruments/drivers/SignalCore_SC5511A.py",
+    "sqil_core/experiment/instruments/drivers/Yokogawa_GS200.py",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]                            # Allow assert in tests
+"*.ipynb" = ["B018"]                             # Allow useless expressions in notebooks
+"sqil_core/experiment/data/plottr.py" = ["S101"]
+"scripts.py" = ["S607"]
