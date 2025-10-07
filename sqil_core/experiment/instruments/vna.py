@@ -30,6 +30,12 @@ class VNA(Instrument, ABC):
         self.s_param = s_param
 
     def _default_on_before_experiment(self, *args, sender=None, **kwargs):
+        bandwidth = self.get_variable("bandwidth", sender)
+        averages = self.get_variable("averages", sender)
+        if bandwidth:
+            self.set_bandwidth(bandwidth)
+        if averages:
+            self.set_averages(averages)
         self.turn_on()
 
     def _default_on_before_sequence(self, *args, sender=None, **kwargs):
@@ -67,14 +73,6 @@ class VNA(Instrument, ABC):
     @abstractmethod
     def get_IQ_data(self) -> ndarray:
         pass
-
-    def set_effective_bandwidth(self, value) -> None:
-        if value > 1:
-            self.set_bandwidth(value)
-            self.set_averages(1)
-        else:
-            self.set_bandwidth(1)
-            self.set_averages(int(1 / value))
 
     def turn_on(self) -> None:
         logger.debug(f"Turning on {self.name}")
