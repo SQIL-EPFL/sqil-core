@@ -26,34 +26,25 @@
 
 
 repos:
+  # isort: import sorting
+  - repo: https://github.com/PyCQA/isort
+    rev: 6.1.0
+    hooks:
+      - id: isort
+        name: isort (import sorting)
+        args: ["--profile=black"]
+
+  # Black: format code
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: black (code formatter)
+
+  # Ruff: check lint errors
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
     rev: v0.14.0
     hooks:
-      # Run the linter.
-      - id: ruff-check
-        args: [ --fix ]
-        stages: [pre-commit]
-
-  # isort: import sorting (after Ruff removed unused ones)
-  # - repo: https://github.com/PyCQA/isort
-  #   rev: 6.1.0
-  #   hooks:
-  #     - id: isort
-  #       name: isort (import sorting)
-  #       args: ["--profile=black"]
-
-  # # Black: format code
-  # - repo: https://github.com/psf/black
-  #   rev: 24.10.0
-  #   hooks:
-  #     - id: black
-  #       name: black (code formatter)
-
-  # # Ruff: check again — fail if any lint errors remain
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.14.0
-  #   hooks:
-  #     - id: ruff
-  #       name: ruff (final check)
-  #       args: ["--exit-non-zero-on-fix"]
+      - id: ruff
+        name: ruff (final check)
+        args: ["--exit-non-zero-on-fix"]
