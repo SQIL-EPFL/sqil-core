@@ -243,7 +243,7 @@ def get_relevant_exp_parameters(
     # If current is not null, add it to relevant parameters
     current_info = qubit_params.get("current", None)
     if current_info is not None and current_info.value is not None:
-        exp_param_ids.append("current")
+        exp_param_ids = [*exp_param_ids, "current"]
 
     # Filter out sweeps
     filtered = [id for id in exp_param_ids if id not in sweep_ids]
