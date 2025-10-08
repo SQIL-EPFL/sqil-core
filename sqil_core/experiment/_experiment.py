@@ -65,14 +65,12 @@ class ExperimentHandler(ABC):
     zi_setup: DeviceSetup
     zi_session: Session
     qpu: QPU
+    is_zi_exp: bool | None = None
 
     db_schema: dict = None
 
     def __init__(
-        self,
-        setup_path: str = "",
-        emulation=False,
-        server=False,
+        self, setup_path: str = "", emulation=False, server=False, is_zi_exp=None
     ):
         self.emulation = emulation
         if self.emulation:
@@ -113,6 +111,9 @@ class ExperimentHandler(ABC):
             self.zi_session = Session(self.zi_setup)
             self.zi_session.connect(do_emulation=self.emulation)
             generate_qpu_args = [self.zi_setup]
+
+        if is_zi_exp is None:
+            self.is_zi_exp = zi is not None
 
         # Load QPU
         self._load_qpu(generate_qpu, generate_qpu_args)
@@ -231,14 +232,9 @@ class ExperimentHandler(ABC):
                         sweep_values = sweep_grid[qu_id][sweep_idx]
                         tmp = dict(zip(sweep_keys, sweep_values, strict=False))
                         self.qpu[qu_id].update(**tmp)
-                # TODO: Handle a priori
-                # Run/create the experiment. Creates it for laboneq, runs it otherwise
-                # seq = self.sequence(*args, **run_kwargs)
-                # Detect if the sequence created a laboneq experiment
-                is_laboneq_exp = True  # FIXME: IT"S EASY JUST FIX
-                # is_laboneq_exp = type(seq) == LaboneQExperiment
 
-                if is_laboneq_exp:
+                # Run/create the experiment. Creates it for laboneq, runs it otherwise
+                if self.is_zi_exp:
                     # Create the experiment (required to update params)
                     if compiled_exp is None or sweep_keys not in ["index", "current"]:
                         seq = self.sequence(*args, **run_kwargs)
@@ -332,10 +328,10 @@ class ExperimentHandler(ABC):
         before_experiment.send(sender=self)
 
         seq = self.sequence(*args, **kwargs)
-        is_laboneq_exp = type(seq) is LaboneQExperiment
+        self.is_zi_exp = type(seq) is LaboneQExperiment
         result = None
 
-        if is_laboneq_exp:
+        if self.is_zi_exp:
             compiled_exp = compile_experiment(self.zi_session, seq)
             result = run_experiment(self.zi_session, compiled_exp)
         else:
