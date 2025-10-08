@@ -231,7 +231,6 @@ class ExperimentHandler(ABC):
                         sweep_values = sweep_grid[qu_id][sweep_idx]
                         tmp = dict(zip(sweep_keys, sweep_values, strict=False))
                         self.qpu[qu_id].update(**tmp)
-
                 # TODO: Handle a priori
                 # Run/create the experiment. Creates it for laboneq, runs it otherwise
                 # seq = self.sequence(*args, **run_kwargs)
@@ -241,14 +240,7 @@ class ExperimentHandler(ABC):
 
                 if is_laboneq_exp:
                     # Create the experiment (required to update params)
-                    # TODO: rewrite this wtf
-                    if (
-                        not (
-                            sweep_keys not in ["index", "current"]
-                            and compiled_exp is not None
-                        )
-                        or compiled_exp is None
-                    ):
+                    if compiled_exp is None or sweep_keys not in ["index", "current"]:
                         seq = self.sequence(*args, **run_kwargs)
                         compiled_exp = compile_experiment(self.zi_session, seq)
                         if pulse_sheet:
