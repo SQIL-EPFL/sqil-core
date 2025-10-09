@@ -263,13 +263,20 @@ class ExperimentHandler(ABC):
                     before_sequence.send(sender=self)
                     result = run_experiment(self.zi_session, compiled_exp)
                     after_sequence.send(sender=self)
+
                     for data_key in data_keys:
                         data_key_corrected = data_key
-                        if data_key.split("/")[-1] == "data" and data_key not in result:
-                            data_key_corrected = data_key.split("/")[0]
-                        raw_data = result[data_key_corrected].result.data
-                        # raw_data = result.get_data(data_key_corrected)
-                        data_to_save[data_key] = raw_data
+                        split_key = np.array(data_key.split("/"))
+                        if data_key not in result:
+                            # Experiment has no explicit handle handle
+                            if split_key[-1] == "data" and data_key not in result:
+                                data_key_corrected = f"{split_key[0]}/result"
+                            # Only cal traces are returned - used for IQ blobs
+                            elif "cal_trace" in result.data[qu_ids[0]]:
+                                data_key_corrected = f"{split_key[0]}/cal_trace/{'/'.join(split_key[1:])}"
+                        else:
+                            data_key_corrected = f"{data_key}/result"
+                        data_to_save[data_key] = result.get_data(data_key_corrected)
                 else:
                     before_sequence.send(sender=self)
                     # TODO: multiple qubit support
