@@ -168,7 +168,6 @@ def get_data_and_info(path=None, datadict=None):
             datadict_map["y_data"], schema[datadict_map["y_data"]]
         )
         x_info = None
-        print(datadict_map["x_data"])
         if datadict_map["x_data"]:
             x_info = param_info_from_schema(
                 datadict_map["x_data"], schema[datadict_map["x_data"]]
