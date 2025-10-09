@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import logging
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -107,8 +108,7 @@ class ExperimentHandler(ABC):
         zi = cast(ZI_Instrument, instrument_instances.get("zi", None))
         if zi is not None:
             self.zi_setup = zi.generate_setup()
-            # self.zi_setup = DeviceSetup.from_descriptor(zi.descriptor, zi.address)
-            self.zi_session = Session(self.zi_setup)
+            self.zi_session = Session(self.zi_setup, log_level=logging.WARN)
             self.zi_session.connect(do_emulation=self.emulation)
             generate_qpu_args = [self.zi_setup]
 
@@ -239,6 +239,9 @@ class ExperimentHandler(ABC):
                     if compiled_exp is None or sweep_keys not in ["index", "current"]:
                         seq = self.sequence(*args, **run_kwargs)
                         compiled_exp = compile_experiment(self.zi_session, seq)
+                        logger.info(
+                            f"*** ZI estimated runtime: {compiled_exp.estimated_runtime:.2f} s ***"
+                        )
                         if pulse_sheet:
                             end_time = (
                                 pulse_sheet
@@ -265,6 +268,7 @@ class ExperimentHandler(ABC):
                         if data_key.split("/")[-1] == "data" and data_key not in result:
                             data_key_corrected = data_key.split("/")[0]
                         raw_data = result[data_key_corrected].result.data
+                        # raw_data = result.get_data(data_key_corrected)
                         data_to_save[data_key] = raw_data
                 else:
                     before_sequence.send(sender=self)
@@ -285,6 +289,13 @@ class ExperimentHandler(ABC):
                             nested_data_to_save[qu_id][p_name] = args[p_idx][
                                 qubit_order[qu_id]
                             ]
+                # Add parameters that are not axis
+                non_axis_params = {}
+                for p_name, db_info in db_schema.items():
+                    if db_info.get("role") == "param":
+                        p_idx = params_map.get(p_name)
+                        non_axis_params[p_name] = args[p_idx]
+                    datadict.add_meta("params", json.dumps(non_axis_params))
                 # Add sweeps to the data to save
                 if sweeps is not None:
                     for qu_id in qu_ids:

@@ -61,6 +61,7 @@ def extract_h5_data(
         if get_metadata:
             metadata["schema"] = json.loads(data.attrs.get("__schema__", "null"))
             metadata["qu_ids"] = json.loads(data.attrs.get("__qu_ids__", "null"))
+            metadata["params"] = json.loads(data.attrs.get("__params__", "null"))
 
         # Extract only the requested keys
         if bool(keys) and (len(keys) > 0):
@@ -163,12 +164,15 @@ def get_data_and_info(path=None, datadict=None):
         x_data, y_data, sweeps, datadict_map = mapped_data[qu_id]
 
         # Get metadata on x_data and y_data
-        x_info = param_info_from_schema(
-            datadict_map["x_data"], schema[datadict_map["x_data"]]
-        )
         y_info = param_info_from_schema(
             datadict_map["y_data"], schema[datadict_map["y_data"]]
         )
+        x_info = None
+        print(datadict_map["x_data"])
+        if datadict_map["x_data"]:
+            x_info = param_info_from_schema(
+                datadict_map["x_data"], schema[datadict_map["x_data"]]
+            )
 
         sweep_info = []
         for sweep_key in datadict_map["sweeps"]:
