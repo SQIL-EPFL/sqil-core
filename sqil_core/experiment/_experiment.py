@@ -67,6 +67,7 @@ class ExperimentHandler(ABC):
     zi_session: Session
     qpu: QPU
     is_zi_exp: bool | None = None
+    save_zi_result: bool = False
 
     db_schema: dict = None
 
@@ -264,6 +265,11 @@ class ExperimentHandler(ABC):
                     result = run_experiment(self.zi_session, compiled_exp)
                     after_sequence.send(sender=self)
 
+                    if self.save_zi_result:
+                        serializers.save(
+                            result, os.path.join(storage_path_local, "zi_result.json")
+                        )
+
                     for data_key in data_keys:
                         data_key_corrected = data_key
                         split_key = np.array(data_key.split("/"))
@@ -320,6 +326,7 @@ class ExperimentHandler(ABC):
         self.qpu = QPU(old_qubits, self.qpu.quantum_operations)
 
         # Run analysis script
+        anal_res = None
         try:
             anal_res = self.analyze(storage_path_local, *args, **run_kwargs)
             if type(anal_res) is AnalysisResult:
@@ -341,6 +348,8 @@ class ExperimentHandler(ABC):
 
         # Copy the local folder to the server
         copy_folder(storage_path_local, storage_path)
+
+        return anal_res
 
     def run_raw(self, *args, **kwargs):
         before_experiment.send(sender=self)
