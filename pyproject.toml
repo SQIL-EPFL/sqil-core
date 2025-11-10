@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqil-core"
-version = "1.1.0"
+version = "1.1.1"
 description = "The codebase of the SQIL group in EPFL"
 authors = ["Andrea Duina"]
 readme = "README.md"
@@ -11,7 +11,7 @@ docs-dev = "scripts:docs_dev"
 docs-build = "scripts:docs_build"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
+python = "^3.12"
 scipy = "^1.14.1"
 h5py = "^3.12.1"
 matplotlib = "^3.9.3"
@@ -24,9 +24,9 @@ qcodes-contrib-drivers = "^0.23.0"
 blinker = "^1.9.0"
 plottr = "^0.14.0"
 mpld3 = "^0.5.10"
-laboneq = "^2.57.0"
-laboneq-applications = "^2.11.0"
 tqdm = "^4.67.1"
+laboneq = "^25.10.0"
+laboneq-applications = "^25.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
