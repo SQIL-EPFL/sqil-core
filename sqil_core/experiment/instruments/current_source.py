@@ -98,7 +98,7 @@ class SqilYokogawaGS200(CurrentSource):
         logger.info(f" -> Current range {i_range} A")
         self.device.current_range(i_range)
         # Set current to 0, turn on and disconnect
-        self.ramp_current(0)
+        # self.ramp_current(0)
         self.turn_on()
         self.disconnect()
 
