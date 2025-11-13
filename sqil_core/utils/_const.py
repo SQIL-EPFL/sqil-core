@@ -143,6 +143,30 @@ PARAM_METADATA = {
         "unit": "",
         "scale": 1,
     },
+    "aux_reset_delay_length": {
+        "name": "Aux reset delay",
+        "symbol": "T_{reset}^{AUX}",
+        "unit": "s",
+        "scale": 1e6,
+    },
+    "aux_drive_length": {
+        "name": "Aux drive length",
+        "symbol": "T_{AUX}",
+        "unit": "s",
+        "scale": 1,
+    },
+    "aux_drive_amplitude": {
+        "name": "Aux drive amplitude",
+        "symbol": "A_{AUX}",
+        "unit": "",
+        "scale": 1,
+    },
+    "aux_frequency": {
+        "name": "Aux frequency",
+        "symbol": "f_{AUX}",
+        "unit": "Hz",
+        "scale": 1e-9,
+    },
 }
 
 ONE_TONE_PARAMS = np.array(
