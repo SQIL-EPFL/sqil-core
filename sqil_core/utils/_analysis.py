@@ -567,8 +567,8 @@ def mask_outliers(data: np.ndarray | list, threshold: float = 3.5) -> np.ndarray
     """
     data = np.asarray(data, dtype=float)
 
-    med = np.median(data)
-    mad = np.median(np.abs(data - med))
+    med = np.nanmedian(data)
+    mad = np.nanmedian(np.abs(data - med))
 
     if mad == 0:
         return data.copy()

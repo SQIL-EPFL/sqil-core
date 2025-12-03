@@ -426,3 +426,10 @@ class TestMaskOutliers:
         data = [1, 2, 3, 100]
         result = mask_outliers(data)
         assert result.dtype == float
+
+    def test_should_work_with_nans(self):
+        data = np.array([1, -2, 100, np.nan, 7])
+        result = mask_outliers(data)
+        assert np.isnan(result[2])
+        assert np.isnan(result[3])
+        assert np.all(result[[0, 1, 4]] == data[[0, 1, 4]])
