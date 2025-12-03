@@ -8,6 +8,7 @@ from ._analysis import (
     get_peaks,
     line_between_2_points,
     linear_interpolation,
+    mask_outliers,
     remove_linear_background,
     remove_offset,
     soft_normalize,
@@ -60,6 +61,7 @@ __all__ = [
     "compute_fft",
     "get_peaks",
     "amplitude_to_power_dBm",
+    "mask_outliers",
     # Const
     "PARAM_METADATA",
     "ONE_TONE_PARAMS",

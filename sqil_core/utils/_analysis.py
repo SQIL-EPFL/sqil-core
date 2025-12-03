@@ -540,3 +540,40 @@ def amplitude_to_power_dBm(amplitude, offset_dBm=10):
         Power [dBm]
     """
     return offset_dBm + 20 * np.log10(amplitude)
+
+
+def mask_outliers(data: np.ndarray | list, threshold: float = 3.5) -> np.ndarray:
+    """
+    Detect outliers by comparing each value to the median of the data and measuring
+    its deviation using the Median Absolute Deviation (MAD), which is minimally
+    affectedy by extreme values.
+
+    For each data point x:
+        modified_z = 0.6745 * |x - median| / MAD
+
+    Any point with modified_z >= threshold is replaced with np.nan.
+
+    Parameters
+    ----------
+    data : array-like
+        Input data, 1D.
+    threshold : float
+        Modified Z-score threshold for detecting outliers (default 3.5).
+
+    Returns
+    -------
+    np.ndarray
+        Array where outliers are replaced with np.nan.
+    """
+    data = np.asarray(data, dtype=float)
+
+    med = np.median(data)
+    mad = np.median(np.abs(data - med))
+
+    if mad == 0:
+        return data.copy()
+
+    modified_z = 0.6745 * (data - med) / mad
+    modified_z = np.abs(modified_z)
+
+    return np.where(modified_z < threshold, data, np.nan)

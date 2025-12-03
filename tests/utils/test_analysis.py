@@ -7,6 +7,7 @@ from sqil_core.utils import (
     find_first_minima_idx,
     line_between_2_points,
     linear_interpolation,
+    mask_outliers,
     remove_linear_background,
     soft_normalize,
 )
@@ -376,3 +377,52 @@ class TestFindFirstMinimaIdx:
     # def test_should_return_minimum_in_middle_of_plateau(self):
     #     data = np.array([5, 3, 3, 3, 4])
     #     idx = find_first_minima_idx
+
+
+class TestMaskOutliers:
+
+    @pytest.fixture
+    def basic_data(self):
+        return np.array([10, 12, 11, 13, 100, 12, 11])
+
+    @pytest.fixture
+    def no_outliers(self):
+        return np.array([10, 11, 12, 13, 14, 15])
+
+    def test_should_mask_high_outliers(self, basic_data):
+        result = mask_outliers(basic_data)
+        assert np.isnan(result[4])
+        # Non-outliers remain unchanged
+        assert np.all(result[[0, 1, 2, 3, 5, 6]] == basic_data[[0, 1, 2, 3, 5, 6]])
+
+    def test_should_return_same_array_when_no_outliers(self, no_outliers):
+        result = mask_outliers(no_outliers)
+        assert np.all(result == no_outliers)
+
+    def test_should_handle_list_input(self):
+        data = [10, 12, 11, 13, 100, 12, 11]
+        result = mask_outliers(data)
+        assert np.isnan(result[4])
+        assert isinstance(result, np.ndarray)
+
+    def test_should_handle_all_identical_values(self):
+        data = np.array([5, 5, 5, 5, 5])
+        result = mask_outliers(data)
+        # MAD is zero, so data should remain unchanged
+        assert np.all(result == data)
+
+    def test_should_handle_negative_values(self):
+        data = np.array([-10, -12, -11, -13, -100, -12, -11])
+        result = mask_outliers(data)
+        assert np.isnan(result[4])
+        assert np.all(result[[0, 1, 2, 3, 5, 6]] == data[[0, 1, 2, 3, 5, 6]])
+
+    def test_should_respect_custom_threshold(self, basic_data):
+        # Increase threshold so extreme value is not masked
+        result = mask_outliers(basic_data, threshold=100)
+        assert not np.isnan(result[4])
+
+    def test_should_return_float_array(self):
+        data = [1, 2, 3, 100]
+        result = mask_outliers(data)
+        assert result.dtype == float
