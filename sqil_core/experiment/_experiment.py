@@ -333,7 +333,7 @@ class ExperimentHandler(ABC):
                 anal_res = cast(AnalysisResult, anal_res)
                 anal_res.save_all(storage_path_local)
                 # Update QPU
-                if not kwargs.get("no_update", False):
+                if kwargs.get("update_params", True):
                     for qu_id in anal_res.updated_params.keys():
                         qubit = self.qpu[qu_id]
                         qubit.update(**anal_res.updated_params[qu_id])
