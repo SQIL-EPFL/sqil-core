@@ -70,6 +70,7 @@ class ExperimentHandler(ABC):
     save_zi_result: bool = False
 
     db_schema: dict = None
+    _run_args: tuple[list, dict] = ([], {})
 
     def __init__(
         self,
@@ -89,7 +90,6 @@ class ExperimentHandler(ABC):
             config = read_yaml("config.yaml")
             setup_path = config.get("setup_path", "setup.py")
         self.setup = _extract_variables_from_module("setup", setup_path)
-
         self.qpu = qpu
 
         if no_instruments == True:
@@ -117,6 +117,12 @@ class ExperimentHandler(ABC):
             clear_signal(before_sequence)
             clear_signal(after_sequence)
             clear_signal(after_experiment)
+
+        # Subscribe experiment (not instruments) to events
+        before_experiment.connect(self.on_before_experiment, weak=False)
+        after_experiment.connect(self.on_after_experiment, weak=False)
+
+        # Connect to instruments
         instrument_instances = connect_instruments(instrument_dict)
 
         # Get the generate QPU function
@@ -176,6 +182,12 @@ class ExperimentHandler(ABC):
     def analyze(self, path, *args, **kwargs):
         pass
 
+    def on_before_experiment(self, *args, **kwargs):
+        pass
+
+    def on_after_experiment(self, *args, **kwargs):
+        pass
+
     def run(self, *args, **kwargs):
         try:
             db_type = self.setup.get("storage", {}).get("db_type", "")
@@ -200,6 +212,7 @@ class ExperimentHandler(ABC):
             qu_ids = ["q0"]
         qu_ids = make_iterable(qu_ids)
         run_kwargs = {**kwargs, "qu_ids": qu_ids, "pulse_sheet": pulse_sheet}
+        self._run_args = (args, run_kwargs)
 
         # Before experiment
         logger.info("Before exp")
@@ -513,6 +526,11 @@ class ExperimentHandler(ABC):
         """Get a qubit parameter value from the QPU."""
         params = self.qpu[qu_id].parameters
         return attrs.asdict(params).get(param_id)
+
+    @property
+    def run_args(self) -> tuple[list, dict]:
+        """Returns args and kwargs used to run the experiment."""
+        return self._run_args
 
 
 def parse_sweeps(sweeps, qu_ids):
