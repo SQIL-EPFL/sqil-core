@@ -72,7 +72,13 @@ class ExperimentHandler(ABC):
     db_schema: dict = None
 
     def __init__(
-        self, setup_path: str = "", emulation=False, server=False, is_zi_exp=None
+        self,
+        setup_path: str = "",
+        emulation=False,
+        server=False,
+        is_zi_exp=None,
+        no_instruments=False,
+        qpu=None,
     ):
         self.emulation = emulation
         if self.emulation:
@@ -83,6 +89,18 @@ class ExperimentHandler(ABC):
             config = read_yaml("config.yaml")
             setup_path = config.get("setup_path", "setup.py")
         self.setup = _extract_variables_from_module("setup", setup_path)
+
+        self.qpu = qpu
+
+        if no_instruments == True:
+            # Load QPU
+            if self.qpu is None:
+                generate_qpu = self.setup.get("generate_qpu")
+                generate_qpu_args = []
+                self._load_qpu(generate_qpu, generate_qpu_args)
+            self.is_zi_exp = False
+            self.instruments = Instruments({})
+            return
 
         # Get instruments through the server or connect locally
         if server:
@@ -117,7 +135,8 @@ class ExperimentHandler(ABC):
             self.is_zi_exp = zi is not None
 
         # Load QPU
-        self._load_qpu(generate_qpu, generate_qpu_args)
+        if self.qpu is None:
+            self._load_qpu(generate_qpu, generate_qpu_args)
 
         self.instruments = Instruments(instrument_instances)
         self._setup_instruments()
@@ -286,7 +305,13 @@ class ExperimentHandler(ABC):
                 else:
                     before_sequence.send(sender=self)
                     # TODO: multiple qubit support
-                    data_to_save["q0/data"] = self.sequence(*args, **run_kwargs)
+                    seq_res = self.sequence(*args, **run_kwargs)
+                    if type(seq_res) is dict:
+                        for qu_id in qu_ids:
+                            for key, value in seq_res.items():
+                                data_to_save[f"{qu_id}/{key}"] = value
+                    else:
+                        data_to_save["q0/data"] = seq_res
                     for p_name, p_idx in params_map.items():
                         if p_name in datadict.keys():
                             data_to_save[f"q0/{p_name}"] = args[p_idx]
@@ -367,6 +392,25 @@ class ExperimentHandler(ABC):
         after_experiment.send(sender=self)
 
         return result
+
+    def custom_plottr(self, logic, db_schema, qu_ids=["q0"]):
+        # Create the plotter datadict (database)
+        datadict = build_plottr_dict(db_schema, qu_ids=qu_ids)
+        # Get local and server storage folders
+        db_path = self.setup["storage"]["db_path"]
+        db_path_local = self.setup["storage"]["db_path_local"]
+        with DDH5Writer(datadict, db_path_local, name=self.exp_name) as writer:
+            # Get the path to the folder where the data will be stored
+            storage_path = get_plottr_path(writer, db_path)
+            storage_path_local = get_plottr_path(writer, db_path_local)
+            # Save helper files
+            writer.save_text("paths.md", f"{storage_path_local}\n{storage_path}")
+
+            # Run custom logic
+            logic(datadict)
+
+            # Copy the local folder to the server
+            copy_folder(storage_path_local, storage_path)
 
     def sweep_around(
         self,
