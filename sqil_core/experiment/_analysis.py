@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from functools import wraps
 from pathlib import Path
@@ -24,10 +25,12 @@ if TYPE_CHECKING:
 
 class AnalysisResult:
     """
-    Container for storing and managing results from a quantum measurement analysis.
+    Container for storing and managing results from a measurement analysis.
 
     Attributes
     ----------
+    output : dict
+        Dictionary of generic outputs that don't fit into other categories
     updated_params : dict[str, dict]
         Dictionary containing the updated parameters for each qubit.
     figures : dict[str, matplotlib.figure.Figure]
@@ -41,6 +44,8 @@ class AnalysisResult:
     -------
     add_exp_info_to_figures(dir_path)
         Annotates each figure with experiment ID and cooldown name from directory path.
+    save_output(dir_path)
+        Saves the generic output dictionary as a JSON file.
     save_figures(dir_path)
         Saves all figures as PNG and interactive HTML using mpld3.
     aggregate_fit_summaries()
@@ -48,23 +53,31 @@ class AnalysisResult:
     save_fits(dir_path)
         Saves aggregated fit summaries to a markdown file.
     save_extra_data(dir_path)
-        Saves extra data arrays into an HDF5 file.
+        Stores auxiliary numerical data in an HDF5 file.
     save_all(dir_path)
         Runs all save methods and annotates figures with experimental metadata.
+    update(new_anal_res)
+        Merges another `AnalysisResult` instance into the current one.
     """
 
+    output: dict = {}
     updated_params: dict[str, dict] = {}
     figures: dict[str, Figure] = {}
     fits: dict[str, FitResult] = {}
     extra_data: dict[str, np.ndarray] = {}
+    data_path: str = ""
 
     def __init__(
         self,
+        data_path: str = None,
+        output: dict = None,
         updated_params: dict[str, dict] = None,
         figures: dict[str, Figure] = None,
         fits: dict[str, FitResult] = None,
         extra_data: dict[str, np.ndarray] = None,
     ):
+        self.data_path = data_path or ""
+        self.output = output or {}
         self.updated_params = updated_params or {}
         self.figures = figures or {}
         self.fits = fits or {}
@@ -89,6 +102,10 @@ class AnalysisResult:
                 color="gray",
                 fontsize=font_size * 0.8,
             )
+
+    def save_output(self, dir_path: str):
+        with open(os.path.join(dir_path, "output.json"), "w") as f:
+            json.dump(self.output, f)
 
     def save_figures(self, dir_path: str):
         """Saves figures both as png and interactive html."""
@@ -125,6 +142,7 @@ class AnalysisResult:
                 grp.create_dataset(key, data=array)
 
     def save_all(self, dir_path: str):
+        self.save_output(dir_path)
         self.add_exp_info_to_figures(dir_path)
         self.save_figures(dir_path)
         self.save_fits(dir_path)
@@ -132,6 +150,7 @@ class AnalysisResult:
 
     def update(self, new_anal_res: AnalysisResult):
         """Updates all the fields of the current analysis result."""
+        self.output.update(new_anal_res.output)
         self.figures.update(new_anal_res.figures)
         self.fits.update(new_anal_res.fits)
         self.extra_data.update(
@@ -148,6 +167,9 @@ class AnalysisResult:
                 dic[parent_key] = {}
             return dic[parent_key].update(new_values)
         return dic.update(new_values)
+
+    def add_output(self, new_result: dict, qu_id: str):
+        return self._add_entries_to_attr("output", new_result, qu_id)
 
     def add_params(self, new_params: dict, qu_id: str):
         """Add updated parameters for the specified qubit."""
@@ -192,7 +214,7 @@ def multi_qubit_handler(single_qubit_handler):
         anal_res_tot: AnalysisResult | None = None,
         **kwargs,
     ):
-        anal_res_tot = anal_res_tot or AnalysisResult()
+        anal_res_tot = anal_res_tot or AnalysisResult(data_path=path)
         fun_kwargs = locals().copy()
         fun_kwargs.update(fun_kwargs.pop("kwargs", {}))
 
