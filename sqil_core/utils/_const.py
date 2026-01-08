@@ -17,6 +17,22 @@ _EXP_UNIT_MAP = {
 }
 
 PARAM_METADATA = {
+    # General
+    "frequency": {
+        "name": "Frequency",
+        "symbol": "f",
+        "unit": "Hz",
+        "scale": 1e-9,
+        "precision": 5,
+    },
+    "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
+    "temperature": {
+        "name": "Temperature",
+        "symbol": "T",
+        "unit": "K",
+        "scale": 1e3,
+    },
+    # QPU parameters
     "readout_resonator_frequency": {
         "name": "Readout frequency",
         "symbol": "f_{RO}",
@@ -62,14 +78,14 @@ PARAM_METADATA = {
     },
     "readout_kappa_tot": {"symbol": r"\kappa_{tot}", "unit": "Hz", "scale": "MHz"},
     "resonance_frequency_ge": {
-        "name": "Readout frequency",
+        "name": "Qubit frequency",
         "symbol": "f_{ge}",
         "unit": "Hz",
         "scale": 1e-9,
         "precision": 5,
     },
     "resonance_frequency_ef": {
-        "name": "Readout frequency",
+        "name": "Qubit frequency",
         "symbol": "f_{ef}",
         "unit": "Hz",
         "scale": 1e-9,
@@ -117,7 +133,30 @@ PARAM_METADATA = {
     "ef_T1": {"name": "T1", "symbol": "T_1", "unit": "s", "scale": 1e6},
     "ef_T2": {"name": "T2", "symbol": "T_2", "unit": "s", "scale": 1e6},
     "ef_T2_star": {"name": "T2*", "symbol": "T_2^*", "unit": "s", "scale": 1e6},
-    "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
+    "aux_reset_delay_length": {
+        "name": "Aux reset delay",
+        "symbol": "T_{reset}^{AUX}",
+        "unit": "s",
+        "scale": 1e6,
+    },
+    "aux_drive_length": {
+        "name": "Aux drive length",
+        "symbol": "T_{AUX}",
+        "unit": "s",
+        "scale": 1,
+    },
+    "aux_drive_amplitude": {
+        "name": "Aux drive amplitude",
+        "symbol": "A_{AUX}",
+        "unit": "",
+        "scale": 1,
+    },
+    "aux_frequency": {
+        "name": "Aux frequency",
+        "symbol": "f_{AUX}",
+        "unit": "Hz",
+        "scale": 1e-9,
+    },
     # CW
     "readout_power": {
         "name": "Readout power",
@@ -142,30 +181,6 @@ PARAM_METADATA = {
         "symbol": "AVG_{RO}",
         "unit": "",
         "scale": 1,
-    },
-    "aux_reset_delay_length": {
-        "name": "Aux reset delay",
-        "symbol": "T_{reset}^{AUX}",
-        "unit": "s",
-        "scale": 1e6,
-    },
-    "aux_drive_length": {
-        "name": "Aux drive length",
-        "symbol": "T_{AUX}",
-        "unit": "s",
-        "scale": 1,
-    },
-    "aux_drive_amplitude": {
-        "name": "Aux drive amplitude",
-        "symbol": "A_{AUX}",
-        "unit": "",
-        "scale": 1,
-    },
-    "aux_frequency": {
-        "name": "Aux frequency",
-        "symbol": "f_{AUX}",
-        "unit": "Hz",
-        "scale": 1e-9,
     },
 }
 
