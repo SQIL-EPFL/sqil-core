@@ -189,10 +189,12 @@ class ExperimentHandler(ABC):
         pass
 
     def on_before_experiment(self, *args, **kwargs):
-        pass
+        """Runs before the experiment. Can be overwritten in sub-classes."""
+        return
 
     def on_after_experiment(self, *args, **kwargs):
-        pass
+        """Runs after the experiment. Can be overwritten in sub-classes."""
+        return
 
     def run(self, *args, **kwargs):
         try:
@@ -412,7 +414,10 @@ class ExperimentHandler(ABC):
 
         return result
 
-    def custom_plottr(self, logic, db_schema, qu_ids=["q0"]):
+    def custom_plottr(self, logic, db_schema, qu_ids=None):
+        if qu_ids is None:
+            qu_ids = ["q0"]
+
         # Create the plotter datadict (database)
         datadict = build_plottr_dict(db_schema, qu_ids=qu_ids)
         # Get local and server storage folders

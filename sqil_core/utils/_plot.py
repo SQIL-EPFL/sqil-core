@@ -439,8 +439,8 @@ def plot_IQ_ellipse(
     ax: Axes,
     color: str | None = None,
     label: str | None = None,
-    center_kwargs: dict = {},
-    ellipse_kwargs: dict = {},
+    center_kwargs: dict | None = None,
+    ellipse_kwargs: dict | None = None,
     conf: float = 0.99,
 ) -> Axes:
     """
@@ -490,8 +490,8 @@ def plot_IQ_ellipse(
 
     default_center_kw = {"marker": "o", "color": color, "label": label}
     default_ellipse_kw = {"edgecolor": color, "facecolor": "none", "lw": 2}
-    ellipse_kwargs = {**default_ellipse_kw, **ellipse_kwargs}
-    center_kwargs = {**default_center_kw, **center_kwargs}
+    ellipse_kwargs = {**default_ellipse_kw, **(ellipse_kwargs or {})}
+    center_kwargs = {**default_center_kw, **(center_kwargs or {})}
 
     # Data matrix
     X = np.column_stack((data.real, data.imag))
