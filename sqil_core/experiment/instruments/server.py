@@ -1,5 +1,4 @@
 import os
-import pickle
 import sys
 from typing import cast
 
@@ -8,7 +7,10 @@ import Pyro5.errors as pyro_errors
 
 from sqil_core.config_log import logger
 from sqil_core.experiment.instruments import Instrument
+from sqil_core.experiment.instruments.current_source import current_source_factory
 from sqil_core.experiment.instruments.local_oscillator import LocalOscillator
+from sqil_core.experiment.instruments.rf_source import rf_source_factory
+from sqil_core.experiment.instruments.vna import vna_factory
 from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
 from sqil_core.utils._read import read_yaml
 from sqil_core.utils._utils import _extract_variables_from_module, _hash_file
@@ -16,15 +18,18 @@ from sqil_core.utils._utils import _extract_variables_from_module, _hash_file
 _instrument_classes = {
     "LO": LocalOscillator,
     "ZI": ZI_Instrument,
+    "CS": current_source_factory,
+    "RF": rf_source_factory,
+    "VNA": vna_factory,
 }
 
 
 @pyro.expose
 class InstrumentServer:
     """
-    Instruments server. Configures the instruments once and distributes instrument instances to other modules.
-    Providing the path of the setup file is not required, but it allows to detect changes in the setup file that
-    require the server to restart.
+    Instruments server. Configures the instruments once and distributes instrument
+    instances to other modules. Providing the path of the setup file is not required,
+    but it allows to detect changes in the setup file that require the server to restart
     The server is available at PYRO:SERVER@localhost:9090.
     """
 
@@ -43,7 +48,7 @@ class InstrumentServer:
         if setup_path:
             self._setup_hash = _hash_file(self._setup_path)
             logger.info(f"Setup path: {self._setup_path}")
-            logger.info(f"Setup hash: {str(self.setup_hash)}")
+            logger.info(f"Setup hash: {self.setup_hash!s}")
 
     def serve(self) -> None:
         self._expose()
@@ -122,7 +127,8 @@ def unlink_instrument_server(server: pyro.Proxy, **instruments: pyro.Proxy) -> N
 
 def start_instrument_server(setup_path: str = ""):
     """Start a new instruments server using the provided setup file.
-    If the path to the setup file is not provided it will be guessedby readig ./config.yaml.
+    If the path to the setup file is not provided it will be guessedby readig
+    ./config.yaml.
     """
     if not setup_path:
         config = read_yaml("config.yaml")
@@ -143,9 +149,7 @@ def start_instrument_server(setup_path: str = ""):
     return server
 
 
-def connect_instruments(
-    instrument_dict: dict | None,
-) -> dict[str, Instrument]:
+def connect_instruments(instrument_dict: dict | None) -> dict[str, Instrument]:
     if not instrument_dict:
         return {}
 
@@ -164,12 +168,12 @@ def connect_instruments(
         try:
             instance = instrument_factory(instrument_id, config=config)
             instance_dict[instrument_id] = instance
-            logger.info(
+            logger.debug(
                 f"Successfully connected to {config.get('name', instrument_id)}"
             )
         except Exception as e:
             logger.error(
-                f"Failed to connect to {config.get('name', instrument_id)}: {str(e)}"
+                f"Failed to connect to {config.get('name', instrument_id)}: {e!s}"
             )
             sys.exit(-1)
     return instance_dict

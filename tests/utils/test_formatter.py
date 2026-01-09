@@ -1,6 +1,4 @@
-import pytest
-
-from sqil_core.utils._formatter import *
+from sqil_core.utils import format_number
 
 
 class TestFormatNumber:
@@ -108,3 +106,13 @@ class TestFormatNumber:
         assert format_number(2) == "$2$"
         assert format_number(1, unit="a") == "$1~a$"
         assert format_number(2, unit="a") == "$2~a$"
+
+    def test_exponent_not_in_map(self):
+        assert format_number(1e-121, 3, unit="", latex=False) == "1.000000000000e-121"
+        assert format_number(1e-113, 3, unit="", latex=False) == "1.000000000000e-113"
+        assert (
+            format_number(1e-121, 3, unit="A", latex=False) == "1.000000000000e-121 A"
+        )
+        assert (
+            format_number(1e-113, 3, unit="A", latex=False) == "1.000000000000e-113 A"
+        )

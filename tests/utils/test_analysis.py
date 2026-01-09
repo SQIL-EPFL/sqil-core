@@ -1,11 +1,19 @@
 import numpy as np
 import pytest
 
-from sqil_core.utils._analysis import *
+from sqil_core.utils import (
+    compute_snr_peaked,
+    estimate_linear_background,
+    find_first_minima_idx,
+    line_between_2_points,
+    linear_interpolation,
+    mask_outliers,
+    remove_linear_background,
+    soft_normalize,
+)
 
 
 class TestEstimateLinearBackground:
-
     @pytest.fixture
     def synthetic_data(self):
         """Fixture to generate synthetic data for tests."""
@@ -121,7 +129,6 @@ class TestEstimateLinearBackground:
 
 
 class TestRemoveLinearBackground:
-
     @pytest.fixture
     def synthetic_data(self):
         """Fixture to generate synthetic data for tests."""
@@ -165,7 +172,6 @@ class TestRemoveLinearBackground:
 
 
 class TestLinearInterpolation:
-
     def test_scalar_interpolation(self):
         result = linear_interpolation(3, 2, 4, 6, 8)
         assert np.isclose(result, 5.0)
@@ -206,7 +212,6 @@ class TestLinearInterpolation:
 
 
 class TestLineBetween2Points:
-
     def test_standard_case(self):
         slope, intercept = line_between_2_points(1, 2, 3, 4)
         assert intercept == 1.0
@@ -269,7 +274,6 @@ class TestSoftNormalize:
 
 
 class TestComputeSNRPeaked:
-
     @pytest.fixture
     def synthetic_data(self):
         np.random.seed(13)
@@ -316,7 +320,6 @@ class TestComputeSNRPeaked:
 
 
 class TestFindFirstMinimaIdx:
-
     @pytest.fixture
     def simple_data(self):
         return np.array([3, 2, 4, 1, 5])
@@ -371,6 +374,62 @@ class TestFindFirstMinimaIdx:
         idx = find_first_minima_idx(np.array([2, 2]))
         assert idx is None
 
-    def test_should_return_minimum_in_middle_of_plateau(self):
-        data = np.array([5, 3, 3, 3, 4])
-        idx = find_first_minima_idx
+    # def test_should_return_minimum_in_middle_of_plateau(self):
+    #     data = np.array([5, 3, 3, 3, 4])
+    #     idx = find_first_minima_idx
+
+
+class TestMaskOutliers:
+
+    @pytest.fixture
+    def basic_data(self):
+        return np.array([10, 12, 11, 13, 100, 12, 11])
+
+    @pytest.fixture
+    def no_outliers(self):
+        return np.array([10, 11, 12, 13, 14, 15])
+
+    def test_should_mask_high_outliers(self, basic_data):
+        result = mask_outliers(basic_data)
+        assert np.isnan(result[4])
+        # Non-outliers remain unchanged
+        assert np.all(result[[0, 1, 2, 3, 5, 6]] == basic_data[[0, 1, 2, 3, 5, 6]])
+
+    def test_should_return_same_array_when_no_outliers(self, no_outliers):
+        result = mask_outliers(no_outliers)
+        assert np.all(result == no_outliers)
+
+    def test_should_handle_list_input(self):
+        data = [10, 12, 11, 13, 100, 12, 11]
+        result = mask_outliers(data)
+        assert np.isnan(result[4])
+        assert isinstance(result, np.ndarray)
+
+    def test_should_handle_all_identical_values(self):
+        data = np.array([5, 5, 5, 5, 5])
+        result = mask_outliers(data)
+        # MAD is zero, so data should remain unchanged
+        assert np.all(result == data)
+
+    def test_should_handle_negative_values(self):
+        data = np.array([-10, -12, -11, -13, -100, -12, -11])
+        result = mask_outliers(data)
+        assert np.isnan(result[4])
+        assert np.all(result[[0, 1, 2, 3, 5, 6]] == data[[0, 1, 2, 3, 5, 6]])
+
+    def test_should_respect_custom_threshold(self, basic_data):
+        # Increase threshold so extreme value is not masked
+        result = mask_outliers(basic_data, threshold=100)
+        assert not np.isnan(result[4])
+
+    def test_should_return_float_array(self):
+        data = [1, 2, 3, 100]
+        result = mask_outliers(data)
+        assert result.dtype == float
+
+    def test_should_work_with_nans(self):
+        data = np.array([1, -2, 100, np.nan, 7])
+        result = mask_outliers(data)
+        assert np.isnan(result[2])
+        assert np.isnan(result[3])
+        assert np.all(result[[0, 1, 4]] == data[[0, 1, 4]])

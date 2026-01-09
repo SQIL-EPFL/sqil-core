@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import warnings
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from scipy.optimize import curve_fit, fsolve, least_squares, leastsq, minimize
 
-import sqil_core.fit._models as _models
+from sqil_core.fit import _models
 from sqil_core.utils._utils import fill_gaps, has_at_least_one, make_iterable
 
 from ._core import FitResult, fit_input, fit_output
@@ -69,7 +69,7 @@ def fit_lorentzian(
         - Standard errors (`std_err`).
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
-    """
+    """  # noqa: E501
 
     x, y = x_data, y_data
 
@@ -114,7 +114,7 @@ def fit_two_lorentzians_shared_x0(
             guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
         )
 
-    if bounds == None:
+    if bounds is None:
         bounds = [[None] * len(guess), [None] * len(guess)]
     if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
         lower, upper = bounds
@@ -206,7 +206,7 @@ def fit_gaussian(
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the FWHM.
-    """
+    """  # noqa: E501
 
     x, y = x_data, y_data
 
@@ -255,7 +255,7 @@ def fit_two_gaussians_shared_x0(
             guess, np.concatenate([np.delete(guess_1, 1), np.delete(guess_2, 1), [x0]])
         )
 
-    if bounds == None:
+    if bounds is None:
         bounds = [[None] * len(guess), [None] * len(guess)]
     if has_at_least_one(bounds[0], None) or has_at_least_one(bounds[1], None):
         lower, upper = bounds
@@ -367,10 +367,7 @@ def fit_decaying_exp(
         _models.decaying_exp, x, y, p0=guess, bounds=bounds, full_output=True
     )
 
-    return res, {
-        "param_names": ["A", "tau", "y0"],
-        "predict": _models.decaying_exp,
-    }
+    return res, {"param_names": ["A", "tau", "y0"], "predict": _models.decaying_exp}
 
 
 @fit_input
@@ -427,7 +424,7 @@ def fit_qubit_relaxation_qp(
         - Standard errors (`std_err`).
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
-    """
+    """  # noqa: E501
 
     # Use a single exponential fit for initial parameter guesses
     from scipy.optimize import curve_fit
@@ -507,7 +504,8 @@ def fit_decaying_oscillations(
     y_data : np.ndarray
         Dependent variable array representing the measured signal.
     guess : list[float] or None, optional
-        Initial parameter estimates [A, tau, y0, phi, T]. Missing values are automatically filled.
+        Initial parameter estimates [A, tau, y0, phi, T]. Missing values are
+        automatically filled.
     bounds : list[tuple[float]] or tuple, optional
         Lower and upper bounds for parameters during fitting, by default no bounds.
     num_init : int, optional
@@ -522,7 +520,7 @@ def fit_decaying_oscillations(
         - Goodness-of-fit metrics (`rmse`, root mean squared error).
         - A callable `predict` function for generating fitted responses.
         - A metadata dictionary containing the pi_time and its standard error.
-    """
+    """  # noqa: E501
     # Default intial guess if not provided
     if has_at_least_one(guess, None):
         guess = fill_gaps(guess, decaying_oscillations_guess(x_data, y_data, num_init))
@@ -566,7 +564,7 @@ def fit_decaying_oscillations(
                 if fit_res.metrics["nrmse"] < best_nrmse:
                     best_fit, best_popt = fit_res.output, fit_res.params
                     best_nrmse = fit_res.metrics["nrmse"]
-            except:
+            except Exception:
                 if best_fit is None:
 
                     def _decaying_osc_res(p, x, y):
@@ -685,7 +683,8 @@ def fit_oscillations(
     y_data : np.ndarray
         Dependent variable array representing the measured signal.
     guess : list[float] or None, optional
-        Initial parameter estimates [A, y0, phi, T]. Missing values are automatically filled.
+        Initial parameter estimates [A, y0, phi, T]. Missing values are automatically
+        filled.
     bounds : list[tuple[float]] or tuple, optional
         Lower and upper bounds for parameters during fitting, by default no bounds.
     num_init : int, optional
@@ -724,12 +723,7 @@ def fit_oscillations(
     @fit_output
     def _curve_fit_osc(x_data, y_data, p0, bounds):
         return curve_fit(
-            _models.oscillations,
-            x_data,
-            y_data,
-            p0,
-            bounds=bounds,
-            full_output=True,
+            _models.oscillations, x_data, y_data, p0, bounds=bounds, full_output=True
         )
 
     # Try multiple initializations
@@ -744,7 +738,7 @@ def fit_oscillations(
                 if fit_res.metrics["nrmse"] < best_nrmse:
                     best_fit, best_popt = fit_res.output, fit_res.params
                     best_nrmse = fit_res.metrics["nrmse"]
-            except:
+            except Exception:
                 if best_fit is None:
 
                     def _oscillations_res(p, x, y):
@@ -791,7 +785,8 @@ def fit_oscillations(
 
 @fit_output
 def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
-    """Fits a circle in the xy plane and returns the radius and the position of the center.
+    """Fits a circle in the xy plane and returns the radius and the position of the
+    center.
 
     Reference: https://arxiv.org/abs/1410.3365
     This function uses an algebraic method to fit a circle to the provided data points.
@@ -945,7 +940,8 @@ def fit_circle_algebraic(x_data: np.ndarray, y_data: np.ndarray) -> FitResult:
 
     xc = -A_vec[1] / (2.0 * A_vec[0])
     yc = -A_vec[2] / (2.0 * A_vec[0])
-    # the term *sqrt term corrects for the constraint, because it may be altered due to numerical inaccuracies during calculation
+    # the term *sqrt term corrects for the constraint, because it may be altered due to
+    # numerical inaccuracies during calculation
     r0 = (
         1.0
         / (2.0 * np.absolute(A_vec[0]))
@@ -998,9 +994,9 @@ def _compute_circle_fit_metrics(x_data, y_data, xc, yc, r0):
     residuals = r_data - r0
 
     # Calculate R-squared (R²)
-    ssr = np.sum(residuals**2)
-    sst = np.sum((r_data - np.mean(r_data)) ** 2)
-    r2 = 1 - (ssr / sst) if sst > 0 else 0
+    # ssr = np.sum(residuals**2)
+    # sst = np.sum((r_data - np.mean(r_data)) ** 2)
+    # r2 = 1 - (ssr / sst) if sst > 0 else 0
 
     # Compute RMSE
     rmse = np.sqrt(np.mean(residuals**2))
@@ -1044,7 +1040,7 @@ def fit_skewed_lorentzian(x_data: np.ndarray, y_data: np.ndarray):
     --------
     >>> fit_result = fit_skewed_lorentzian(x_data, y_data)
     >>> fit_result.summary()
-    """
+    """  # noqa: E501
     A1a = np.minimum(y_data[0], y_data[-1])
     A3a = -np.max(y_data)
     fra = x_data[np.argmin(y_data)]
@@ -1104,6 +1100,7 @@ def transform_data(
     """
     Transforms complex-valued data using various transformation methods, including
     optimization-based alignment, real/imaginary extraction, amplitude, and phase.
+    Works with both 1D and 2D data.
 
     Parameters
     ----------
@@ -1127,11 +1124,12 @@ def transform_data(
         If True, phase transformations return values in degrees (default: True).
 
     inv_transform : bool, optional
-        If true returns transformed data and the function to perform the inverse transform.
+        If true returns transformed data and the function to perform the inverse
+        transform.
 
     full_output : bool, optional
-        If True, returns transformed data, the function to perform the inverse transform,
-        transformation parameters, and residuals.
+        If True, returns transformed data, the function to perform the inverse
+        transform, transformation parameters, and residuals.
 
     Returns
     -------
@@ -1154,6 +1152,10 @@ def transform_data(
     >>> print(transformed, params, residuals)
     """
 
+    # Save original shape for reshaping output
+    original_shape = data.shape
+    flattened_data = data.flatten()
+
     def transform(data, x0, y0, phi):
         return (data - x0 - 1.0j * y0) * np.exp(1.0j * phi)
 
@@ -1161,8 +1163,6 @@ def transform_data(
         return data * np.exp(-1.0j * phi) + x0 + 1.0j * y0
 
     def opt_transform(data):
-        """Finds optimal transformation parameters."""
-
         def transform_err(x):
             return np.sum((transform(data, x[0], x[1], x[2]).imag) ** 2)
 
@@ -1200,33 +1200,39 @@ def transform_data(
 
     # Compute parameters if needed
     if transform_type == "optm" and params is None:
-        params = opt_transform(data)
+        params = opt_transform(flattened_data)
 
     # Apply transformation
     if transform_type in ["optm", "trrt"]:
-        transformed_data = transform(data, *params).real
-        residual = transform(data, *params).imag
+        transformed_flat = transform(flattened_data, *params).real
+        residual_flat = transform(flattened_data, *params).imag
     elif transform_type == "real":
-        transformed_data = data.real
-        residual = data.imag
+        transformed_flat = flattened_data.real
+        residual_flat = flattened_data.imag
     elif transform_type == "imag":
-        transformed_data = data.imag
-        residual = data.real
+        transformed_flat = flattened_data.imag
+        residual_flat = flattened_data.real
     elif transform_type == "ampl":
-        transformed_data = np.abs(data)
-        residual = np.unwrap(np.angle(data))
+        transformed_flat = np.abs(flattened_data)
+        residual_flat = np.unwrap(np.angle(flattened_data))
         if deg:
-            residual = np.degrees(residual)
+            residual_flat = np.degrees(residual_flat)
     elif transform_type == "angl":
-        transformed_data = np.unwrap(np.angle(data))
-        residual = np.abs(data)
+        transformed_flat = np.unwrap(np.angle(flattened_data))
+        residual_flat = np.abs(flattened_data)
         if deg:
-            transformed_data = np.degrees(transformed_data)
+            transformed_flat = np.degrees(transformed_flat)
 
-    inv_transform_fun = lambda data: _inv_transform(data, *params)
+    # Reshape results
+    transformed_data = transformed_flat.reshape(original_shape)
+    residual = residual_flat.reshape(original_shape)
+
+    # Inverse transformation function
+    def inv_transform_fun(d):
+        return _inv_transform(d.flatten(), *params).reshape(d.shape)
 
     if full_output:
-        return np.array(transformed_data), inv_transform_fun, params, residual
+        return transformed_data, inv_transform_fun, params, residual
     if inv_transform:
-        return np.array(transformed_data), inv_transform_fun
-    return np.array(transformed_data)
+        return transformed_data, inv_transform_fun
+    return transformed_data

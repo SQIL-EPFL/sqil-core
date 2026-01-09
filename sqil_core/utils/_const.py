@@ -1,6 +1,7 @@
 import numpy as np
 
 _EXP_UNIT_MAP = {
+    -18: "a",
     -15: "p",
     -12: "f",
     -9: "n",
@@ -12,9 +13,26 @@ _EXP_UNIT_MAP = {
     9: "G",
     12: "T",
     15: "P",
+    18: "E",
 }
 
 PARAM_METADATA = {
+    # General
+    "frequency": {
+        "name": "Frequency",
+        "symbol": "f",
+        "unit": "Hz",
+        "scale": 1e-9,
+        "precision": 5,
+    },
+    "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
+    "temperature": {
+        "name": "Temperature",
+        "symbol": "T",
+        "unit": "K",
+        "scale": 1e3,
+    },
+    # QPU parameters
     "readout_resonator_frequency": {
         "name": "Readout frequency",
         "symbol": "f_{RO}",
@@ -58,16 +76,22 @@ PARAM_METADATA = {
         "unit": "dBm",
         "scale": 1,
     },
-    "readout_kappa_tot": {"symbol": r"\kappa_{tot}", "unit": "Hz", "scale": "MHz"},
+    "readout_kappa_tot": {"symbol": r"\kappa_{tot}", "unit": "Hz", "scale": 1e-6},
+    "ge_chi_shift": {
+        "name": "Dispersive shift",
+        "symbol": r"\chi_{ge}",
+        "unit": "Hz",
+        "scale": 1e-6,
+    },
     "resonance_frequency_ge": {
-        "name": "Readout frequency",
+        "name": "Qubit frequency",
         "symbol": "f_{ge}",
         "unit": "Hz",
         "scale": 1e-9,
         "precision": 5,
     },
     "resonance_frequency_ef": {
-        "name": "Readout frequency",
+        "name": "Qubit frequency",
         "symbol": "f_{ef}",
         "unit": "Hz",
         "scale": 1e-9,
@@ -99,6 +123,70 @@ PARAM_METADATA = {
         "symbol": "T_{reset}",
         "unit": "s",
         "scale": 1e6,
+    },
+    "ef_drive_amplitude_pi": {
+        "name": "Drive amplitude pi ef",
+        "symbol": r"A_{\pi}^{ef}",
+        "unit": "",
+        "scale": 1,
+    },
+    "ef_drive_length": {
+        "name": "Drive length ef",
+        "symbol": r"T_{\pi}^{ef}",
+        "unit": "s",
+        "scale": 1e9,
+    },
+    "ef_T1": {"name": "T1", "symbol": "T_1", "unit": "s", "scale": 1e6},
+    "ef_T2": {"name": "T2", "symbol": "T_2", "unit": "s", "scale": 1e6},
+    "ef_T2_star": {"name": "T2*", "symbol": "T_2^*", "unit": "s", "scale": 1e6},
+    "aux_reset_delay_length": {
+        "name": "Aux reset delay",
+        "symbol": "T_{reset}^{AUX}",
+        "unit": "s",
+        "scale": 1e6,
+    },
+    "aux_drive_length": {
+        "name": "Aux drive length",
+        "symbol": "T_{AUX}",
+        "unit": "s",
+        "scale": 1,
+    },
+    "aux_drive_amplitude": {
+        "name": "Aux drive amplitude",
+        "symbol": "A_{AUX}",
+        "unit": "",
+        "scale": 1,
+    },
+    "aux_frequency": {
+        "name": "Aux frequency",
+        "symbol": "f_{AUX}",
+        "unit": "Hz",
+        "scale": 1e-9,
+    },
+    # CW
+    "readout_power": {
+        "name": "Readout power",
+        "symbol": "P_{RO}",
+        "unit": "dBm",
+        "scale": 1,
+    },
+    "drive_power": {
+        "name": "Drive power",
+        "symbol": "P_{d}",
+        "unit": "dBm",
+        "scale": 1,
+    },
+    "readout_acquire_bandwith": {
+        "name": "Readout bandwidth",
+        "symbol": "BW_{RO}",
+        "unit": "",
+        "scale": 1,
+    },
+    "readout_acquire_averages": {
+        "name": "Readout averages",
+        "symbol": "AVG_{RO}",
+        "unit": "",
+        "scale": 1,
     },
 }
 

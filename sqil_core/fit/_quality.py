@@ -49,8 +49,8 @@ def evaluate_fit_quality(fit_metrics: dict, recipe: str = "nrmse") -> FitQuality
     Evaluates the quality category of a fit based on a specified metric recipe.
 
     This function maps a numeric fit metric (e.g., NRMSE or AIC) to a qualitative
-    fit quality category (GREAT, GOOD, ACCEPTABLE, BAD) using predefined thresholds. These
-    thresholds are stored in the `FIT_QUALITY_THRESHOLDS` dictionary and must be
+    fit quality category (GREAT, GOOD, ACCEPTABLE, BAD) using predefined thresholds.
+    These thresholds are stored in the `FIT_QUALITY_THRESHOLDS` dictionary and must be
     provided for each supported recipe.
 
     Parameters
@@ -64,8 +64,8 @@ def evaluate_fit_quality(fit_metrics: dict, recipe: str = "nrmse") -> FitQuality
     Returns
     -------
     FitQuality
-        A qualitative classification of the fit (GREAT, GOOD, ACCEPTABLE, BAD), represented
-        by an enum or constant defined in `FitQuality`.
+        A qualitative classification of the fit (GREAT, GOOD, ACCEPTABLE, BAD),
+        represented by an enum or constant defined in `FitQuality`.
     """
 
     value = fit_metrics.get(recipe)
@@ -132,7 +132,7 @@ def get_best_fit_nrmse_aic(
     fit_res_a: FitResult, fit_res_b: FitResult, aic_rel_tol: float = 0.01
 ):
     """
-    Selects the better fit result based on NRMSE quality and AIC with complexity penalty.
+    Selects the better fit result based on NRMSE quality and AIC with complexity penalty
 
     This function compares two fit results by first evaluating the normalized root
     mean squared error (NRMSE) using a quality categorization scheme. If the fits
@@ -222,7 +222,8 @@ def format_fit_metrics(fit_metrics: dict, keys: list[str] | None = None) -> str:
     Notes
     -----
     - Complex-valued R² metrics are skipped.
-    - Keys are optionally renamed for output formatting (e.g., "red_chi2" → "reduced χ²").
+    - Keys are optionally renamed for output formatting
+    (e.g., "red_chi2" → "reduced χ²").
 
     Examples
     --------

@@ -16,8 +16,8 @@ class MyExperiment(ExperimentHandler):
     def analyze(self, path, *args, **kwargs):
         pass
 
-    def qubit_value(self, param_id, qu_uid):
-        return self.param_map.get((qu_uid, param_id), None)
+    def qubit_value(self, param_id, qu_id):
+        return self.param_map.get((qu_id, param_id), None)
 
 
 @pytest.fixture
@@ -26,7 +26,6 @@ def handler():
 
 
 class TestSweepAround:
-
     def test_should_sweep_linearly_with_n_points(self, handler):
         result = handler.sweep_around(center=5.0, span=1.0, n_points=5)
         expected = np.linspace(4.0, 6.0, 5)
@@ -56,7 +55,7 @@ class TestSweepAround:
         assert np.allclose(result, expected)
 
     def test_should_resolve_center_from_qubit_param(self, handler):
-        result = handler.sweep_around(center="freq", span=1.0, n_points=3, qu_uid="q0")
+        result = handler.sweep_around(center="freq", span=1.0, n_points=3, qu_id="q0")
         expected = np.linspace(4.0, 6.0, 3)
         assert np.allclose(result, expected)
 

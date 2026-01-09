@@ -3,19 +3,19 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from sqil_core.fit import FitResult, fit_circle_algebraic, fit_skewed_lorentzian
+from sqil_core.fit import FitResult
 from sqil_core.resonator._resonator import (
     S11_reflection,
     S21_hanger,
     S21_transmission,
     quick_fit,
 )
-from sqil_core.utils import estimate_linear_background
 
 
 class TestQuickFit:
     # Note: the phase_vs_freq fit used by quick_fit works for overly coupled resonators,
-    #       which means Re[Q_ext] < Q_int. We choose Q_int = 2.5e4, |Q_ext| = 0.5e4, <Q_ext = 0.8
+    #       which means Re[Q_ext] < Q_int.
+    #       We choose Q_int = 2.5e4, |Q_ext| = 0.5e4, <Q_ext = 0.8
     TRUE_PARAMS_DICT = {
         "a": 1.0,
         "alpha": 0.2,
@@ -140,8 +140,8 @@ class TestQuickFit:
         for measurement in ["reflection", "hanger"]:
             quick_fit(freq, data[measurement], measurement=measurement, **kwargs)
 
-            # Check if fr and Q_tot were preserved until the fitting function by verifying
-            # they were passed correctly to fit_phase_vs_freq
+            # Check if fr and Q_tot were preserved until the fitting function by
+            # verifying they were passed correctly to fit_phase_vs_freq
             mock_fit_phase.assert_called()
             call_args, call_kwargs = mock_fit_phase.call_args
 
@@ -163,7 +163,7 @@ class TestQuickFit:
 
     @patch("sqil_core.resonator._resonator.fit_lorentzian")
     @patch("sqil_core.resonator._resonator.fit_skewed_lorentzian")
-    def test_should_estimate_Q_tot_and_fr_if_not_provided(
+    def test_should_estimate_q_tot_and_fr_if_not_provided(
         self, mock_fit_skewed, mock_fit_lorentzian, mock_data, mock_fit_results
     ):
         freq, data = mock_data
@@ -174,9 +174,10 @@ class TestQuickFit:
 
         for measurement in ["reflection", "hanger"]:
             quick_fit(freq, data[measurement], measurement=measurement, **kwargs)
-            assert (
-                mock_fit_lorentzian.called or mock_fit_skewed.called
-            ), f"Neither mock_lorentzian nor mock_fit_skewed was called for {measurement}"
+            assert mock_fit_lorentzian.called or mock_fit_skewed.called, (
+                f"Neither mock_lorentzian nor mock_fit_skewed was called "
+                f"for {measurement}"
+            )
             mock_fit_lorentzian.reset_mock()
             mock_fit_skewed.reset_mock()
 
@@ -202,9 +203,5 @@ class TestQuickFit:
     def test_should_thow_error_for_invalid_measurement_type(self, mock_data):
         freq, data = mock_data
         with pytest.raises(Exception) as excinfo:
-            quick_fit(
-                freq,
-                data["reflection"],
-                measurement="invalid_type",
-            )
+            quick_fit(freq, data["reflection"], measurement="invalid_type")
         assert "Invalid measurement type" in str(excinfo.value)

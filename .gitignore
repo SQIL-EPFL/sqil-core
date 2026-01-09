@@ -46,6 +46,9 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 
+# ruff
+.ruff_cache
+
 # File for trying out ideas
 sketching/
 sketching.ipynb

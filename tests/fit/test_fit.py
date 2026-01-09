@@ -6,7 +6,6 @@ from sqil_core.fit._models import lorentzian, oscillations
 
 
 class TestFitLorentzian:
-
     def setup_method(self):
         self.x = np.linspace(-10, 10, 1000)
 
@@ -24,9 +23,11 @@ class TestFitLorentzian:
         params = (
             res.params
             if isinstance(res.params, dict)
-            else dict(zip(res.param_names, res.params))
+            else dict(zip(res.param_names, res.params, strict=False))
         )
-        for true_val, pname in zip([A, x0, fwhm, y0], ["A", "x0", "fwhm", "y0"]):
+        for true_val, pname in zip(
+            [A, x0, fwhm, y0], ["A", "x0", "fwhm", "y0"], strict=False
+        ):
             assert np.isclose(params[pname], true_val, rtol=0.01)
 
     @pytest.mark.parametrize("noise_std", [0.01, 0.05, 0.1, 0.2])
@@ -38,10 +39,12 @@ class TestFitLorentzian:
         params = (
             res.params
             if isinstance(res.params, dict)
-            else dict(zip(res.param_names, res.params))
+            else dict(zip(res.param_names, res.params, strict=False))
         )
         tol = 0.2 if noise_std <= 0.1 else 0.4
-        for true_val, pname in zip([A, x0, fwhm, y0], ["A", "x0", "fwhm", "y0"]):
+        for true_val, pname in zip(
+            [A, x0, fwhm, y0], ["A", "x0", "fwhm", "y0"], strict=False
+        ):
             assert np.isclose(params[pname], true_val, rtol=tol)
 
         # nrmse check in metrics dict
@@ -55,9 +58,11 @@ class TestFitLorentzian:
         params = (
             res.params
             if isinstance(res.params, dict)
-            else dict(zip(res.param_names, res.params))
+            else dict(zip(res.param_names, res.params, strict=False))
         )
-        for true_val, pname in zip([A, x0, fwhm, y0], ["A", "x0", "fwhm", "y0"]):
+        for true_val, pname in zip(
+            [A, x0, fwhm, y0], ["A", "x0", "fwhm", "y0"], strict=False
+        ):
             assert np.isclose(params[pname], true_val, rtol=0.1)
 
     def test_edge_case_small_fwhm(self):
@@ -68,7 +73,7 @@ class TestFitLorentzian:
         params = (
             res.params
             if isinstance(res.params, dict)
-            else dict(zip(res.param_names, res.params))
+            else dict(zip(res.param_names, res.params, strict=False))
         )
         assert np.isclose(params["fwhm"], fwhm, rtol=0.3)
 
@@ -80,7 +85,7 @@ class TestFitLorentzian:
         params = (
             res.params
             if isinstance(res.params, dict)
-            else dict(zip(res.param_names, res.params))
+            else dict(zip(res.param_names, res.params, strict=False))
         )
         assert np.isclose(params["fwhm"], fwhm, rtol=0.1)
 
@@ -90,10 +95,10 @@ class TestFitLorentzian:
         with pytest.warns(RuntimeWarning):
             res = fit_lorentzian(self.x, y)
 
-            params = (
+            _ = (
                 res.params
                 if isinstance(res.params, dict)
-                else dict(zip(res.param_names, res.params))
+                else dict(zip(res.param_names, res.params, strict=False))
             )
 
     def test_noisy_data_with_outliers(self):
@@ -110,9 +115,11 @@ class TestFitLorentzian:
         params = (
             res.params
             if isinstance(res.params, dict)
-            else dict(zip(res.param_names, res.params))
+            else dict(zip(res.param_names, res.params, strict=False))
         )
-        for true_val, pname in zip(true_params, ["A", "x0", "fwhm", "y0"]):
+        for true_val, pname in zip(
+            true_params, ["A", "x0", "fwhm", "y0"], strict=False
+        ):
             assert np.isclose(params[pname], true_val, rtol=0.5)
 
 
@@ -135,7 +142,7 @@ class TestFitOscillations:
         y = self._generate_data(self.x, A, T, phi, y0)
         res = fit_oscillations(self.x, y)
 
-        params = dict(zip(res.param_names, res.params))
+        params = dict(zip(res.param_names, res.params, strict=False))
         assert np.isclose(params["A"], A, rtol=0.01)
         assert np.isclose(params["T"], T, rtol=0.01)
         assert np.isclose(params["phi"], phi, rtol=0.01)
@@ -147,7 +154,7 @@ class TestFitOscillations:
         y = self._generate_data(self.x, A, T, phi, y0, noise_std=noise_std)
         res = fit_oscillations(self.x, y)
 
-        params = dict(zip(res.param_names, res.params))
+        params = dict(zip(res.param_names, res.params, strict=False))
         tol = 0.1 if noise_std <= 0.1 else 0.2
         assert np.isclose(params["A"], A, rtol=tol)
         assert np.isclose(params["T"], T, rtol=tol)
@@ -161,7 +168,7 @@ class TestFitOscillations:
         y = self._generate_data(x, A, T, phi, y0)
         res = fit_oscillations(x, y)
 
-        params = dict(zip(res.param_names, res.params))
+        params = dict(zip(res.param_names, res.params, strict=False))
         assert np.isclose(params["T"], T, rtol=0.15)
         assert np.isclose(params["A"], A, rtol=0.2)
 
@@ -170,7 +177,7 @@ class TestFitOscillations:
         y = self._generate_data(self.x, A, T, phi, y0, noise_std=0.01)
         res = fit_oscillations(self.x, y)
 
-        params = dict(zip(res.param_names, res.params))
+        params = dict(zip(res.param_names, res.params, strict=False))
         assert np.isclose(params["A"], A, rtol=0.5)
         assert np.isclose(params["y0"], y0, atol=0.1)
 
@@ -179,7 +186,7 @@ class TestFitOscillations:
         y = self._generate_data(self.x, A, T, phi, y0, noise_std=0.05)
         res = fit_oscillations(self.x, y, guess=None, bounds=None)
 
-        params = dict(zip(res.param_names, res.params))
+        params = dict(zip(res.param_names, res.params, strict=False))
         assert np.isclose(params["T"], T, rtol=0.1)
         assert np.isclose(params["A"], A, rtol=0.1)
         assert np.isclose(params["y0"], y0, rtol=0.1)
@@ -187,14 +194,14 @@ class TestFitOscillations:
     def test_flat_signal(self):
         y = np.ones_like(self.x) * 5
         with pytest.raises(TypeError):
-            res = fit_oscillations(self.x, y)
+            fit_oscillations(self.x, y)
 
     def test_outlier_robustness(self):
         A, T, phi, y0 = 3, 2.5, 0.4, 0.8
         y = self._generate_data(self.x, A, T, phi, y0, noise_std=0.05, outliers=True)
         res = fit_oscillations(self.x, y)
 
-        params = dict(zip(res.param_names, res.params))
+        params = dict(zip(res.param_names, res.params, strict=False))
         assert np.isclose(params["T"], T, rtol=0.2)
         assert np.isclose(params["phi"], phi, rtol=0.2)
         assert np.isclose(params["y0"], y0, rtol=0.3)

@@ -51,6 +51,14 @@ jobs:
       env:
         CI: true  # Prevent isort from modifying files during the check
 
+    - name: Scan code for bugs and improper behavior using ruff
+      run: |
+        poetry run ruff check .
+      continue-on-error: false  # Fail the job if Ruff finds issues
+      env:
+        CI: true
+
+
     - name: Run tests with pytest
       run: |
         poetry run pytest --maxfail=1 --disable-warnings -q  # Run tests using Poetry's virtualenv

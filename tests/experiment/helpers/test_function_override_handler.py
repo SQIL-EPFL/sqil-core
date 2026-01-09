@@ -1,7 +1,3 @@
-from contextlib import contextmanager
-from types import MethodType
-from typing import Callable
-
 import pytest
 
 from sqil_core.experiment.helpers._function_override_handler import (
@@ -15,10 +11,7 @@ class ClassWithFunctions(FunctionOverrideHandler):
 
     def __init__(self):
         super().__init__()
-        self._default_functions = {
-            "foo": self._default_foo,
-            "bar": self._default_bar,
-        }
+        self._default_functions = {"foo": self._default_foo, "bar": self._default_bar}
         self._functions = self._default_functions.copy()
 
     def _default_foo(self):
@@ -93,9 +86,10 @@ class TestFunctionOverrideHandler:
 
         # After the context, it should restore to the default
         result = obj.call("foo")
-        assert (
-            result == "default foo"
-        ), "The 'foo' function should revert back to its default after the context manager."
+        assert result == "default foo", (
+            "The 'foo' function should revert back to "
+            "its default after the context manager."
+        )
 
     def test_should_raise_error_if_function_to_temporary_override_does_not_exist(
         self, obj

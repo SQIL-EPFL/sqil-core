@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 
 from sqil_core.fit import (
@@ -12,7 +10,6 @@ from sqil_core.fit import (
 
 
 class TestEvaluateFitQuality:
-
     def test_should_return_correct_quality_for_nrmse(self):
         for threshold, expected_quality in FIT_QUALITY_THRESHOLDS["nrmse"]:
             slightly_below = threshold * 0.99 if threshold != float("inf") else 1e6
@@ -44,7 +41,6 @@ class TestEvaluateFitQuality:
 
 
 class TestGetBestFitNrmseAic:
-
     @pytest.fixture
     def quality_equal(self, monkeypatch):
         monkeypatch.setattr("sqil_core.fit._quality.evaluate_fit_quality", lambda m: 1)
@@ -64,10 +60,7 @@ class TestGetBestFitNrmseAic:
             metrics={"aic": 100, "nrmse": 0.5},
         )
         fit_b = FitResult(
-            params=[1],
-            std_err=[0.1],
-            fit_output=None,
-            metrics={"aic": 90, "nrmse": 7},
+            params=[1], std_err=[0.1], fit_output=None, metrics={"aic": 90, "nrmse": 7}
         )
 
         result = get_best_fit_nrmse_aic(fit_a, fit_b)

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqil-core"
-version = "1.1.0"
+version = "2.0.0"
 description = "The codebase of the SQIL group in EPFL"
 authors = ["Andrea Duina"]
 readme = "README.md"
@@ -11,11 +11,10 @@ docs-dev = "scripts:docs_dev"
 docs-build = "scripts:docs_build"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
+python = "^3.12"
 scipy = "^1.14.1"
 h5py = "^3.12.1"
 matplotlib = "^3.9.3"
-isort = "5.9.3"
 tabulate = "^0.9.0"
 numpy = "^2.2.3"
 lmfit = "^1.3.2"
@@ -23,20 +22,24 @@ pyro5 = "^5.15"
 qcodes = "^0.51.0"
 qcodes-contrib-drivers = "^0.23.0"
 blinker = "^1.9.0"
-laboneq-applications = "^2.4.0"
 plottr = "^0.14.0"
-laboneq = "^2.54.0"
 mpld3 = "^0.5.10"
+tqdm = "^4.67.1"
+laboneq = "^25.10.3"
+laboneq-applications = "^25.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"
+isort = "^6.1.0"
+ruff = "^0.14.0"
 pre-commit = "^4.0.1"
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.5.48"
 mkdocstrings-python = "^1.12.2"
 pytest = "^8.3.4"
 mkdocs-jupyter = "^0.25.1"
+
 
 [build-system]
 requires = ["poetry-core"]
@@ -57,3 +60,49 @@ exclude = '''
 [tool.isort]
 profile = "black"
 known_first_party = ["sqil-core"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "F",  # pyflakes — undefined names, unused imports, etc.
+    "B",  # flake8-bugbear — common bugs
+    "E9", # syntax/runtime errors
+    "UP", # pyupgrade — outdated syntax
+    "S",  # security issues (bandit)
+]
+
+# Explicitly ignore all stylistic rule families
+ignore = [
+    "E",   # pycodestyle formatting errors
+    "W",   # pycodestyle warnings
+    "C90", # complexity
+    "N",   # naming conventions
+    "D",   # docstrings
+    "ANN", # type annotation style
+    "Q",   # quotes
+    "COM", # commas
+    "ISC", # string concatenation
+    "TID", # tidy imports
+    "T20", # print statements
+]
+
+# Optional: exclude common directories
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+    "sqil_core/experiment/instruments/drivers/RohdeSchwarzZNB.py",
+    "sqil_core/experiment/instruments/drivers/SignalCore_SC5511A.py",
+    "sqil_core/experiment/instruments/drivers/Yokogawa_GS200.py",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]                            # Allow assert in tests
+"*.ipynb" = ["B018"]                             # Allow useless expressions in notebooks
+"sqil_core/experiment/data/plottr.py" = ["S101"]
+"scripts.py" = ["S607"]
