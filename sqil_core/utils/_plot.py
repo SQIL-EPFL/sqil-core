@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Ellipse
+from scipy.stats import chi2
 
 from sqil_core.fit import transform_data
 
@@ -19,6 +21,7 @@ from ._formatter import ParamInfo, format_number, get_relevant_exp_parameters
 from ._read import get_data_and_info, read_json
 
 if TYPE_CHECKING:
+    from matplotlib.axes import Axes
     from matplotlib.figure import Figure
 
     from sqil_core.fit._core import FitResult
@@ -429,3 +432,94 @@ def plot_projection_IQ(path=None, datadict=None, proj_data=None, full_output=Fal
     else:
         res = (fig, [ax_proj, ax_iq])
     return res
+
+
+def plot_IQ_ellipse(
+    data: np.ndarray,
+    ax: Axes,
+    color: str | None = None,
+    label: str | None = None,
+    center_kwargs: dict = {},
+    ellipse_kwargs: dict = {},
+    conf: float = 0.99,
+) -> Axes:
+    """
+    Plot a confidence ellipse for complex IQ data on a given matplotlib axis.
+
+    This function computes a robust center (using the median) and a covariance-based
+    confidence ellipse for complex-valued IQ samples. The ellipse corresponds to a
+    specified confidence level of a 2D Gaussian distribution.
+
+    The ellipse axes and orientation are obtained via principal component analysis
+    (PCA) of the covariance matrix of the IQ data.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Complex-valued IQ samples.
+    ax : matplotlib.axes.Axes
+        Matplotlib axis on which the center point and confidence ellipse
+        will be drawn.
+    color : str, optional
+        Color used for both the center marker and the ellipse outline.
+        If None, matplotlib chooses the default color cycle.
+    label : str, optional
+        Label associated with the center marker.
+    center_kwargs : dict, optional
+        Additional keyword arguments passed to `ax.plot` when drawing the
+        center point. These are merged with the default center styling.
+    ellipse_kwargs : dict, optional
+        Additional keyword arguments passed to `matplotlib.patches.Ellipse`
+        to control the appearance of the confidence ellipse.
+    conf : float, optional
+        Confidence level of the ellipse (default is 0.99), interpreted as the
+        cumulative probability of a 2D Gaussian distribution.
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        The axis with the plotted center point and confidence ellipse added.
+
+    Notes
+    -----
+    - The center is computed using the median rather than the mean to reduce
+      sensitivity to outliers.
+    - Ellipse scaling is based on the chi-square distribution with two degrees
+      of freedom, which is appropriate for 2D Gaussian statistics.
+    """
+
+    default_center_kw = {"marker": "o", "color": color, "label": label}
+    default_ellipse_kw = {"edgecolor": color, "facecolor": "none", "lw": 2}
+    ellipse_kwargs = {**default_ellipse_kw, **ellipse_kwargs}
+    center_kwargs = {**default_center_kw, **center_kwargs}
+
+    # Data matrix
+    X = np.column_stack((data.real, data.imag))
+
+    # Get center and covariance
+    mu = np.median(X, axis=0)
+    cov = np.cov(X, rowvar=False)
+
+    # PCA
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    order = eigvals.argsort()[::-1]
+    eigvals = eigvals[order]
+    eigvecs = eigvecs[:, order]
+
+    # chi-square quantile for 2D Gaussian
+    scale = chi2.ppf(conf, df=2)
+
+    width = 2 * np.sqrt(scale * eigvals[0])
+    height = 2 * np.sqrt(scale * eigvals[1])
+    angle = np.degrees(np.arctan2(eigvecs[1, 0], eigvecs[0, 0]))
+
+    # Plot
+    center_pt, *_ = ax.plot(mu[0], mu[1], **center_kwargs)
+
+    if "edgecolor" not in ellipse_kwargs:
+        ellipse_kwargs["edgecolor"] = center_pt.get_color()
+
+    ellipse = Ellipse(xy=mu, width=width, height=height, angle=angle, **ellipse_kwargs)
+    ax.add_patch(ellipse)
+
+    return ax
