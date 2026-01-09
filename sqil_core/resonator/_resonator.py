@@ -760,7 +760,7 @@ def quick_fit(
             s=120,
             marker="*",
         )
-        ax.scatter(xc, yc, color="tab:orange")
+        ax.scatter(xc, yc, color="tab:red")
         ax.set_xlabel("Re")
         ax.set_ylabel("Im")
         ax.axis("equal")
@@ -920,7 +920,7 @@ def plot_resonator(
     ax1 = fig.add_subplot(gs[:, 0])  # Left side spans both rows
     ax1.plot(np.real(data), np.imag(data), "o", color="tab:blue", ms=ms + 1)
     if y_fit is not None:
-        ax1.plot(np.real(y_fit), np.imag(y_fit), color="tab:orange")
+        ax1.plot(np.real(y_fit), np.imag(y_fit), color="tab:red")
     ax1.set_aspect("equal")
     ax1.set_xlabel("In-phase")
     ax1.set_ylabel("Quadrature")
@@ -930,7 +930,7 @@ def plot_resonator(
     ax2 = fig.add_subplot(gs[0, 1])
     ax2.plot(freq, np.abs(data), "o", color="tab:blue", ms=ms - 1)
     if y_fit is not None:
-        ax2.plot(x_fit, np.abs(y_fit), color="tab:orange")
+        ax2.plot(x_fit, np.abs(y_fit), color="tab:red")
     if (mag_bg is not None) and (not np.isnan(mag_bg).any()):
         ax2.plot(freq, mag_bg, "-.", color="tab:green")
     ax2.set_ylabel("Magnitude [V]")
@@ -940,7 +940,7 @@ def plot_resonator(
     ax3 = fig.add_subplot(gs[1, 1])
     ax3.plot(freq, np.unwrap(np.angle(data)), "o", color="tab:blue", ms=ms - 1)
     if y_fit is not None:
-        ax3.plot(x_fit, np.unwrap(np.angle(y_fit)), color="tab:orange")
+        ax3.plot(x_fit, np.unwrap(np.angle(y_fit)), color="tab:red")
     ax3.set_ylabel("Phase [rad]")
     ax3.set_xlabel("Frequency [Hz]")
     ax3.grid(True)
