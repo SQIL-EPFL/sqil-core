@@ -168,7 +168,7 @@ def connect_instruments(instrument_dict: dict | None) -> dict[str, Instrument]:
         try:
             instance = instrument_factory(instrument_id, config=config)
             instance_dict[instrument_id] = instance
-            logger.info(
+            logger.debug(
                 f"Successfully connected to {config.get('name', instrument_id)}"
             )
         except Exception as e:

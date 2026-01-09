@@ -28,11 +28,11 @@ class RfSource(Instrument, ABC):
         pass
 
     def turn_on(self) -> None:
-        logger.info(f"Turning on {self.name}")
+        logger.debug(f"Turning on {self.name}")
         self.instrument.turn_on()
 
     def turn_off(self) -> None:
-        logger.info(f"Turning off {self.name}")
+        logger.debug(f"Turning off {self.name}")
         self.instrument.turn_off()
 
 
@@ -53,11 +53,11 @@ class SqilRohdeSchwarzSGS100A(RfSource):
         self.device.close()
 
     def _default_setup(self, *args, **kwargs):
-        logger.info(f"Setting up {self.name}")
+        logger.debug(f"Setting up {self.name}")
         self.turn_off()
-        logger.info(" -> Turned off")
+        logger.debug(" -> Turned off")
         self.set_power(-60)
-        logger.info(" -> Power = -60 dBm")
+        logger.debug(" -> Power = -60 dBm")
 
     def set_frequency(self, value) -> None:
         self.device.frequency(value)

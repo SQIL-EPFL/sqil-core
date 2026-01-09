@@ -51,7 +51,7 @@ class SqilSignalCoreSC5511A(LocalOscillatorBase):
         self.turn_off()
 
     def _default_setup(self, *args, **kwargs):
-        logger.info(f"Setting up {self.name}")
+        logger.debug(f"Setting up {self.name}")
         self.turn_off()
         self.set_power(-40)
         self.device.do_set_reference_source(1)  # to enable phase locking
@@ -90,7 +90,7 @@ class SqilSignalCoreSC5521A(LocalOscillatorBase):
         self.turn_off()
 
     def _default_setup(self, *args, **kwargs):
-        logger.info(f"Setting up {self.name}")
+        logger.debug(f"Setting up {self.name}")
         self.turn_off()
         self.set_power(-40)
 

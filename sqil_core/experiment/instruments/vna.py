@@ -106,9 +106,9 @@ class SqilRohdeSchwarzZNA26(VNA):
         self.device.close()
 
     def _default_setup(self, *args, **kwargs):
-        logger.info(f"Setting up {self.name}")
+        logger.debug(f"Setting up {self.name}")
         self.turn_off()
-        logger.info(" -> Turned off")
+        logger.debug(" -> Turned off")
 
         chan = ZNBChannel(
             self.device,
@@ -118,13 +118,13 @@ class SqilRohdeSchwarzZNA26(VNA):
             existing_trace_to_bind_to="Trc1",
         )
         self.device.channels.append(chan)
-        logger.info(" -> Added channel CHMEAS")
+        logger.debug(" -> Added channel CHMEAS")
 
         self.device.cont_meas_on()
         self.device.display_single_window()
 
         self.set_power(-60)
-        logger.info(" -> Power = -60 dBm")
+        logger.debug(" -> Power = -60 dBm")
 
     def set_frequency_range(self, start, stop, n_points) -> None:
         self.device.channels.CHMEAS.start(start)

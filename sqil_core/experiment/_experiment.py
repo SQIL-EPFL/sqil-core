@@ -170,7 +170,7 @@ class ExperimentHandler(ABC):
     # Move to server
     def _setup_instruments(self):
         """Default setup for all instruments with support for custom setups"""
-        logger.info("Setting up instruments")
+        logger.debug("Setting up instruments")
         if not hasattr(self, "instruments"):
             logger.warning("No instruments to set up")
             return
@@ -221,7 +221,7 @@ class ExperimentHandler(ABC):
         self._run_args = (args, run_kwargs)
 
         # Before experiment
-        logger.info("Before exp")
+        logger.debug("Before exp")
         before_experiment.send(sender=self)
 
         # Map input parameters index to their name

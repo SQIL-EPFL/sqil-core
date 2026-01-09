@@ -83,19 +83,19 @@ class SqilYokogawaGS200(CurrentSource):
         self.device.close()
 
     def _default_setup(self, *args, **kwargs):
-        logger.info(f"Setting up {self.name}")
+        logger.debug(f"Setting up {self.name}")
         # Set current mode
         if self.device.source_mode() != "CURR":
             self.turn_off()
-            logger.info(" -> Source mode: current")
+            logger.debug(" -> Source mode: current")
             self.device.source_mode("CURR")
         # Voltage limit
         v_lim = self.config.get("voltage_limit", 1)
-        logger.info(f" -> Voltage limit {v_lim} V")
+        logger.debug(f" -> Voltage limit {v_lim} V")
         self.device.voltage_limit(v_lim)
         # Current range
         i_range = self.config.get("current_range", 1e-3)
-        logger.info(f" -> Current range {i_range} A")
+        logger.debug(f" -> Current range {i_range} A")
         self.device.current_range(i_range)
         # Set current to 0, turn on and disconnect
         # self.ramp_current(0)
