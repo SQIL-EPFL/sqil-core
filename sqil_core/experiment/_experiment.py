@@ -86,11 +86,17 @@ class ExperimentHandler(ABC):
             logger.warning("Using emulation")
 
         # Read setup file
+        config = {}
         if not setup_path:
             config = read_yaml("config.yaml")
             setup_path = config.get("setup_path", "setup.py")
         self.setup = _extract_variables_from_module("setup", setup_path)
+
         self.qpu = qpu
+
+        # Set log level
+        log_level = config.get("log_level", logging.DEBUG)
+        logger.setLevel(log_level)
 
         if no_instruments == True:
             # Load QPU
