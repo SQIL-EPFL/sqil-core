@@ -76,7 +76,13 @@ PARAM_METADATA = {
         "unit": "dBm",
         "scale": 1,
     },
-    "readout_kappa_tot": {"symbol": r"\kappa_{tot}", "unit": "Hz", "scale": "MHz"},
+    "readout_kappa_tot": {"symbol": r"\kappa_{tot}", "unit": "Hz", "scale": 1e-6},
+    "ge_chi_shift": {
+        "name": "Dispersive shift",
+        "symbol": r"\chi_{ge}",
+        "unit": "Hz",
+        "scale": 1e-6,
+    },
     "resonance_frequency_ge": {
         "name": "Qubit frequency",
         "symbol": "f_{ge}",
