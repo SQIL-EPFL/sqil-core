@@ -46,7 +46,7 @@ def format_number(
         return [format_number(n, precision, unit, latex) for n in num]
 
     # Return if not a number
-    if not isinstance(num, (int, float, complex)):
+    if (not isinstance(num, (int, float, complex))) or np.isnan(num):
         return num
 
     # Format number
