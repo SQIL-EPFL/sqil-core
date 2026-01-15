@@ -1,3 +1,5 @@
+import numpy as np
+
 from sqil_core.utils import format_number
 
 
@@ -116,3 +118,6 @@ class TestFormatNumber:
         assert (
             format_number(1e-113, 3, unit="A", latex=False) == "1.000000000000e-113 A"
         )
+
+    def test_number_is_numpy_nan(self):
+        assert np.isnan(format_number(np.nan))
