@@ -30,6 +30,7 @@ from ._plot import (
     finalize_plot,
     get_x_id_by_plot_dim,
     guess_plot_dimension,
+    make_plot_frame,
     plot_IQ_ellipse,
     plot_mag_phase,
     plot_projection_IQ,
@@ -87,6 +88,7 @@ __all__ = [
     "finalize_plot",
     "add_power_axis",
     "plot_IQ_ellipse",
+    "make_plot_frame",
     # Read
     "extract_h5_data",
     "map_datadict",

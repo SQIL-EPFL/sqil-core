@@ -212,6 +212,46 @@ def finalize_plot(
         fig.text(0.4, y_pos, "Experiment:   " + params_str, ha="left")
 
 
+def make_plot_frame(plot_type="IQ"):
+    """
+    Create a standardized matplotlib figure layout for analysis plots.
+
+    Parameters
+    ----------
+    plot_type : str, optional
+        Type of plot layout to generate. Currently supported:
+
+        - "IQ" : Creates a two-axis layout with a 6:4 width ratio.
+          The left axis is typically used for signal traces or
+          distributions, and the right axis is configured for IQ-plane
+          plotting with equal aspect ratio and a reference marker at (0, 0).
+
+        Default is "IQ".
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure or None
+        The created matplotlib figure. Returns None if the plot type
+        is not recognized.
+    axs : tuple[matplotlib.axes.Axes, matplotlib.axes.Axes] or None
+        Tuple containing the created axes. For "IQ", the tuple is
+        (ax_main, ax_iq). Returns None if the plot type is not recognized.
+    """
+
+    fig, axs = None, None
+
+    if plot_type == "IQ":
+        fig = plt.figure(figsize=(20, 7), constrained_layout=True)
+        gs = GridSpec(nrows=1, ncols=10, figure=fig, wspace=0.2)
+        ax0 = fig.add_subplot(gs[:, :6])  # 6/10 width
+        ax1 = fig.add_subplot(gs[:, 6:])  # 4/10 width
+        ax1.scatter(0, 0, marker="+", color="black", s=150)
+        ax1.set_aspect(aspect="equal", adjustable="datalim")
+        axs = ax0, ax1
+
+    return fig, axs
+
+
 def plot_mag_phase(path=None, datadict=None, raw=False, transpose=False, plot=None):
     """
     Plot the magnitude and phase of complex measurement data from an db path or
