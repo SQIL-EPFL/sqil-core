@@ -25,7 +25,13 @@ PARAM_METADATA = {
         "scale": 1e-9,
         "precision": 5,
     },
-    "current": {"name": "Current", "symbol": "I", "unit": "A", "scale": 1e3},
+    "current": {
+        "name": "Current",
+        "symbol": "I",
+        "unit": "A",
+        "scale": 1e6,
+        "precision": 5,
+    },
     "temperature": {
         "name": "Temperature",
         "symbol": "T",
