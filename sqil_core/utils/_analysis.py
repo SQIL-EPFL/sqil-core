@@ -418,10 +418,11 @@ def find_first_minima_idx(data):
     return None
 
 
-def compute_fft(x_data, y_data):
+def compute_fft(x_data, y_data, bilateral=False):
     """
     Computes the Fast Fourier Transform (FFT) of a signal and returns the positive
-    frequency spectrum.
+    frequency spectrum if `bilateral=False` and the full spectrum if `bilateral=True`.
+    When `bilateral=False` the DC component is removed.
 
     Parameters
     ----------
@@ -436,11 +437,13 @@ def compute_fft(x_data, y_data):
         Array of positive frequency components corresponding to the FFT.
     fft_magnitude : np.ndarray
         Magnitude of the FFT at the positive frequencies.
+    bilateral: bool, optional, default=False
+        Bilateral
 
     Notes
     -----
-    - The signal is centered by subtracting its mean before computing the FFT, which
-    removes the DC component.
+    - If bilateral = True the signal is centered by subtracting its mean before computing
+    the FFT, which removes the DC component.
     - Only the positive frequency half of the FFT spectrum is returned, assuming
     a real-valued input signal.
     - If `y_data` is complex, returned FFT values still reflect magnitude only.
@@ -453,8 +456,10 @@ def compute_fft(x_data, y_data):
     >>> freqs, spectrum = compute_fft(t, y)
     """
 
-    # Subtract DC offset to focus on oscillations
-    y_data_centered = y_data - np.mean(y_data)
+    # Remove DC offset
+    y_data_centered = y_data
+    if not bilateral:
+        y_data_centered = y_data - np.mean(y_data)
 
     # Calculate time step (assumes uniform spacing)
     dt = x_data[1] - x_data[0]
@@ -464,11 +469,20 @@ def compute_fft(x_data, y_data):
     fft_vals = np.fft.fft(y_data_centered)
     freqs = np.fft.fftfreq(N, dt)
 
-    # Take only positive frequencies
-    positive_freqs = freqs[: N // 2]
-    fft_magnitude = np.abs(fft_vals[: N // 2])
+    if bilateral:
+        # Shift zero frequency to center
+        freqs = np.fft.fftshift(freqs)
+        fft_vals = np.fft.fftshift(fft_vals)
 
-    return positive_freqs, fft_magnitude
+        fft_magnitude = np.abs(fft_vals)
+        return freqs, fft_magnitude
+
+    else:
+        # One-sided spectrum
+        positive_freqs = freqs[: N // 2]
+        fft_magnitude = np.abs(fft_vals[: N // 2])
+
+        return positive_freqs, fft_magnitude
 
 
 def get_peaks(x_data, y_data, prominence: float | None = None, sort=True):
