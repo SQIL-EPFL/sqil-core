@@ -232,21 +232,23 @@ def multi_qubit_handler(single_qubit_handler):
             fun_kwargs["qpu"] = qpu
 
         # Check if full_datadict is multi qubit
-        is_multi_qubit = is_multi_qubit_datadict(full_datadict)
+        db_metadata = full_datadict.get("metadata", {})
+        qu_ids = db_metadata.get("qu_ids", [])
+        is_multi_qubit = len(qu_ids) > 0
 
         if is_multi_qubit:
             if qu_id is None:  # no qu_id is specified => process all qubits
-                db_metadata = full_datadict.get("metadata", {})
                 db_schema = db_metadata.get("schema")
-                for qid in full_datadict.keys():
+                for qid in qu_ids:
                     fun_kwargs["qu_id"] = qid
                     fun_kwargs["datadict"] = {
                         **full_datadict[qid],
                         "metadata": {"schema": db_schema},
                     }
                     anal_res_qu = single_qubit_handler(*args, **fun_kwargs)
-                    anal_res_tot.update(anal_res_qu)
-                    return anal_res_tot
+                    if anal_res_qu:
+                        anal_res_tot.update(anal_res_qu)
+                return anal_res_tot
             else:  # qu_id is specified => process single qubit
                 datadict = full_datadict[qu_id]
         else:  # full_datadict is NOT multi qubit => it's already single qubit
