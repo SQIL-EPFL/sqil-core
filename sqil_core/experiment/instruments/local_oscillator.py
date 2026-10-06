@@ -59,7 +59,7 @@ class SqilSignalCoreSC5511A(LocalOscillatorBase):
         self.device.do_set_standby(False)
 
     def set_frequency(self, value) -> None:
-        self.device.do_set_ref_out_freq(value)
+        self.device.do_set_frequency(value)
 
     def set_power(self, value) -> None:
         self.device.power(value)
