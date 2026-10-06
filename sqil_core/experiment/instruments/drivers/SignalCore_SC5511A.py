@@ -7,7 +7,8 @@ A simple driver for SignalCore SC5511A to be used with QCoDes, transferred from 
 """
 
 import ctypes
-import logging
+
+# import logging
 from typing import Any
 
 # from helpers.customized_drivers.sc5511a import * #is this actually required?
@@ -131,10 +132,10 @@ class SignalCore_SC5511A(Instrument):
         self, name: str, serial_number: str, dll=None, debug=False, **kwargs: Any
     ):
         super().__init__(name, **kwargs)
-        logging.info(
-            __name__
-            + f" : Initializing instrument SignalCore generator {serial_number}"
-        )
+        # logging.info(
+        #     __name__
+        #     + f" : Initializing instrument SignalCore generator {serial_number}"
+        # )
         if dll is not None:
             self._dll = dll
         else:
@@ -285,7 +286,7 @@ class SignalCore_SC5511A(Instrument):
             Input:
                 enable (int) = OFF = 0 ; ON = 1
         """
-        logging.info(__name__ + " : Setting output to %s" % enable)
+        # logging.info(__name__ + " : Setting output to %s" % enable)
         c_enable = ctypes.c_ubyte(enable)
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
@@ -300,7 +301,7 @@ class SignalCore_SC5511A(Instrument):
             Output:
                 status (int) : OFF = 0 ; ON = 1
         """
-        logging.info(__name__ + " : Getting output")
+        # logging.info(__name__ + " : Getting output")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -318,7 +319,7 @@ class SignalCore_SC5511A(Instrument):
                 frequency (int) = frequency in Hz
         """
         c_freq = ctypes.c_ulonglong(int(frequency))
-        logging.info(__name__ + " : Setting frequency to %s" % frequency)
+        # logging.info(__name__ + " : Setting frequency to %s" % frequency)
         close = False
         if not self._open:
             self._handle = ctypes.c_void_p(
@@ -331,7 +332,7 @@ class SignalCore_SC5511A(Instrument):
         return if_set
 
     def do_get_frequency(self):
-        logging.info(__name__ + " : Getting frequency")
+        # logging.info(__name__ + " : Getting frequency")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -341,7 +342,7 @@ class SignalCore_SC5511A(Instrument):
         return frequency
 
     def do_set_reference_source(self, lock_to_external):
-        logging.info(__name__ + " : Setting reference source to %s" % lock_to_external)
+        # logging.info(__name__ + " : Setting reference source to %s" % lock_to_external)
         ref_out_freq = self.do_get_ref_out_freq()
         ref_out_sel = ctypes.c_ubyte(0 if ref_out_freq == 10 else 1)
         lock = ctypes.c_ubyte(lock_to_external)
@@ -364,7 +365,7 @@ class SignalCore_SC5511A(Instrument):
         return error_code, enable
 
     def do_get_reference_source(self):
-        logging.info(__name__ + " : Getting reference source")
+        # logging.info(__name__ + " : Getting reference source")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -379,7 +380,7 @@ class SignalCore_SC5511A(Instrument):
         return enabled
 
     def do_set_ref_out_freq(self, freq):
-        logging.info(__name__ + " : Setting reference out freq to %s" % freq)
+        # logging.info(__name__ + " : Setting reference out freq to %s" % freq)
         if freq == 10:
             ref_out_sel = 0
         elif freq == 100:
@@ -395,7 +396,7 @@ class SignalCore_SC5511A(Instrument):
         return source
 
     def do_get_ref_out_freq(self):
-        logging.info(__name__ + " : Getting reference source")
+        # logging.info(__name__ + " : Getting reference source")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -408,7 +409,7 @@ class SignalCore_SC5511A(Instrument):
         return freq
 
     def do_set_power(self, power):
-        logging.info(__name__ + " : Setting power to %s" % power)
+        # logging.info(__name__ + " : Setting power to %s" % power)
         c_power = ctypes.c_float(power)
         close = False
         if not self._open:
@@ -422,7 +423,7 @@ class SignalCore_SC5511A(Instrument):
         return completed
 
     def do_get_power(self):
-        logging.info(__name__ + " : Getting Power")
+        # logging.info(__name__ + " : Getting Power")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -442,7 +443,7 @@ class SignalCore_SC5511A(Instrument):
         return OPERATE["ext_ref_detect"]
 
     def do_set_auto_level_disable(self, enable):
-        logging.info(__name__ + " : Settingalc auto to %s" % enable)
+        # logging.info(__name__ + " : Settingalc auto to %s" % enable)
         if enable == 1:
             enable = 0
         elif enable == 0:
@@ -456,7 +457,7 @@ class SignalCore_SC5511A(Instrument):
         return completed
 
     def do_get_auto_level_disable(self):
-        logging.info(__name__ + " : Getting alc auto status")
+        # logging.info(__name__ + " : Getting alc auto status")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -472,7 +473,7 @@ class SignalCore_SC5511A(Instrument):
         return enabled
 
     def do_get_device_temp(self):
-        logging.info(__name__ + " : Getting device temperature")
+        # logging.info(__name__ + " : Getting device temperature")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
@@ -482,7 +483,7 @@ class SignalCore_SC5511A(Instrument):
         return device_temp
 
     def get_idn(self) -> dict[str, str | None]:
-        logging.info(__name__ + " : Getting device info")
+        # logging.info(__name__ + " : Getting device info")
         self._handle = ctypes.c_void_p(
             self._dll.sc5511a_open_device(self._serial_number)
         )
