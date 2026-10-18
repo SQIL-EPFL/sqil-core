@@ -284,16 +284,14 @@ class ExperimentHandler(ABC):
                             f"*** ZI estimated runtime: {compiled_exp.estimated_runtime:.2f} s ***"
                         )
                         if pulse_sheet:
-                            end_time = (
-                                pulse_sheet
-                                if type(pulse_sheet) in (int, float)
-                                else None
+                            pulse_sheet_params = (
+                                pulse_sheet if type(pulse_sheet) in [dict] else None
                             )
                             create_pulse_sheet(
                                 self.zi_setup,
                                 compiled_exp,
                                 self.exp_name,
-                                end=end_time,
+                                params=pulse_sheet_params,
                                 qu_ids=qu_ids,
                             )
                             show_pulse_sheet(
@@ -647,103 +645,63 @@ def get_plottr_path(writer: DDH5Writer, root_path):
 from laboneq.simple import OutputSimulator  # noqa: E402
 
 
-def create_pulse_sheet(device_setup, compiled_exp, name, end=10e-6, qu_ids=None):
+def create_pulse_sheet(device_setup, compiled_exp, name, params=None, qu_ids=None):
     if qu_ids is None:
         qu_ids = ["q0"]
 
-    start = 0
-    colors = [
-        "tab:blue",
-        "tab:orange",
-        "tab:green",
-        "tab:red",
-        "tab:purple",
-        "tab:brown",
-    ]
+    if params is None:
+        params = {}
 
-    fig, axs = plt.subplots(2, 1, figsize=(20, 5))
+    start = params.get("start", 0)
+    end = params.get("end", 5e-6)
+    signals = params.get("signals", ["drive", "measure"])
+
+    fig, axs = plt.subplots(
+        len(qu_ids), 1, figsize=(20, 5 * len(qu_ids)), squeeze=False
+    )
+    axs = axs.flatten()
+
+    # Get waveform snippets from the simulation
+    simulation = OutputSimulator(compiled_exp)
+
     for idx, qu_id in enumerate(qu_ids):
-        # Get physical channel references via the logical signals
-        drive_iq_port = device_setup.logical_signal_by_uid("q0/drive").physical_channel
-        measure_iq_port = device_setup.logical_signal_by_uid(
-            "q0/measure"
-        ).physical_channel
-        acquire_port = device_setup.logical_signal_by_uid("q0/acquire").physical_channel
+        for signal in signals:
+            # Get physical channel references via the logical signals
+            iq_port = device_setup.logical_signal_by_uid(
+                f"{qu_id}/{signal}"
+            ).physical_channel
+            snippet = simulation.get_snippet(iq_port, start=start, output_length=end)
+            # Plot real part
+            (line,) = axs[idx].plot(
+                snippet.time * 1e6,
+                snippet.wave.real,
+                label=f"{signal} I",
+            )
+            axs[idx].fill_between(
+                snippet.time * 1e6,
+                snippet.wave.real,
+                color=line.get_color(),
+                alpha=0.6,
+            )
+            # Plot imaginary part
+            (line,) = axs[idx].plot(
+                snippet.time * 1e6,
+                snippet.wave.imag,
+                label=f"{signal} Q",
+            )
+            axs[idx].fill_between(
+                snippet.time * 1e6,
+                snippet.wave.imag,
+                color=line.get_color(),
+                alpha=0.6,
+            )
 
-        # Get waveform snippets from the simulation
-        simulation = OutputSimulator(compiled_exp)
-
-        drive_snippet = simulation.get_snippet(
-            drive_iq_port, start=start, output_length=end
-        )
-
-        measure_snippet = simulation.get_snippet(
-            measure_iq_port, start=start, output_length=end
-        )
-
-        acquire_snippet = simulation.get_snippet(
-            acquire_port, start=start, output_length=end
-        )
-
-        axs[idx].plot(
-            drive_snippet.time * 1e6,
-            drive_snippet.wave.real,
-            color=colors[0],
-            label="Qubit I",
-        )
-        axs[idx].fill_between(
-            drive_snippet.time * 1e6,
-            drive_snippet.wave.real,
-            color=colors[0],
-            alpha=0.6,
-        )
-        axs[idx].plot(
-            drive_snippet.time * 1e6,
-            drive_snippet.wave.imag,
-            color=colors[1],
-            label="Qubit Q",
-        )
-        axs[idx].fill_between(
-            drive_snippet.time * 1e6,
-            drive_snippet.wave.imag,
-            color=colors[1],
-            alpha=0.6,
-        )
-
-        axs[idx].plot(
-            measure_snippet.time * 1e6,
-            measure_snippet.wave.real,
-            color=colors[2],
-            label="Readout I",
-        )
-        axs[idx].fill_between(
-            measure_snippet.time * 1e6,
-            measure_snippet.wave.real,
-            color=colors[2],
-            alpha=0.6,
-        )
-        axs[idx].plot(
-            measure_snippet.time * 1e6,
-            measure_snippet.wave.imag,
-            color=colors[3],
-            label="Readout Q",
-        )
-        axs[idx].fill_between(
-            measure_snippet.time * 1e6,
-            measure_snippet.wave.imag,
-            color=colors[3],
-            alpha=0.6,
-        )
-        axs[idx].plot(
-            acquire_snippet.time * 1e6,
-            acquire_snippet.wave.real,
-            color=colors[4],
-            label="acquire start",
-        )
-
-        axs[idx].legend()
+        axs[idx].legend(loc="lower right")
         axs[idx].set_xlabel(r"Time($\mu s$)")
         axs[idx].set_ylabel("Amplitude")
         axs[idx].set_title(f"{name} - {qu_id}")
+        axs[idx].grid()
+
+        fig.tight_layout()
 
     plt.show()
