@@ -13,7 +13,7 @@ from ._analysis import (
     remove_offset,
     soft_normalize,
 )
-from ._const import ONE_TONE_PARAMS, PARAM_METADATA, TWO_TONE_PARAMS
+from ._const import PARAM_METADATA, PARAM_METADATA_RULES
 from ._formatter import (
     ParamDict,
     ParamInfo,
@@ -22,6 +22,7 @@ from ._formatter import (
     format_number,
     get_name_and_unit,
     get_relevant_exp_parameters,
+    infer_qpu_metadata,
     param_info_from_schema,
 )
 from ._plot import (
@@ -66,8 +67,7 @@ __all__ = [
     "mask_outliers",
     # Const
     "PARAM_METADATA",
-    "ONE_TONE_PARAMS",
-    "TWO_TONE_PARAMS",
+    "PARAM_METADATA_RULES",
     # Formatter
     "format_number",
     "get_name_and_unit",
@@ -77,6 +77,7 @@ __all__ = [
     "param_info_from_schema",
     "enrich_qubit_params",
     "get_relevant_exp_parameters",
+    "infer_qpu_metadata",
     # Plot
     "set_plot_style",
     "reset_plot_style",

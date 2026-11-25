@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import norm
 from tabulate import tabulate
 
-from ._const import _EXP_UNIT_MAP, PARAM_METADATA
+from ._const import _EXP_UNIT_MAP, PARAM_METADATA, PARAM_METADATA_RULES
 
 
 def _cut_to_significant_digits(number, n):
@@ -263,3 +263,48 @@ def get_relevant_exp_parameters(
     result = {key: value for key, value in qubit_params.items() if key in filtered}
 
     return list(result.keys()) if only_keys else result
+
+
+def infer_qpu_metadata(qpu) -> None:
+    """
+    Infer and register metadata for QPU parameter fields.
+
+    Inspects the parameter dataclass associated with the first quantum element
+    in the QPU. Each field name is matched against the patterns defined in
+    ``PARAM_METADATA_RULES``. When a match is found, the corresponding metadata
+    rule is copied added to ``PARAM_METADATA``. Some rules are dynamically updated
+    depending on the match. For example "resonance_frequency_*" will use the matched
+    transition name (*) to update the metadata.
+
+    Parameters
+    ----------
+    qpu
+        QPU object containing quantum elements and their parameter definitions.
+
+    Returns
+    -------
+    None
+        Updates the global ``PARAM_METADATA`` dictionary in place.
+    """
+    qpu_type = type(qpu[qpu.quantum_element_uids[0]].parameters)
+
+    for field in attrs.fields(qpu_type):
+        p_name = field.name
+
+        for pattern, rule in PARAM_METADATA_RULES:
+            match = pattern.fullmatch(p_name)
+
+            if match:
+                metadata = rule.copy()
+
+                metadata = {
+                    key: (
+                        value.format(**match.groupdict())
+                        if isinstance(value, str)
+                        else value
+                    )
+                    for key, value in metadata.items()
+                }
+
+                PARAM_METADATA[p_name] = metadata
+                break

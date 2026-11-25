@@ -37,6 +37,7 @@ from sqil_core.experiment.instruments.server import (
     link_instrument_server,
 )
 from sqil_core.experiment.instruments.zurich_instruments import ZI_Instrument
+from sqil_core.utils._formatter import infer_qpu_metadata
 
 # from sqil_core.experiment.setup_registry import setup_registry
 from sqil_core.utils._read import copy_folder, read_yaml
@@ -149,9 +150,12 @@ class ExperimentHandler(ABC):
         # Load QPU
         if self.qpu is None:
             self._load_qpu(generate_qpu, generate_qpu_args)
-
+        # Setup instruments
         self.instruments = Instruments(instrument_instances)
         self._setup_instruments()
+
+        # Infer QPU parameter metadata
+        infer_qpu_metadata(self.qpu)
 
     def _load_qpu(self, generate_qpu: Callable, generate_qpu_args: list):
         qpu_filename = self.setup["storage"].get("qpu_filename", "qpu.json")
@@ -214,12 +218,19 @@ class ExperimentHandler(ABC):
                 finally:
                     del instrument
 
-    def run_with_plottr(self, *args, qu_ids=None, pulse_sheet=False, **kwargs):
+    def run_with_plottr(
+        self, *args, qu_ids=None, pulse_sheet=False, live_plot=False, **kwargs
+    ):
         # Sanitize inputs
         if qu_ids is None:
             qu_ids = ["q0"]
         qu_ids = make_iterable(qu_ids)
-        run_kwargs = {**kwargs, "qu_ids": qu_ids, "pulse_sheet": pulse_sheet}
+        run_kwargs = {
+            **kwargs,
+            "qu_ids": qu_ids,
+            "pulse_sheet": pulse_sheet,
+            "live_plot": live_plot,
+        }
         self._run_args = (args, run_kwargs)
 
         # Before experiment

@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 
 _EXP_UNIT_MAP = {
@@ -196,13 +198,64 @@ PARAM_METADATA = {
     },
 }
 
-ONE_TONE_PARAMS = np.array(
-    [
-        "readout_amplitude",
-        "readout_length",
-        "readout_external_lo_frequency",
-        "readout_external_lo_power",
-    ]
-)
-
-TWO_TONE_PARAMS = np.array(["spectroscopy_amplitude"])
+# Compiled regex rules to dynamically infer qpu metadata from parameter keys
+PARAM_METADATA_RULES = [
+    (
+        re.compile(r"resonance_frequency_(?P<transition>.*)"),
+        {
+            "name": "Qubit frequency",
+            "symbol": r"f_{{{transition}}}",
+            "unit": "Hz",
+            "scale": 1e-9,
+            "precision": 5,
+        },
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_drive_amplitude_pi"),
+        {
+            "name": "Drive amplitude pi {transition}",
+            "symbol": r"A_{{\pi}}^{{{transition}}}",
+            "unit": "",
+            "scale": 1,
+        },
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_drive_amplitude_pi2"),
+        {
+            "name": "Drive amplitude pi/2 {transition}",
+            "symbol": r"A_{{\pi / 2}}^{{{transition}}}",
+            "unit": "",
+            "scale": 1,
+        },
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_drive_length"),
+        {
+            "name": "Drive length {transition}",
+            "symbol": r"T_{{\pi}}^{{{transition}}}",
+            "unit": "s",
+            "scale": 1e9,
+        },
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_chi_shift"),
+        {
+            "name": "Dispersive shift {transition}",
+            "symbol": r"\chi_{{{transition}}}",
+            "unit": "Hz",
+            "scale": 1e-6,
+        },
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_T1"),
+        {"name": "T1", "symbol": r"T_1", "unit": "s", "scale": 1e6},
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_T2_star"),
+        {"name": "T2*", "symbol": r"T_2^*", "unit": "s", "scale": 1e6},
+    ),
+    (
+        re.compile(r"(?P<transition>.*)_T2"),
+        {"name": "T2", "symbol": r"T_2", "unit": "s", "scale": 1e6},
+    ),
+]
