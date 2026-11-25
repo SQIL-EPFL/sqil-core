@@ -25,8 +25,8 @@ blinker = "^1.9.0"
 plottr = "^0.14.0"
 mpld3 = "^0.5.10"
 tqdm = "^4.67.1"
-laboneq = "^25.10.3"
-laboneq-applications = "^25.10.0"
+laboneq = ">=26.10.1"
+laboneq-applications = ">=26.10.1"
 
 
 [tool.poetry.group.dev.dependencies]
